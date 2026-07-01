@@ -1,0 +1,187 @@
+======================================================================
+  WORKFORCE COMPLIANCE AI - SCHEDULE ANALYSIS REPORT
+======================================================================
+
+  Facility:        CHI-WH-001 (Chicago Warehouse)
+  Schedule Week:   2026-07-07 to 2026-07-13
+  Posted Date:     2026-07-04
+  Total Shifts:    52
+  Employees:       10
+
+----------------------------------------------------------------------
+
+  COMPLIANCE SUMMARY
+  ==================================================
+  Total Violations Found:  15
+
+  CRITICAL     6  ******************
+  HIGH         4  ************
+  MEDIUM       5  ***************
+
+  *** IMMEDIATE ACTION REQUIRED: 6 CRITICAL VIOLATION(S) ***
+
+----------------------------------------------------------------------
+
+  VIOLATION #1  [!!!] CRITICAL
+  Rule:                CP-002 - Minor Night Shift Restriction
+  Issue:               Tyler Brooks (minor): Scheduled until 22:30 on 2026-07-07. Minors cannot work between 10pm-6am.
+  Affected:            Tyler Brooks
+  Cost Impact:         LEGAL VIOLATION - potential fine + termination of scheduling manager
+  Recommendation:      End shift by 22:00 at latest. Change to 16:00-21:30 or reassign to daytime shift.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #2  [!!!] CRITICAL
+  Rule:                FED-FMLA-002 - Scheduling During FMLA Leave
+  Issue:               Aisha Patel: Scheduled on 2026-07-07 but is on approved FMLA leave (2026-07-07 to 2026-07-18)
+  Affected:            Aisha Patel
+  Cost Impact:         FMLA interference claim - back pay + liquidated damages + attorney fees ($50K-$500K+)
+  Recommendation:      Remove Aisha Patel from schedule on 2026-07-07. Assign to qualified replacement.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #3  [!!!] CRITICAL
+  Rule:                FED-FMLA-002 - Scheduling During FMLA Leave
+  Issue:               Aisha Patel: Scheduled on 2026-07-08 but is on approved FMLA leave (2026-07-07 to 2026-07-18)
+  Affected:            Aisha Patel
+  Cost Impact:         FMLA interference claim - back pay + liquidated damages + attorney fees ($50K-$500K+)
+  Recommendation:      Remove Aisha Patel from schedule on 2026-07-08. Assign to qualified replacement.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #4  [!!!] CRITICAL
+  Rule:                FED-FMLA-002 - Scheduling During FMLA Leave
+  Issue:               Aisha Patel: Scheduled on 2026-07-09 but is on approved FMLA leave (2026-07-07 to 2026-07-18)
+  Affected:            Aisha Patel
+  Cost Impact:         FMLA interference claim - back pay + liquidated damages + attorney fees ($50K-$500K+)
+  Recommendation:      Remove Aisha Patel from schedule on 2026-07-09. Assign to qualified replacement.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #5  [!!!] CRITICAL
+  Rule:                FED-FMLA-002 - Scheduling During FMLA Leave
+  Issue:               Aisha Patel: Scheduled on 2026-07-10 but is on approved FMLA leave (2026-07-07 to 2026-07-18)
+  Affected:            Aisha Patel
+  Cost Impact:         FMLA interference claim - back pay + liquidated damages + attorney fees ($50K-$500K+)
+  Recommendation:      Remove Aisha Patel from schedule on 2026-07-10. Assign to qualified replacement.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #6  [!!!] CRITICAL
+  Rule:                FED-FMLA-002 - Scheduling During FMLA Leave
+  Issue:               Aisha Patel: Scheduled on 2026-07-11 but is on approved FMLA leave (2026-07-07 to 2026-07-18)
+  Affected:            Aisha Patel
+  Cost Impact:         FMLA interference claim - back pay + liquidated damages + attorney fees ($50K-$500K+)
+  Recommendation:      Remove Aisha Patel from schedule on 2026-07-11. Assign to qualified replacement.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #7  [!!] HIGH
+  Rule:                CHI-FW-001 - Advance Notice (Chicago Fair Workweek)
+  Issue:               Schedule posted only 3 days before week start. Chicago requires 14 days.
+  Affected:            ALL (10 employees)
+  Cost Impact:         $300-$500 per employee = $3,000-$5,000 total penalty risk
+  Recommendation:      Post schedule by June 23 for the week of July 7. Set calendar reminder for 14-day lead time.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #8  [!!] HIGH
+  Rule:                CHI-FW-002 / CBA-008 - Right to Rest (Clopening)
+  Issue:               Sarah Martinez: Only 7.5 hours between shifts on 2026-07-06 (end 22:30) and 2026-07-07 (start 06:00). Minimum 10 hours required.
+  Affected:            Sarah Martinez
+  Cost Impact:         1.25x pay rate for hours within 10-hr window + grievance risk
+  Recommendation:      Move 2026-07-07 start to 22:00 + 10hrs = start at 32:00, or reassign to different employee.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #9  [!!] HIGH
+  Rule:                CBA-002 - Maximum Consecutive Days (Union CBA)
+  Issue:               Marcus Johnson: Scheduled for 8 consecutive days. CBA maximum is 6.
+  Affected:            Marcus Johnson
+  Cost Impact:         Double time pay for day 7+ AND grievance filing
+  Recommendation:      Insert rest day. Move 2026-07-07 shift to a different employee or reschedule.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #10  [!!] HIGH
+  Rule:                CBA-001 - Minimum Shift Length (Union CBA)
+  Issue:               Rosa Hernandez: Shift on 2026-07-07 is only 3.0 hours (10:00-13:00). CBA minimum is 4 hours.
+  Affected:            Rosa Hernandez
+  Cost Impact:         Must pay for full 4 hours regardless of hours worked
+  Recommendation:      Extend shift to minimum 4 hours (e.g., 10:00-14:00) or combine with another task.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #11  [!] MEDIUM
+  Rule:                CBA-005 - Schedule Posting (Union CBA)
+  Issue:               Schedule posted only 3 days before week start. CBA requires 5 days (Wednesday prior week).
+  Affected:            ALL bargaining unit employees
+  Cost Impact:         Grievance risk + potential back pay
+  Recommendation:      Post by Wednesday of prior week at minimum.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #12  [!] MEDIUM
+  Rule:                CP-001 - Weekly Hour Cap (Company Policy)
+  Issue:               James Wilson: Scheduled for 63.0 hours in the week. Company maximum is 60 without VP approval.
+  Affected:            James Wilson
+  Cost Impact:         Requires VP approval escalation + overtime cost
+  Recommendation:      Reduce by 3.0 hours. Move 3+ hours to another qualified employee or get VP pre-approval.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #13  [!] MEDIUM
+  Rule:                CP-PTO-001 - Scheduling During Approved PTO
+  Issue:               Fatima Ali: Scheduled on 2026-07-09 but has approved PTO
+  Affected:            Fatima Ali
+  Cost Impact:         Employee grievance + morale impact
+  Recommendation:      Remove shift or get employee to voluntarily cancel PTO.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #14  [!] MEDIUM
+  Rule:                CP-PTO-001 - Scheduling During Approved PTO
+  Issue:               Fatima Ali: Scheduled on 2026-07-10 but has approved PTO
+  Affected:            Fatima Ali
+  Cost Impact:         Employee grievance + morale impact
+  Recommendation:      Remove shift or get employee to voluntarily cancel PTO.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+  VIOLATION #15  [!] MEDIUM
+  Rule:                CP-PTO-001 - Scheduling During Approved PTO
+  Issue:               Fatima Ali: Scheduled on 2026-07-11 but has approved PTO
+  Affected:            Fatima Ali
+  Cost Impact:         Employee grievance + morale impact
+  Recommendation:      Remove shift or get employee to voluntarily cancel PTO.
+
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+======================================================================
+  RECOMMENDED ACTIONS (Priority Order)
+======================================================================
+
+  1. IMMEDIATE: Remove Tyler Brooks (minor) from evening shift past 10pm
+     -> Reassign to 14:00-21:30 or move to daytime
+
+  2. THIS WEEK: Fix Sarah Martinez clopening violation
+     -> Move Monday start to 08:30 (10hrs after Sunday end)
+     -> OR reassign Sunday close to another senior employee
+
+  3. THIS WEEK: Give Marcus Johnson a rest day
+     -> Remove July 7 or July 8 shift, replace with qualified employee
+
+  4. PROCESS: Extend Rosa Hernandez Monday shift to 4 hours minimum
+     -> Change 10:00-13:00 to 10:00-14:00
+
+  5. PROCESS: Reduce James Wilson to 60 hours or get VP approval
+     -> Remove Saturday shift or shorten daily shifts by 30 min
+
+  6. SYSTEMIC: Implement 14-day advance scheduling process
+     -> Current 3-day notice violates Chicago law for ALL employees
+     -> Estimated penalty exposure: $3,000-$5,000 per occurrence
+
+======================================================================
+  Total Estimated Penalty Exposure: $4,500 - $8,000+
+  Grievance Risk: HIGH (3 CBA violations identified)
+======================================================================

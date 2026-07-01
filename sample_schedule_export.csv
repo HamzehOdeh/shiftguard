@@ -1,0 +1,102 @@
+employee_id,name,date,start,end,role,tier,rate,shift_type
+EMP0001,Sarah Johnson,2026-01-05,08:00,16:00,CNA,3,31.25,regular
+EMP0001,Sarah Johnson,2026-01-06,08:00,16:00,CNA,3,31.25,regular
+EMP0001,Sarah Johnson,2026-01-07,08:00,16:00,CNA,3,31.25,regular
+EMP0001,Sarah Johnson,2026-01-10,08:00,16:00,CNA,3,31.25,weekend
+EMP0001,Sarah Johnson,2026-01-11,08:00,16:00,CNA,3,31.25,weekend
+EMP0002,Mike Williams,2026-01-05,08:00,16:00,Unit Clerk,1,25.0,regular
+EMP0002,Mike Williams,2026-01-06,08:00,16:00,Unit Clerk,1,25.0,regular
+EMP0002,Mike Williams,2026-01-09,08:00,16:00,Unit Clerk,1,25.0,regular
+EMP0002,Mike Williams,2026-01-11,08:00,16:00,Unit Clerk,1,25.0,weekend
+EMP0003,Jennifer Brown,2026-01-05,14:00,22:00,Unit Clerk,1,25.0,regular
+EMP0003,Jennifer Brown,2026-01-06,14:00,22:00,Unit Clerk,1,25.0,regular
+EMP0003,Jennifer Brown,2026-01-07,14:00,22:00,Unit Clerk,1,25.0,regular
+EMP0003,Jennifer Brown,2026-01-08,14:00,22:00,Unit Clerk,1,25.0,regular
+EMP0003,Jennifer Brown,2026-01-09,14:00,22:00,Unit Clerk,1,25.0,regular
+EMP0003,Jennifer Brown,2026-01-11,14:00,22:00,Unit Clerk,1,25.0,weekend
+EMP0004,David Jones,2026-01-05,07:00,15:00,PCT,1,25.0,regular
+EMP0004,David Jones,2026-01-07,07:00,15:00,PCT,1,25.0,regular
+EMP0004,David Jones,2026-01-09,07:00,15:00,PCT,1,25.0,regular
+EMP0004,David Jones,2026-01-10,07:00,15:00,PCT,1,25.0,weekend
+EMP0004,David Jones,2026-01-11,07:00,15:00,PCT,1,25.0,weekend
+EMP0005,Lisa Garcia,2026-01-05,14:00,22:00,CNA,2,28.75,regular
+EMP0005,Lisa Garcia,2026-01-07,14:00,22:00,CNA,2,28.75,regular
+EMP0005,Lisa Garcia,2026-01-08,14:00,22:00,CNA,2,28.75,regular
+EMP0005,Lisa Garcia,2026-01-09,14:00,22:00,CNA,2,28.75,regular
+EMP0005,Lisa Garcia,2026-01-10,14:00,22:00,CNA,2,28.75,weekend
+EMP0006,James Miller,2026-01-05,07:00,15:00,CNA,3,31.25,regular
+EMP0006,James Miller,2026-01-06,07:00,15:00,CNA,3,31.25,regular
+EMP0006,James Miller,2026-01-07,07:00,15:00,CNA,3,31.25,regular
+EMP0006,James Miller,2026-01-09,07:00,15:00,CNA,3,31.25,regular
+EMP0006,James Miller,2026-01-11,07:00,15:00,CNA,3,31.25,weekend
+EMP0007,Maria Davis,2026-01-06,22:00,06:00,Supervisor,1,25.0,regular
+EMP0007,Maria Davis,2026-01-07,22:00,06:00,Supervisor,1,25.0,regular
+EMP0007,Maria Davis,2026-01-09,22:00,06:00,Supervisor,1,25.0,regular
+EMP0007,Maria Davis,2026-01-10,22:00,06:00,Supervisor,1,25.0,weekend
+EMP0007,Maria Davis,2026-01-11,22:00,06:00,Supervisor,1,25.0,weekend
+EMP0008,Robert Rodriguez,2026-01-06,07:00,15:00,CNA,3,31.25,regular
+EMP0008,Robert Rodriguez,2026-01-08,07:00,15:00,CNA,3,31.25,regular
+EMP0008,Robert Rodriguez,2026-01-09,07:00,15:00,CNA,3,31.25,regular
+EMP0008,Robert Rodriguez,2026-01-10,07:00,15:00,CNA,3,31.25,weekend
+EMP0008,Robert Rodriguez,2026-01-11,07:00,15:00,CNA,3,31.25,weekend
+EMP0009,Emily Martinez,2026-01-05,22:00,06:00,Charge RN,1,25.0,regular
+EMP0009,Emily Martinez,2026-01-06,22:00,06:00,Charge RN,1,25.0,regular
+EMP0009,Emily Martinez,2026-01-07,22:00,06:00,Charge RN,1,25.0,regular
+EMP0009,Emily Martinez,2026-01-08,22:00,06:00,Charge RN,1,25.0,regular
+EMP0010,Carlos Anderson,2026-01-06,14:00,22:00,Charge RN,1,25.0,regular
+EMP0010,Carlos Anderson,2026-01-07,14:00,22:00,Charge RN,1,25.0,regular
+EMP0010,Carlos Anderson,2026-01-08,14:00,22:00,Charge RN,1,25.0,regular
+EMP0010,Carlos Anderson,2026-01-09,14:00,22:00,Charge RN,1,25.0,regular
+EMP0010,Carlos Anderson,2026-01-10,14:00,22:00,Charge RN,1,25.0,weekend
+EMP0010,Carlos Anderson,2026-01-11,14:00,22:00,Charge RN,1,25.0,weekend
+EMP0011,Ashley Taylor,2026-01-06,22:00,06:00,LPN,1,25.0,regular
+EMP0011,Ashley Taylor,2026-01-07,22:00,06:00,LPN,1,25.0,regular
+EMP0011,Ashley Taylor,2026-01-08,22:00,06:00,LPN,1,25.0,regular
+EMP0011,Ashley Taylor,2026-01-09,22:00,06:00,LPN,1,25.0,regular
+EMP0011,Ashley Taylor,2026-01-10,22:00,06:00,LPN,1,25.0,weekend
+EMP0011,Ashley Taylor,2026-01-11,22:00,06:00,LPN,1,25.0,weekend
+EMP0012,Kevin Thomas,2026-01-05,14:00,22:00,LPN,1,25.0,regular
+EMP0012,Kevin Thomas,2026-01-06,14:00,22:00,LPN,1,25.0,regular
+EMP0012,Kevin Thomas,2026-01-10,14:00,22:00,LPN,1,25.0,weekend
+EMP0012,Kevin Thomas,2026-01-11,14:00,22:00,LPN,1,25.0,weekend
+EMP0013,Nicole Moore,2026-01-07,06:00,14:00,Unit Clerk,3,31.25,regular
+EMP0013,Nicole Moore,2026-01-08,06:00,14:00,Unit Clerk,3,31.25,regular
+EMP0013,Nicole Moore,2026-01-09,06:00,14:00,Unit Clerk,3,31.25,regular
+EMP0013,Nicole Moore,2026-01-10,06:00,14:00,Unit Clerk,3,31.25,weekend
+EMP0013,Nicole Moore,2026-01-11,06:00,14:00,Unit Clerk,3,31.25,weekend
+EMP0014,Brian Jackson,2026-01-05,14:00,22:00,CNA,3,31.25,regular
+EMP0014,Brian Jackson,2026-01-06,14:00,22:00,CNA,3,31.25,regular
+EMP0014,Brian Jackson,2026-01-07,14:00,22:00,CNA,3,31.25,regular
+EMP0014,Brian Jackson,2026-01-09,14:00,22:00,CNA,3,31.25,regular
+EMP0014,Brian Jackson,2026-01-10,14:00,22:00,CNA,3,31.25,weekend
+EMP0014,Brian Jackson,2026-01-11,14:00,22:00,CNA,3,31.25,weekend
+EMP0015,Amanda Martin,2026-01-05,22:00,06:00,RN,2,28.75,regular
+EMP0015,Amanda Martin,2026-01-06,22:00,06:00,RN,2,28.75,regular
+EMP0015,Amanda Martin,2026-01-07,22:00,06:00,RN,2,28.75,regular
+EMP0015,Amanda Martin,2026-01-09,22:00,06:00,RN,2,28.75,regular
+EMP0015,Amanda Martin,2026-01-11,22:00,06:00,RN,2,28.75,weekend
+EMP0016,Chris Lee,2026-01-05,06:00,14:00,Charge RN,3,31.25,regular
+EMP0016,Chris Lee,2026-01-06,06:00,14:00,Charge RN,3,31.25,regular
+EMP0016,Chris Lee,2026-01-07,06:00,14:00,Charge RN,3,31.25,regular
+EMP0016,Chris Lee,2026-01-09,06:00,14:00,Charge RN,3,31.25,regular
+EMP0016,Chris Lee,2026-01-11,06:00,14:00,Charge RN,3,31.25,weekend
+EMP0017,Jessica Perez,2026-01-05,07:00,15:00,PCT,1,25.0,regular
+EMP0017,Jessica Perez,2026-01-06,07:00,15:00,PCT,1,25.0,regular
+EMP0017,Jessica Perez,2026-01-08,07:00,15:00,PCT,1,25.0,regular
+EMP0017,Jessica Perez,2026-01-10,07:00,15:00,PCT,1,25.0,weekend
+EMP0017,Jessica Perez,2026-01-11,07:00,15:00,PCT,1,25.0,weekend
+EMP0018,Daniel Thompson,2026-01-05,08:00,16:00,LPN,1,25.0,regular
+EMP0018,Daniel Thompson,2026-01-06,08:00,16:00,LPN,1,25.0,regular
+EMP0018,Daniel Thompson,2026-01-07,08:00,16:00,LPN,1,25.0,regular
+EMP0018,Daniel Thompson,2026-01-08,08:00,16:00,LPN,1,25.0,regular
+EMP0018,Daniel Thompson,2026-01-09,08:00,16:00,LPN,1,25.0,regular
+EMP0019,Michelle White,2026-01-07,07:00,15:00,Charge RN,3,31.25,regular
+EMP0019,Michelle White,2026-01-08,07:00,15:00,Charge RN,3,31.25,regular
+EMP0019,Michelle White,2026-01-09,07:00,15:00,Charge RN,3,31.25,regular
+EMP0019,Michelle White,2026-01-10,07:00,15:00,Charge RN,3,31.25,weekend
+EMP0019,Michelle White,2026-01-11,07:00,15:00,Charge RN,3,31.25,weekend
+EMP0020,Tyler Harris,2026-01-05,14:00,22:00,Charge RN,1,25.0,regular
+EMP0020,Tyler Harris,2026-01-06,14:00,22:00,Charge RN,1,25.0,regular
+EMP0020,Tyler Harris,2026-01-07,14:00,22:00,Charge RN,1,25.0,regular
+EMP0020,Tyler Harris,2026-01-09,14:00,22:00,Charge RN,1,25.0,regular
+EMP0020,Tyler Harris,2026-01-10,14:00,22:00,Charge RN,1,25.0,weekend
