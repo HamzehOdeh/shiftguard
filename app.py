@@ -21,6 +21,11 @@ from shift_intelligence import (
 )
 from worker_portal import WorkerPortal, create_demo_portal, STATUS_AUTO_APPROVED, STATUS_ESCALATED, STATUS_PENDING
 from manager_queue import ManagerQueue
+from leave_management import (
+    LeaveBalanceTracker, create_demo_leave_tracker, LEAVE_TYPES,
+    cascade_coverage
+)
+from shift_templates import SHIFT_ASSIGNMENTS
 
 
 def parse_uploaded_file(uploaded_file):
@@ -441,6 +446,165 @@ def render_shift_intelligence(schedule, reference_date):
                     st.markdown(f"- {c['name']} — {c['reason']}")
 
 
+def render_leave_management(tracker, emp_id, emp_name):
+    """Render leave management section within the worker portal."""
+    st.markdown("#### My Leave Balances & Availability")
+
+    summary = tracker.get_balance_summary(emp_id)
+    if not summary:
+        st.warning("Leave balances not initialized.")
+        return
+
+    # Balance cards
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("PTO", f"{summary['pto_hours']}h ({summary['pto_days']}d)")
+    with col2:
+        st.metric("Sick Leave", f"{summary['sick_hours']}h ({summary['sick_days']}d)")
+    with col3:
+        color = "inverse" if summary['upt_hours'] <= 4 else "normal"
+        st.metric("UPT", f"{summary['upt_hours']}h", delta=None)
+    with col4:
+        fmla_status = f"{summary['fmla_weeks_remaining']}w" if summary['fmla_eligible'] else "Not Eligible"
+        st.metric("FMLA", fmla_status)
+
+    # Warnings
+    if summary["warnings"]:
+        for w in summary["warnings"]:
+            st.warning(w)
+
+    st.divider()
+
+    # Quick actions
+    st.markdown("**Quick Actions:**")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Report Sick Today", key="report_sick_btn"):
+            result = tracker.report_sick_today(emp_id)
+            if result.get("error"):
+                st.error(result["error"])
+            else:
+                st.success(f"Sick leave recorded. Balance: {result['balance_deduction'].get('remaining', 'N/A')}h remaining.")
+                if result.get("alerts_triggered"):
+                    for a in result["alerts_triggered"]:
+                        st.warning(f"Alert: {a['message']}")
+    with col2:
+        partial_hours = st.selectbox("Or use UPT (partial day):", [0, 1, 2, 3, 4], key="upt_partial")
+        if partial_hours > 0 and st.button("Use UPT", key="use_upt_btn"):
+            result = tracker.record_leave(
+                emp_id, "UPT",
+                datetime.now().strftime("%Y-%m-%d"),
+                datetime.now().strftime("%Y-%m-%d"),
+                hours=partial_hours
+            )
+            if result.get("balance_deduction", {}).get("critical_warning"):
+                st.error(result["balance_deduction"]["critical_warning"])
+            else:
+                st.success(f"UPT recorded ({partial_hours}h). Remaining: {tracker.get_balance(emp_id)['upt']['available']}h")
+
+    st.divider()
+
+    # Availability calendar
+    st.markdown("**Availability Calendar (Next 30 Days):**")
+    st.markdown("*See which dates are available to request off on your shift code.*")
+
+    assignment = next((a for a in SHIFT_ASSIGNMENTS if a["employee_id"] == emp_id), None)
+    if assignment:
+        calendar = tracker.get_availability_calendar(
+            emp_id, assignment["shift_code"],
+            datetime.now().strftime("%Y-%m-%d"),
+            SHIFT_ASSIGNMENTS
+        )
+
+        # Display as compact table
+        cal_rows = []
+        for day in calendar:
+            status_icon = {
+                "open": "Available",
+                "limited": "Limited (1 spot)",
+                "full": "Full",
+                "blackout": "BLACKOUT",
+            }.get(day["status"], day["status"])
+
+            cal_rows.append({
+                "Date": day["date"],
+                "Day": day["day"][:3],
+                "Status": status_icon,
+                "Spots Left": day["spots_remaining"],
+            })
+
+        df = pd.DataFrame(cal_rows)
+        st.dataframe(df, use_container_width=True, hide_index=True, height=300)
+
+    # Leave history
+    st.divider()
+    st.markdown("**My Leave History:**")
+    my_leaves = [r for r in tracker.leave_records if r["employee_id"] == emp_id]
+    if my_leaves:
+        for r in my_leaves[-5:]:  # last 5
+            status_color = "#28a745" if r["status"] == "ACTIVE" else "#6c757d"
+            st.markdown(
+                f'<span style="background-color:{status_color};color:white;padding:2px 6px;'
+                f'border-radius:3px;font-size:0.75em;">{r["status"]}</span> '
+                f'**{r["leave_name"]}** — {r["start_date"]} to {r["end_date"]} ({r["days"]}d) '
+                f'| {r.get("reason", "")}',
+                unsafe_allow_html=True,
+            )
+    else:
+        st.info("No leave history.")
+
+
+def render_manager_alerts(tracker, queue):
+    """Render leave-specific alerts in the manager queue."""
+    st.markdown("#### Leave Intelligence Alerts")
+
+    alerts = tracker.get_alerts()
+    rtw = tracker.get_return_to_work_pending()
+    chase = tracker.get_documentation_chase_list()
+
+    # Alert counts
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        critical = [a for a in alerts if a["severity"] == "CRITICAL"]
+        st.metric("Critical Alerts", len(critical))
+    with col2:
+        st.metric("Return-to-Work Pending", len(rtw))
+    with col3:
+        st.metric("Doc Chase Overdue", len(chase))
+
+    # Alerts
+    if alerts:
+        st.markdown("**Active Alerts:**")
+        for a in alerts:
+            color = {"CRITICAL": "#dc3545", "HIGH": "#fd7e14", "MEDIUM": "#ffc107"}.get(
+                a["severity"], "#6c757d")
+            st.markdown(
+                f'<span style="background-color:{color};color:white;padding:2px 8px;'
+                f'border-radius:4px;font-size:0.8em;">{a["severity"]}</span> '
+                f'**{a["type"]}**: {a["message"]}',
+                unsafe_allow_html=True,
+            )
+            if a.get("action_required"):
+                st.markdown(f"  *Action:* {a['action_required']}")
+            st.markdown("")
+
+    # Return to work
+    if rtw:
+        st.divider()
+        st.markdown("**Return-to-Work Clearances Needed:**")
+        for r in rtw:
+            st.markdown(f"- **{r['employee_id']}** returning {r['end_date']} "
+                      f"({r['days_until_return']} days) — needs {r['clearance_type']} clearance")
+
+    # Doc chase
+    if chase:
+        st.divider()
+        st.markdown("**Overdue Documentation:**")
+        for c in chase:
+            st.markdown(f"- **{c['employee_id']}** — {c['doc_type']} was due {c['due_date']} "
+                      f"({c['days_overdue']} days overdue)")
+
+
 def render_worker_view(portal):
     """Render the worker self-service portal view."""
     st.markdown("### Worker Self-Service Portal")
@@ -467,9 +631,15 @@ def render_worker_view(portal):
     st.divider()
 
     # Tabs within worker view
-    w_tab1, w_tab2, w_tab3, w_tab4, w_tab5 = st.tabs([
-        "My Requests", "Request Time Off", "VET & Open Shifts", "Shift Swap", "My Preferences"
+    w_tab1, w_tab2, w_tab3, w_tab4, w_tab5, w_tab6 = st.tabs([
+        "Leave & Balances", "My Requests", "Request Time Off", "VET & Open Shifts", "Shift Swap", "My Preferences"
     ])
+
+    with w_tab1:
+        if "leave_tracker" in st.session_state:
+            render_leave_management(st.session_state["leave_tracker"], emp_id, selected)
+        else:
+            st.info("Run Demo to load leave data.")
 
     with w_tab1:
         st.markdown("#### My Request History")
@@ -704,9 +874,15 @@ def render_manager_queue_tab(portal, queue):
     st.divider()
 
     # Tabs within manager queue
-    m_tab1, m_tab2, m_tab3, m_tab4 = st.tabs([
-        "Action Required", "Auto-Approved Log", "Coverage Gaps", "Analytics"
+    m_tab1, m_tab2, m_tab3, m_tab4, m_tab5 = st.tabs([
+        "Action Required", "Leave Alerts", "Auto-Approved Log", "Coverage Gaps", "Analytics"
     ])
+
+    with m_tab2:
+        if "leave_tracker" in st.session_state:
+            render_manager_alerts(st.session_state["leave_tracker"], queue)
+        else:
+            st.info("Run Demo to load leave data.")
 
     with m_tab1:
         items = queue.get_action_items()
@@ -765,7 +941,7 @@ def render_manager_queue_tab(portal, queue):
         else:
             st.success("All clear! No items need your attention.")
 
-    with m_tab2:
+    with m_tab3:
         st.markdown("#### Auto-Approved (for your awareness)")
         st.markdown("*These were resolved automatically. No action needed.*")
 
@@ -782,7 +958,7 @@ def render_manager_queue_tab(portal, queue):
         else:
             st.info("No auto-approved items yet.")
 
-    with m_tab3:
+    with m_tab4:
         st.markdown("#### Upcoming Coverage Gaps")
         st.markdown("*Time-off approved — need to find coverage.*")
 
@@ -799,7 +975,7 @@ def render_manager_queue_tab(portal, queue):
         else:
             st.info("No coverage gaps identified.")
 
-    with m_tab4:
+    with m_tab5:
         st.markdown("#### Request Analytics")
         analytics = queue.get_request_analytics()
 
@@ -899,11 +1075,13 @@ def main():
         f"**Source:** {source_label}"
     )
 
-    # Initialize portal and queue in session state
+    # Initialize portal, queue, and leave tracker in session state
     if "portal" not in st.session_state:
         st.session_state["portal"] = create_demo_portal()
     if "queue" not in st.session_state:
         st.session_state["queue"] = ManagerQueue(st.session_state["portal"])
+    if "leave_tracker" not in st.session_state:
+        st.session_state["leave_tracker"] = create_demo_leave_tracker()
 
     portal = st.session_state["portal"]
     queue = st.session_state["queue"]
