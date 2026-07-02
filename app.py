@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from rules_engine import get_all_rules
 from sample_schedule import generate_schedule, EMPLOYEES, EMPLOYEE_HISTORY
 from compliance_checker import check_compliance
+from demo_scenarios import INDUSTRY_OPTIONS, generate_demo_for_industry
 from hours_tracker import (
     get_all_employee_dashboards, predict_shift_impact, calculate_fatigue_score,
     calculate_employee_hours, OT_THRESHOLD_WEEKLY, MAX_WEEKLY_HOURS
@@ -1011,12 +1012,25 @@ def main():
 
     # Sidebar
     with st.sidebar:
-        st.header("Configuration")
+        st.header("Industry")
+        industry_keys = list(INDUSTRY_OPTIONS.keys())
+        industry_labels = [f"{v['name']} — {v['subtitle']}" for v in INDUSTRY_OPTIONS.values()]
+        selected_industry_idx = st.selectbox(
+            "Select your industry",
+            range(len(industry_keys)),
+            format_func=lambda i: industry_labels[i],
+            index=0,
+        )
+        selected_industry = industry_keys[selected_industry_idx]
+        industry_info = INDUSTRY_OPTIONS[selected_industry]
+
+        st.divider()
+        st.header("Compliance Rules")
 
         jurisdiction = st.selectbox(
             "Jurisdiction",
             options=["Chicago", "Oregon", "NYC", "California"],
-            index=0,
+            index=["Chicago", "Oregon", "NYC", "California"].index(industry_info["jurisdiction"]) if industry_info["jurisdiction"] in ["Chicago", "Oregon", "NYC", "California"] else 0,
         )
 
         include_cba = st.toggle("Include Union CBA rules", value=True)
@@ -1032,14 +1046,16 @@ def main():
 
         st.divider()
         run_demo = st.button("Run Demo", type="primary", use_container_width=True)
-        st.caption("Uses built-in sample schedule with intentional violations.")
+        st.caption(f"Loads {industry_info['name']} demo with intentional violations.")
 
     # Determine which schedule to use
     schedule = None
     if run_demo:
-        schedule = generate_schedule()
+        demo_data = generate_demo_for_industry(selected_industry)
+        schedule = demo_data["schedule"]
         st.session_state["schedule"] = schedule
-        st.session_state["source"] = "demo"
+        st.session_state["source"] = f"demo ({industry_info['name']})"
+        st.session_state["demo_employees"] = demo_data["employees"]
     elif uploaded_file is not None:
         schedule = parse_uploaded_file(uploaded_file)
         if schedule:
