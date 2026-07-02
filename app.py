@@ -1040,8 +1040,8 @@ def main():
         layout="wide",
     )
 
-    st.title("Workforce Compliance AI")
-    st.markdown("*AI-powered compliance, fairness, and scheduling intelligence*")
+    st.image("frontend/public/logo.png", width=200)
+    st.markdown("*Schedule with confidence. Never pay another compliance fine.*")
     st.divider()
 
     # Sidebar

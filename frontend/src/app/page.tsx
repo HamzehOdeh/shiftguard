@@ -5,8 +5,7 @@ export default function Home() {
       <header className="border-b border-gray-800">
         <nav className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center font-bold text-sm">SG</div>
-            <span className="text-xl font-bold">ShiftGuard</span>
+            <img src="/logo.png" alt="ShiftGuard" className="h-8" />
           </div>
           <div className="flex items-center gap-6">
             <a href="/calculator" className="text-gray-400 hover:text-white transition">Free Calculator</a>
