@@ -59,6 +59,19 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Industry Selection */}
+        <section className="py-20 border-t border-gray-800">
+          <h2 className="text-3xl font-bold text-center mb-4">Purpose-built for your industry</h2>
+          <p className="text-center text-gray-400 mb-12">Same powerful platform. Tailored to how your industry actually works.</p>
+          <div className="grid md:grid-cols-5 gap-4">
+            <IndustryLink href="/healthcare" name="Healthcare" detail="Hospitals, clinics, nursing" />
+            <IndustryLink href="/warehouse" name="Warehousing" detail="FCs, distribution, logistics" />
+            <IndustryLink href="/retail" name="Retail" detail="Stores, multi-location" />
+            <IndustryLink href="/hospitality" name="Hospitality" detail="Hotels, restaurants, F&B" />
+            <IndustryLink href="/manufacturing" name="Manufacturing" detail="Plants, production, assembly" />
+          </div>
+        </section>
+
         {/* Features Grid */}
         <section className="py-20 border-t border-gray-800">
           <h2 className="text-3xl font-bold text-center mb-12">Everything you need. Nothing you don't.</h2>
@@ -148,5 +161,14 @@ function FeatureCard({ title, description, badge }: { title: string, description
       <h3 className="text-lg font-bold mt-3 mb-2">{title}</h3>
       <p className="text-gray-400 text-sm">{description}</p>
     </div>
+  )
+}
+
+function IndustryLink({ href, name, detail }: { href: string, name: string, detail: string }) {
+  return (
+    <a href={href} className="p-5 bg-gray-900 border border-gray-800 rounded-xl hover:border-brand-500 transition text-center group">
+      <h3 className="font-bold group-hover:text-brand-500 transition">{name}</h3>
+      <p className="text-gray-500 text-xs mt-1">{detail}</p>
+    </a>
   )
 }
