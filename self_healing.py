@@ -229,6 +229,7 @@ class SelfHealingEngine:
             remaining = [c for c in incident["vet_candidates"] if c["employee_id"] not in offered_ids]
 
             if remaining and len(incident["vet_offers_sent"]) < MAX_VET_OFFERS_BEFORE_MET:
+                # Still in sequential phase — offer to next person
                 next_candidate = remaining[0]
                 self._send_vet_offer(incident, next_candidate)
                 incident["resolution_timeline"].append({
@@ -237,8 +238,11 @@ class SelfHealingEngine:
                     "status": "WAITING",
                 })
                 return {"status": "NEXT_OFFER_SENT", "offered_to": next_candidate["name"]}
+            elif remaining and incident["current_phase"] != "BROADCAST":
+                # Sequential exhausted — BROADCAST to all remaining (Uber model)
+                return self._broadcast_to_all(incident, remaining)
             else:
-                # Escalate to MET
+                # Broadcast failed too — escalate to MET
                 return self._escalate_to_met(incident)
 
     def process_vet_timeout(self, incident_id, employee_id):
@@ -388,6 +392,110 @@ class SelfHealingEngine:
 
         return offer
 
+    def _broadcast_to_all(self, incident, remaining_candidates):
+        """
+        Broadcast VET to ALL remaining qualified candidates simultaneously.
+        First to accept wins (Uber model). Used after sequential offers exhausted.
+        """
+        incident["current_phase"] = "BROADCAST"
+        incident["escalation_level"] = 1.5  # between VET and MET
+
+        broadcast_to = []
+        for c in remaining_candidates:
+            offer = self._send_vet_offer(incident, c)
+            offer["broadcast"] = True
+            broadcast_to.append(c.get("name", c.get("employee_id")))
+
+        incident["resolution_timeline"].append({
+            "time": datetime.now().strftime("%H:%M"),
+            "event": (
+                f"BROADCAST: VET sent to ALL {len(remaining_candidates)} remaining candidates "
+                f"simultaneously. First to accept wins."
+            ),
+            "status": "BROADCAST",
+        })
+
+        self._notify_manager(incident, "BROADCAST_SENT")
+
+        return {
+            "status": "BROADCAST_SENT",
+            "message": (
+                f"Sequential offers exhausted. Broadcasting to {len(remaining_candidates)} "
+                f"remaining candidates: {', '.join(broadcast_to[:5])}"
+                f"{'...' if len(broadcast_to) > 5 else ''}. First to accept wins."
+            ),
+            "broadcast_count": len(remaining_candidates),
+            "candidates": broadcast_to,
+        }
+
+    def process_broadcast_response(self, incident_id, employee_id, accepted=True):
+        """
+        Process a response to a broadcast VET offer.
+        First acceptance wins — all other pending offers auto-cancelled.
+        """
+        incident = self._get_incident(incident_id)
+        if not incident:
+            return {"error": "Incident not found"}
+
+        if incident["status"] == "RESOLVED":
+            return {"status": "ALREADY_RESOLVED", "message": "Someone else already accepted. Thanks anyway!"}
+
+        if accepted:
+            # First to accept wins — resolve
+            emp_name = next(
+                (o["employee_name"] for o in incident["vet_offers_sent"]
+                 if o["employee_id"] == employee_id), employee_id
+            )
+
+            # Cancel all other pending broadcast offers
+            for offer in incident["vet_offers_sent"]:
+                if offer["employee_id"] != employee_id and offer["status"] == "PENDING":
+                    offer["status"] = "CANCELLED_FIRST_WINS"
+
+            # Mark the winner
+            winner_offer = next(
+                (o for o in incident["vet_offers_sent"] if o["employee_id"] == employee_id), None
+            )
+            if winner_offer:
+                winner_offer["status"] = "ACCEPTED"
+                winner_offer["responded_at"] = datetime.now().strftime("%H:%M")
+
+            incident["status"] = "RESOLVED"
+            incident["current_phase"] = "RESOLVED"
+            incident["resolution"] = {
+                "type": "VET_BROADCAST",
+                "covered_by": employee_id,
+                "covered_by_name": emp_name,
+                "resolved_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "time_to_resolve_minutes": self._minutes_since(incident["reported_at"]),
+            }
+            incident["resolution_timeline"].append({
+                "time": datetime.now().strftime("%H:%M"),
+                "event": f"RESOLVED (BROADCAST): {emp_name} accepted first. Other offers cancelled.",
+                "status": "RESOLVED",
+            })
+
+            self._notify_manager(incident, "RESOLVED_VET")
+            return {"status": "RESOLVED", "covered_by": emp_name, "method": "broadcast_first_wins"}
+
+        else:
+            # Declined from broadcast — just mark it, don't escalate until all respond or timeout
+            offer = next(
+                (o for o in incident["vet_offers_sent"]
+                 if o["employee_id"] == employee_id and o["status"] == "PENDING"), None
+            )
+            if offer:
+                offer["status"] = "DECLINED"
+
+            # Check if ALL broadcast offers are declined
+            broadcast_offers = [o for o in incident["vet_offers_sent"] if o.get("broadcast")]
+            all_responded = all(o["status"] != "PENDING" for o in broadcast_offers)
+
+            if all_responded:
+                return self._escalate_to_met(incident)
+
+            return {"status": "DECLINED", "message": "Noted. Waiting for others to respond."}
+
     def _escalate_to_met(self, incident):
         """Escalate to MET (Mandatory Extra Time)."""
         incident["current_phase"] = "MET_REQUIRED"
@@ -427,6 +535,12 @@ class SelfHealingEngine:
             message = (
                 f"ESCALATION: {incident['date']} {incident['shift_start']}-{incident['shift_end']} "
                 f"still uncovered. All VET declined. MET assignment or agency needed."
+            )
+        elif event_type == "BROADCAST_SENT":
+            message = (
+                f"BROADCAST: Sequential VET offers exhausted for {incident['date']} "
+                f"{incident['shift_start']}-{incident['shift_end']}. "
+                f"Now broadcasting to all remaining candidates. First to accept wins."
             )
         elif event_type == "AGENCY_REQUIRED":
             message = (
