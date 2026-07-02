@@ -161,9 +161,10 @@ PROTECTED_REQUEST_TYPES = {
 class AccessControl:
     """Manage role-based access and enforce data visibility rules."""
 
-    def __init__(self):
+    def __init__(self, org_hierarchy=None):
         self.user_roles = {}  # user_id -> role
-        self.user_teams = {}  # user_id -> team/manager mapping
+        self.user_teams = {}  # user_id -> team/manager mapping (legacy)
+        self.org = org_hierarchy  # Organization hierarchy object
         self.audit_log = []
         self.overrides = []
 
@@ -232,15 +233,145 @@ class AccessControl:
             return data  # full access
 
         if role == "MANAGER":
-            team = self.user_teams.get(user_id, [])
+            # Use hierarchy if available, otherwise legacy team list
+            allowed_ids = self._get_visible_employee_ids(user_id)
             if isinstance(data, list):
-                return [d for d in data if d.get("employee_id") in team or d.get("worker_id") in team]
+                return [d for d in data if d.get("employee_id") in allowed_ids or d.get("worker_id") in allowed_ids]
             return data
 
         if role == "WORKER":
             if isinstance(data, list):
                 return [d for d in data if d.get("employee_id") == user_id or d.get("worker_id") == user_id]
             return data
+
+        return []
+
+    # ============================================================
+    # HIERARCHY-AWARE ACCESS (integrates with team_hierarchy.py)
+    # ============================================================
+
+    def get_visible_employees(self, user_id):
+        """
+        Get list of employees this user can see based on org hierarchy.
+
+        - Worker: only themselves
+        - Team Manager: their team members only
+        - Department Head: all teams in their department
+        - HR/Admin: everyone
+        """
+        role = self.user_roles.get(user_id, "WORKER")
+
+        if role in ("ADMIN", "HR"):
+            return self._get_all_employees()
+
+        if role == "WORKER":
+            return [user_id]
+
+        # Manager: use hierarchy
+        return self._get_visible_employee_ids(user_id)
+
+    def get_visible_schedules(self, user_id, all_schedules):
+        """Filter schedules to only what this user is allowed to see."""
+        allowed_ids = set(self.get_visible_employees(user_id))
+
+        return [
+            s for s in all_schedules
+            if s.get("employee_id", s.get("worker_id")) in allowed_ids
+        ]
+
+    def get_visible_leave_records(self, user_id, all_records):
+        """Filter leave records to only what this user can see."""
+        role = self.user_roles.get(user_id, "WORKER")
+        allowed_ids = set(self.get_visible_employees(user_id))
+
+        filtered = [r for r in all_records if r.get("employee_id") in allowed_ids]
+
+        # Additional: managers can't see medical REASONS, only that leave exists
+        if role == "MANAGER":
+            for record in filtered:
+                if record.get("leave_type") in ("FMLA", "SHORT_TERM_DISABILITY", "WORKERS_COMP"):
+                    record = {**record, "reason": "[Medical - confidential]"}
+
+        return filtered
+
+    def get_visible_requests(self, user_id, all_requests):
+        """Filter requests to only what this user can approve/see."""
+        role = self.user_roles.get(user_id, "WORKER")
+
+        if role in ("ADMIN", "HR"):
+            return all_requests
+
+        allowed_ids = set(self.get_visible_employees(user_id))
+
+        if role == "WORKER":
+            return [r for r in all_requests if r.get("employee_id") == user_id]
+
+        return [r for r in all_requests if r.get("employee_id") in allowed_ids]
+
+    def can_schedule_employee(self, manager_id, employee_id):
+        """Check if a manager can schedule/modify a specific employee."""
+        role = self.user_roles.get(manager_id, "WORKER")
+
+        if role in ("ADMIN", "HR"):
+            return {"allowed": True, "reason": "Full access"}
+
+        if role == "WORKER":
+            return {"allowed": False, "reason": "Workers cannot schedule others"}
+
+        allowed = self._get_visible_employee_ids(manager_id)
+        if employee_id in allowed:
+            return {"allowed": True, "reason": "Employee is in your team/department"}
+
+        return {
+            "allowed": False,
+            "reason": f"Employee {employee_id} is not in your team or department. "
+                     f"Contact their manager or escalate to department head."
+        }
+
+    def get_access_summary(self, user_id):
+        """Get a summary of what a user can see/do for display."""
+        role = self.user_roles.get(user_id, "WORKER")
+        visible = self.get_visible_employees(user_id)
+
+        if self.org:
+            scope = self.org.get_manager_scope(user_id)
+            team_names = [t.name for t in scope.get("teams", [])]
+            dept_names = [d.name for d in scope.get("departments", [])]
+        else:
+            team_names = []
+            dept_names = []
+
+        return {
+            "user_id": user_id,
+            "role": role,
+            "visible_employees": len(visible),
+            "teams": team_names,
+            "departments": dept_names,
+            "can_approve": role in ("MANAGER", "HR", "ADMIN"),
+            "can_schedule": role in ("MANAGER", "HR", "ADMIN"),
+            "can_view_all": role in ("HR", "ADMIN"),
+            "can_run_audit": role in ("HR", "ADMIN"),
+        }
+
+    # --- Private helpers ---
+
+    def _get_visible_employee_ids(self, manager_id):
+        """Get all employee IDs visible to a manager via hierarchy."""
+        if self.org:
+            scope = self.org.get_manager_scope(manager_id)
+            return [e["id"] for e in scope.get("employees", [])]
+
+        # Fallback to legacy team list
+        return self.user_teams.get(manager_id, [])
+
+    def _get_all_employees(self):
+        """Get all employee IDs in the org."""
+        if self.org:
+            all_ids = []
+            for team in self.org.get_all_teams():
+                all_ids.extend([m["id"] for m in team.members])
+            return all_ids
+        return []
 
         return []
 
