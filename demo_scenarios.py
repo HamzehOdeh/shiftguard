@@ -231,14 +231,153 @@ def generate_retail_demo():
     }
 
 
+def generate_hospitality_demo():
+    """Generate a hospitality (restaurant/hotel) demo scenario."""
+    week_start = datetime(2026, 7, 7)
+    schedule_posted = datetime(2026, 7, 4)
+
+    employees = [
+        {"id": "HO01", "name": "Chef Marco Rivera", "seniority": 1, "role": "Executive Chef", "category": "Kitchen (BOH)", "is_minor": False, "hire_date": "2019-02-01", "hourly_rate": 35.00},
+        {"id": "HO02", "name": "Ana Torres", "seniority": 2, "role": "Sous Chef", "category": "Kitchen (BOH)", "is_minor": False, "hire_date": "2020-06-15", "hourly_rate": 28.00},
+        {"id": "HO03", "name": "DeShawn Mitchell", "seniority": 3, "role": "Line Cook", "category": "Kitchen (BOH)", "is_minor": False, "hire_date": "2021-03-01", "hourly_rate": 20.00},
+        {"id": "HO04", "name": "Yuki Tanaka", "seniority": 4, "role": "Line Cook", "category": "Kitchen (BOH)", "is_minor": False, "hire_date": "2022-01-10", "hourly_rate": 19.50},
+        {"id": "HO05", "name": "Sophie Laurent", "seniority": 5, "role": "Server", "category": "Front of House", "is_minor": False, "hire_date": "2020-09-01", "hourly_rate": 15.00},
+        {"id": "HO06", "name": "Marcus Williams", "seniority": 6, "role": "Server", "category": "Front of House", "is_minor": False, "hire_date": "2021-11-15", "hourly_rate": 15.00},
+        {"id": "HO07", "name": "Priya Sharma", "seniority": 7, "role": "Host/Hostess", "category": "Front of House", "is_minor": False, "hire_date": "2022-05-01", "hourly_rate": 16.00},
+        {"id": "HO08", "name": "Carlos Mendez", "seniority": 8, "role": "Bartender", "category": "Front of House", "is_minor": False, "hire_date": "2021-08-01", "hourly_rate": 18.00},
+        {"id": "HO09", "name": "Jake Morrison", "seniority": 9, "role": "Busser", "category": "Front of House", "is_minor": False, "hire_date": "2023-06-01", "hourly_rate": 14.00},
+        {"id": "HO10", "name": "Emma Nguyen", "seniority": 10, "role": "Dishwasher", "category": "Kitchen (BOH)", "is_minor": True, "hire_date": "2026-05-15", "hourly_rate": 14.00},
+    ]
+
+    shifts = []
+
+    # Chef Marco - CLOPENING (closes kitchen Sun night, opens Mon morning)
+    shifts.append({"employee_id": "HO01", "name": "Chef Marco Rivera", "date": "2026-07-06", "start": "15:00", "end": "23:30", "role": "Executive Chef", "shift_type": "Close"})
+    shifts.append({"employee_id": "HO01", "name": "Chef Marco Rivera", "date": "2026-07-07", "start": "06:00", "end": "14:30", "role": "Executive Chef", "shift_type": "Open"})
+    for i in range(1, 5):
+        d = (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
+        shifts.append({"employee_id": "HO01", "name": "Chef Marco Rivera", "date": d, "start": "10:00", "end": "22:00", "role": "Executive Chef", "shift_type": "Split"})
+
+    # Ana Torres - 7 consecutive days
+    for i in range(7):
+        d = (datetime(2026, 7, 1) + timedelta(days=i)).strftime("%Y-%m-%d")
+        shifts.append({"employee_id": "HO02", "name": "Ana Torres", "date": d, "start": "14:00", "end": "23:00", "role": "Sous Chef", "shift_type": "Evening"})
+    shifts.append({"employee_id": "HO02", "name": "Ana Torres", "date": "2026-07-08", "start": "14:00", "end": "23:00", "role": "Sous Chef", "shift_type": "Evening"})
+
+    # Emma (minor) - past 10pm
+    shifts.append({"employee_id": "HO10", "name": "Emma Nguyen", "date": "2026-07-07", "start": "16:00", "end": "22:30", "role": "Dishwasher", "shift_type": "Evening"})
+    shifts.append({"employee_id": "HO10", "name": "Emma Nguyen", "date": "2026-07-08", "start": "16:00", "end": "20:00", "role": "Dishwasher", "shift_type": "Evening"})
+
+    # Sophie - short shift (2.5 hours)
+    shifts.append({"employee_id": "HO05", "name": "Sophie Laurent", "date": "2026-07-07", "start": "11:00", "end": "13:30", "role": "Server", "shift_type": "Short"})
+    for i in range(1, 5):
+        d = (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
+        shifts.append({"employee_id": "HO05", "name": "Sophie Laurent", "date": d, "start": "16:00", "end": "23:30", "role": "Server", "shift_type": "Evening"})
+
+    # Normal schedules
+    for emp_id, name, role in [("HO03", "DeShawn Mitchell", "Line Cook"),
+                                ("HO04", "Yuki Tanaka", "Line Cook"),
+                                ("HO06", "Marcus Williams", "Server"),
+                                ("HO07", "Priya Sharma", "Host/Hostess"),
+                                ("HO08", "Carlos Mendez", "Bartender"),
+                                ("HO09", "Jake Morrison", "Busser")]:
+        for i in range(5):
+            d = (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
+            shifts.append({"employee_id": emp_id, "name": name, "date": d, "start": "16:00", "end": "23:30", "role": role, "shift_type": "Evening"})
+
+    return {
+        "employees": employees,
+        "schedule": {
+            "schedule_posted_date": schedule_posted.strftime("%Y-%m-%d"),
+            "week_start": week_start.strftime("%Y-%m-%d"),
+            "week_end": (week_start + timedelta(days=6)).strftime("%Y-%m-%d"),
+            "facility": "Grand Plaza Hotel - Restaurant & Bar",
+            "shifts": shifts,
+        },
+    }
+
+
+def generate_manufacturing_demo():
+    """Generate a manufacturing (plant/factory) demo scenario."""
+    week_start = datetime(2026, 7, 7)
+    schedule_posted = datetime(2026, 7, 4)
+
+    employees = [
+        {"id": "MF01", "name": "Robert Chen", "seniority": 1, "role": "Production Supervisor", "category": "Production", "is_minor": False, "hire_date": "2018-04-01", "hourly_rate": 38.00},
+        {"id": "MF02", "name": "Maria Kowalski", "seniority": 2, "role": "Machine Operator", "category": "Production", "is_minor": False, "hire_date": "2019-08-15", "hourly_rate": 26.00},
+        {"id": "MF03", "name": "James Okafor", "seniority": 3, "role": "Machine Operator", "category": "Production", "is_minor": False, "hire_date": "2020-02-01", "hourly_rate": 25.00},
+        {"id": "MF04", "name": "Tanya Reeves", "seniority": 4, "role": "Assembler", "category": "Production", "is_minor": False, "hire_date": "2021-05-10", "hourly_rate": 22.00},
+        {"id": "MF05", "name": "Hassan Ali", "seniority": 5, "role": "QC Inspector", "category": "Quality", "is_minor": False, "hire_date": "2020-11-01", "hourly_rate": 28.00},
+        {"id": "MF06", "name": "Sarah Peterson", "seniority": 6, "role": "Material Handler", "category": "Production", "is_minor": False, "hire_date": "2022-03-01", "hourly_rate": 21.00},
+        {"id": "MF07", "name": "Viktor Petrov", "seniority": 7, "role": "Industrial Electrician", "category": "Maintenance", "is_minor": False, "hire_date": "2019-06-15", "hourly_rate": 35.00},
+        {"id": "MF08", "name": "Linda Zhang", "seniority": 8, "role": "PLC Technician", "category": "Maintenance", "is_minor": False, "hire_date": "2021-09-01", "hourly_rate": 33.00},
+        {"id": "MF09", "name": "Diego Ramirez", "seniority": 9, "role": "Assembler", "category": "Production", "is_minor": False, "hire_date": "2023-01-15", "hourly_rate": 20.00},
+        {"id": "MF10", "name": "Kyle Brooks", "seniority": 10, "role": "Material Handler", "category": "Production", "is_minor": True, "hire_date": "2026-06-01", "hourly_rate": 16.00},
+    ]
+
+    shifts = []
+
+    # Robert (Supervisor) - 65 hours week (exceeds cap)
+    for i in range(6):
+        d = (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
+        shifts.append({"employee_id": "MF01", "name": "Robert Chen", "date": d, "start": "05:00", "end": "16:00", "role": "Production Supervisor", "shift_type": "Day"})
+
+    # Maria - Clopening (night shift then morning)
+    shifts.append({"employee_id": "MF02", "name": "Maria Kowalski", "date": "2026-07-06", "start": "14:00", "end": "22:30", "role": "Machine Operator", "shift_type": "Evening"})
+    shifts.append({"employee_id": "MF02", "name": "Maria Kowalski", "date": "2026-07-07", "start": "05:00", "end": "13:30", "role": "Machine Operator", "shift_type": "Day"})
+    for i in range(1, 5):
+        d = (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
+        shifts.append({"employee_id": "MF02", "name": "Maria Kowalski", "date": d, "start": "05:00", "end": "13:30", "role": "Machine Operator", "shift_type": "Day"})
+
+    # James - 8 consecutive days
+    for i in range(8):
+        d = (datetime(2026, 7, 1) + timedelta(days=i)).strftime("%Y-%m-%d")
+        shifts.append({"employee_id": "MF03", "name": "James Okafor", "date": d, "start": "05:00", "end": "13:30", "role": "Machine Operator", "shift_type": "Day"})
+
+    # Kyle (minor) - night shift violation
+    shifts.append({"employee_id": "MF10", "name": "Kyle Brooks", "date": "2026-07-07", "start": "14:00", "end": "22:30", "role": "Material Handler", "shift_type": "Evening"})
+    shifts.append({"employee_id": "MF10", "name": "Kyle Brooks", "date": "2026-07-08", "start": "06:00", "end": "14:00", "role": "Material Handler", "shift_type": "Day"})
+
+    # Diego - short shift
+    shifts.append({"employee_id": "MF09", "name": "Diego Ramirez", "date": "2026-07-07", "start": "10:00", "end": "13:00", "role": "Assembler", "shift_type": "Short"})
+    for i in range(1, 5):
+        d = (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
+        shifts.append({"employee_id": "MF09", "name": "Diego Ramirez", "date": d, "start": "05:00", "end": "13:30", "role": "Assembler", "shift_type": "Day"})
+
+    # Normal schedules
+    for emp_id, name, role in [("MF04", "Tanya Reeves", "Assembler"),
+                                ("MF05", "Hassan Ali", "QC Inspector"),
+                                ("MF06", "Sarah Peterson", "Material Handler"),
+                                ("MF07", "Viktor Petrov", "Industrial Electrician"),
+                                ("MF08", "Linda Zhang", "PLC Technician")]:
+        for i in range(5):
+            d = (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
+            shifts.append({"employee_id": emp_id, "name": name, "date": d, "start": "05:00", "end": "13:30", "role": role, "shift_type": "Day"})
+
+    return {
+        "employees": employees,
+        "schedule": {
+            "schedule_posted_date": schedule_posted.strftime("%Y-%m-%d"),
+            "week_start": week_start.strftime("%Y-%m-%d"),
+            "week_end": (week_start + timedelta(days=6)).strftime("%Y-%m-%d"),
+            "facility": "Midwest Assembly Plant - Line 3",
+            "shifts": shifts,
+        },
+    }
+
+
 def generate_demo_for_industry(industry_key):
     """Get the right demo data for the selected industry."""
     if industry_key == "healthcare":
         return generate_healthcare_demo()
     elif industry_key == "retail":
         return generate_retail_demo()
+    elif industry_key == "hospitality":
+        return generate_hospitality_demo()
+    elif industry_key == "manufacturing":
+        return generate_manufacturing_demo()
     else:
-        # Default to warehouse (existing demo)
+        # Warehouse (existing demo)
         from sample_schedule import generate_schedule, EMPLOYEES
         return {
             "employees": EMPLOYEES,
