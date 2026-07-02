@@ -102,23 +102,60 @@ class SelfHealingEngine:
 
         ref_date = datetime.strptime(date, "%Y-%m-%d") if isinstance(date, str) else date
 
+        # --- Priority 0: Check pre-declared availability FIRST ---
+        pre_available = self._find_pre_declared_available(date, shift_start, shift_end, role, employee_id)
+
+        # --- Then get fairness-ranked full candidate list ---
         candidates = find_coverage(
             self.schedule_shifts, self.employees, gap_shift,
             self.employee_history, ref_date
         )
 
+        # Merge: pre-available go to the FRONT, ranked by fairness among themselves
+        if pre_available:
+            pre_ids = {p["employee_id"] for p in pre_available}
+            # Remove pre-available from the regular list to avoid duplicates
+            remaining_candidates = [c for c in candidates if c["employee_id"] not in pre_ids]
+
+            # Pre-available get boosted to front with a note
+            boosted = []
+            for pa in pre_available:
+                # Find their full candidate data if it exists
+                full_data = next((c for c in candidates if c["employee_id"] == pa["employee_id"]), None)
+                if full_data:
+                    boosted.append({**full_data, "pre_declared": True,
+                                    "reason": f"PRE-AVAILABLE ({pa['reason']}) | {full_data['reason']}"})
+                else:
+                    boosted.append({
+                        "employee_id": pa["employee_id"], "name": pa["name"],
+                        "composite_score": 100, "reason": f"PRE-AVAILABLE: {pa['reason']}",
+                        "pre_declared": True, "current_weekly_hours": 0,
+                        "fatigue_level": "green", "estimated_ot_cost": 0,
+                    })
+
+            candidates = boosted + remaining_candidates
+
+            incident["resolution_timeline"].append({
+                "time": datetime.now().strftime("%H:%M"),
+                "event": f"{len(pre_available)} worker(s) pre-declared available for this day. Offering to them first.",
+                "status": "PRE_AVAILABLE",
+            })
+
         incident["vet_candidates"] = [
             {"employee_id": c["employee_id"], "name": c["name"],
-             "score": c["composite_score"], "reason": c["reason"]}
+             "score": c.get("composite_score", 100), "reason": c.get("reason", ""),
+             "pre_declared": c.get("pre_declared", False)}
             for c in candidates
         ]
 
-        # Start the VET offering sequence
+        # Start the VET offering sequence — pre-available people first
         if candidates:
-            first_offer = self._send_vet_offer(incident, candidates[0])
+            first = candidates[0]
+            first_offer = self._send_vet_offer(incident, first)
+            pre_tag = " [PRE-AVAILABLE]" if first.get("pre_declared") else ""
             incident["resolution_timeline"].append({
                 "time": datetime.now().strftime("%H:%M"),
-                "event": f"VET offer sent to {candidates[0]['name']} (score: {candidates[0]['composite_score']})",
+                "event": f"VET offer sent to {first['name']}{pre_tag} (score: {first.get('composite_score', 100)})",
                 "status": "WAITING",
             })
         else:
@@ -279,6 +316,47 @@ class SelfHealingEngine:
         }
 
     # --- Private Methods ---
+
+    def _find_pre_declared_available(self, date, shift_start, shift_end, role, absent_id):
+        """
+        Find workers who already declared they're available for this day/shift.
+        Sources: worker preferences (vet_available_days), open availability declarations.
+        These people go FIRST — they already volunteered.
+        """
+        if isinstance(date, str):
+            date_dt = datetime.strptime(date, "%Y-%m-%d")
+        else:
+            date_dt = date
+
+        day_name = _get_day_name(date_dt)
+        available = []
+
+        for emp in self.employees:
+            if emp["id"] == absent_id:
+                continue
+
+            # Check their preferences for VET availability
+            prefs = emp.get("preferences", {})
+            vet_days = prefs.get("vet_available_days", [])
+
+            if day_name in vet_days:
+                # Check they're not already working that day (it's their off day)
+                already_scheduled = any(
+                    s.get("employee_id") == emp["id"] and s.get("date") == (date if isinstance(date, str) else date.strftime("%Y-%m-%d"))
+                    for s in self.schedule_shifts
+                )
+
+                if not already_scheduled:
+                    # Check role match
+                    emp_role = emp.get("role", "")
+                    if emp_role.lower() == role.lower() or not role:
+                        available.append({
+                            "employee_id": emp["id"],
+                            "name": emp["name"],
+                            "reason": f"Declared available on {day_name}s",
+                        })
+
+        return available
 
     def _send_vet_offer(self, incident, candidate):
         """Send a VET offer to a candidate."""

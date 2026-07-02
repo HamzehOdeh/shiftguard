@@ -14,9 +14,9 @@ EMPLOYEES = [
     {"id": "E005", "name": "Chen Wei", "seniority": 5, "role": "Pick", "is_minor": False, "hire_date": "2021-06-15", "hourly_rate": 19.50, "certifications": []},
     {"id": "E006", "name": "Tyler Brooks", "seniority": 6, "role": "Pack", "is_minor": True, "hire_date": "2025-06-01", "hourly_rate": 16.00, "certifications": []},
     {"id": "E007", "name": "Rosa Hernandez", "seniority": 7, "role": "Stow", "is_minor": False, "hire_date": "2022-03-10", "hourly_rate": 19.00, "certifications": []},
-    {"id": "E008", "name": "David Kim", "seniority": 8, "role": "Pick", "is_minor": False, "hire_date": "2022-09-20", "hourly_rate": 19.00, "certifications": ["forklift"]},
-    {"id": "E009", "name": "Fatima Ali", "seniority": 9, "role": "Ship", "is_minor": False, "hire_date": "2023-01-05", "hourly_rate": 18.50, "certifications": []},
-    {"id": "E010", "name": "Jake Thompson", "seniority": 10, "role": "Pick", "is_minor": False, "hire_date": "2023-11-15", "hourly_rate": 18.00, "certifications": []},
+    {"id": "E008", "name": "David Kim", "seniority": 8, "role": "Pick", "is_minor": False, "hire_date": "2022-09-20", "hourly_rate": 19.00, "certifications": ["forklift"], "preferences": {"vet_available_days": ["Mon", "Tue", "Thu"], "preferred_shift_type": "night", "notes": "Available for extra day shifts Mon/Tue/Thu"}},
+    {"id": "E009", "name": "Fatima Ali", "seniority": 9, "role": "Ship", "is_minor": False, "hire_date": "2023-01-05", "hourly_rate": 18.50, "certifications": [], "preferences": {"vet_available_days": ["Mon", "Wed", "Fri"], "notes": "Happy to pick up extra shifts"}},
+    {"id": "E010", "name": "Jake Thompson", "seniority": 10, "role": "Pick", "is_minor": False, "hire_date": "2023-11-15", "hourly_rate": 18.00, "certifications": [], "preferences": {"vet_available_days": ["Mon", "Sat"], "notes": "Available Mondays and Saturdays for VET"}},
 ]
 
 # Historical fairness data (simulated — in production comes from database)
