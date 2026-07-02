@@ -11,36 +11,78 @@ INDUSTRY_OPTIONS = {
         "name": "Healthcare",
         "subtitle": "Hospital / ED / Nursing",
         "facility": "Metro General Hospital - Emergency Department",
-        "roles": ["RN", "CNA", "Resident", "Tech", "Admin"],
         "jurisdiction": "California",
+        "role_categories": {
+            "Graduate Medical Education (GME)": ["Attending Physician", "Fellow", "Senior Resident (PGY-3+)", "Junior Resident (PGY-1/PGY-2)"],
+            "Nursing Services": ["Nurse Practitioner (NP)", "Charge Nurse", "Staff RN", "LPN/LVN", "CNA / Patient Care Tech"],
+            "Allied Health": ["Respiratory Therapist (RRT)", "Radiology Tech", "Lab Tech (MLS)", "Phlebotomist", "Surgical Tech", "Pharmacy Tech"],
+            "Support Staff": ["Health Unit Coordinator", "Patient Transporter", "EVS", "Food & Nutrition"],
+        },
     },
     "warehouse": {
         "name": "Warehouse / Logistics",
         "subtitle": "Distribution Center / FC",
-        "facility": "CHI-WH-001 (Chicago Distribution Center)",
-        "roles": ["Pick", "Pack", "Stow", "Ship", "Receive"],
+        "facility": "CHI-FC-001 (Chicago Fulfillment Center)",
         "jurisdiction": "Chicago",
+        "shift_code_format": "[D/N][Schedule Group][#]-[Start Time]-[Dept]",
+        "shift_code_legend": {
+            "D/N": "Day or Night",
+            "A": "Front Half (Sun-Wed)",
+            "B": "Back Half (Wed-Sat)",
+            "C": "Front Half Nights",
+            "L": "Back Half Nights",
+            "0700": "7:00 AM start",
+            "1800": "6:00 PM start",
+            "IB": "Inbound",
+            "OB": "Outbound",
+            "ICQA": "Inventory Control & Quality",
+        },
+        "role_categories": {
+            "Inbound (IB)": ["Receiver", "Stower", "Decant", "IB Problem Solver"],
+            "Outbound (OB)": ["Picker", "Packer (Singles)", "Packer (AFE/Multi)", "Shipper", "Slam Operator", "Rebin"],
+            "ICQA": ["Cycle Counter", "Amnesty", "Damage Processing"],
+            "Support / Indirect": ["Process Assistant (PA)", "Learning Ambassador", "WHS (Safety)", "Amnesty Responder"],
+            "Maintenance (RME)": ["RME Tech", "Controls Systems Tech", "Maintenance Planner"],
+        },
     },
     "retail": {
         "name": "Retail",
         "subtitle": "Store Operations",
         "facility": "Store #4521 - Downtown Chicago",
-        "roles": ["Sales Associate", "Cashier", "Stock", "Supervisor", "Visual"],
         "jurisdiction": "Chicago",
+        "role_categories": {
+            "Store Leadership": ["Store Manager", "Assistant Manager", "Shift Lead / Key Holder"],
+            "Sales Floor": ["Sales Associate", "Department Lead", "Visual Merchandiser"],
+            "Front End": ["Head Cashier", "Cashier", "Customer Service", "Greeter"],
+            "Receiving / Stock": ["Receiving Lead", "Stock Associate", "Inventory Specialist"],
+            "Loss Prevention": ["LP Manager", "Asset Protection Associate"],
+        },
     },
     "hospitality": {
         "name": "Hospitality",
         "subtitle": "Hotel / Restaurant",
         "facility": "Grand Plaza Hotel - Chicago",
-        "roles": ["Front Desk", "Housekeeping", "Kitchen", "Server", "Maintenance"],
         "jurisdiction": "Chicago",
+        "role_categories": {
+            "Front Office": ["Front Office Manager", "Front Desk Agent", "Night Auditor", "Concierge", "Bell Staff"],
+            "Housekeeping": ["Executive Housekeeper", "Housekeeping Supervisor", "Room Attendant", "Laundry"],
+            "Food & Beverage": ["F&B Manager", "Server", "Bartender", "Host/Hostess", "Busser"],
+            "Kitchen (BOH)": ["Executive Chef", "Sous Chef", "Line Cook", "Prep Cook", "Dishwasher"],
+            "Engineering": ["Chief Engineer", "Maintenance Tech", "Groundskeeper"],
+        },
     },
     "manufacturing": {
         "name": "Manufacturing",
         "subtitle": "Production / Assembly",
         "facility": "Midwest Assembly Plant - Line 3",
-        "roles": ["Operator", "Technician", "QC Inspector", "Material Handler", "Lead"],
         "jurisdiction": "Oregon",
+        "role_categories": {
+            "Production": ["Production Supervisor", "Line Lead", "Machine Operator", "Assembler", "Material Handler"],
+            "Quality": ["Quality Engineer", "QC Inspector", "Metrology Tech"],
+            "Maintenance": ["Industrial Electrician", "Industrial Mechanic", "PLC Tech", "HVAC Tech"],
+            "EHS (Safety)": ["EHS Manager", "Safety Specialist"],
+            "Supply Chain": ["Production Planner", "Shipping & Receiving", "Inventory Control"],
+        },
     },
 }
 
@@ -51,69 +93,69 @@ def generate_healthcare_demo():
     schedule_posted = datetime(2026, 7, 4)
 
     employees = [
-        {"id": "H001", "name": "Dr. Sarah Chen", "seniority": 1, "role": "Resident", "is_minor": False, "hire_date": "2024-07-01", "hourly_rate": 35.00},
-        {"id": "H002", "name": "Dr. Marcus Williams", "seniority": 2, "role": "Resident", "is_minor": False, "hire_date": "2024-07-01", "hourly_rate": 35.00},
-        {"id": "H003", "name": "Dr. Priya Patel", "seniority": 3, "role": "Resident", "is_minor": False, "hire_date": "2025-07-01", "hourly_rate": 33.00},
-        {"id": "H004", "name": "Jessica Thompson, RN", "seniority": 4, "role": "RN", "is_minor": False, "hire_date": "2020-03-15", "hourly_rate": 42.00},
-        {"id": "H005", "name": "Maria Rodriguez, RN", "seniority": 5, "role": "RN", "is_minor": False, "hire_date": "2021-06-01", "hourly_rate": 40.00},
-        {"id": "H006", "name": "David Kim, RN", "seniority": 6, "role": "RN", "is_minor": False, "hire_date": "2022-01-10", "hourly_rate": 38.00},
-        {"id": "H007", "name": "Aisha Ali, CNA", "seniority": 7, "role": "CNA", "is_minor": False, "hire_date": "2023-04-01", "hourly_rate": 22.00},
-        {"id": "H008", "name": "Jake Morrison, CNA", "seniority": 8, "role": "CNA", "is_minor": False, "hire_date": "2023-09-15", "hourly_rate": 21.00},
-        {"id": "H009", "name": "Rosa Hernandez, Tech", "seniority": 9, "role": "Tech", "is_minor": False, "hire_date": "2022-08-01", "hourly_rate": 28.00},
-        {"id": "H010", "name": "Tyler Brooks", "seniority": 10, "role": "CNA", "is_minor": True, "hire_date": "2026-05-15", "hourly_rate": 18.00},
+        {"id": "H001", "name": "Dr. Sarah Chen", "seniority": 1, "role": "Senior Resident (PGY-3)", "category": "GME", "is_minor": False, "hire_date": "2024-07-01", "hourly_rate": 35.00},
+        {"id": "H002", "name": "Dr. Marcus Williams", "seniority": 2, "role": "Senior Resident (PGY-4)", "category": "GME", "is_minor": False, "hire_date": "2024-07-01", "hourly_rate": 35.00},
+        {"id": "H003", "name": "Dr. Priya Patel", "seniority": 3, "role": "Junior Resident (PGY-1)", "category": "GME", "is_minor": False, "hire_date": "2025-07-01", "hourly_rate": 33.00},
+        {"id": "H004", "name": "Jessica Thompson, RN", "seniority": 4, "role": "Charge Nurse", "category": "Nursing", "is_minor": False, "hire_date": "2020-03-15", "hourly_rate": 42.00},
+        {"id": "H005", "name": "Maria Rodriguez, RN", "seniority": 5, "role": "Staff RN", "category": "Nursing", "is_minor": False, "hire_date": "2021-06-01", "hourly_rate": 40.00},
+        {"id": "H006", "name": "David Kim, RN", "seniority": 6, "role": "Staff RN", "category": "Nursing", "is_minor": False, "hire_date": "2022-01-10", "hourly_rate": 38.00},
+        {"id": "H007", "name": "Aisha Ali", "seniority": 7, "role": "CNA / Patient Care Tech", "category": "Nursing", "is_minor": False, "hire_date": "2023-04-01", "hourly_rate": 22.00},
+        {"id": "H008", "name": "Jake Morrison", "seniority": 8, "role": "CNA / Patient Care Tech", "category": "Nursing", "is_minor": False, "hire_date": "2023-09-15", "hourly_rate": 21.00},
+        {"id": "H009", "name": "Rosa Hernandez", "seniority": 9, "role": "Respiratory Therapist (RRT)", "category": "Allied Health", "is_minor": False, "hire_date": "2022-08-01", "hourly_rate": 28.00},
+        {"id": "H010", "name": "Tyler Brooks", "seniority": 10, "role": "CNA / Patient Care Tech", "category": "Nursing", "is_minor": True, "hire_date": "2026-05-15", "hourly_rate": 18.00},
     ]
 
     shifts = []
 
     # Dr. Chen - CLOPENING VIOLATION (night shift then morning)
-    shifts.append({"employee_id": "H001", "name": "Dr. Sarah Chen", "date": "2026-07-06", "start": "19:00", "end": "07:00", "role": "Resident", "shift_type": "Night"})
-    shifts.append({"employee_id": "H001", "name": "Dr. Sarah Chen", "date": "2026-07-07", "start": "07:00", "end": "19:00", "role": "Resident", "shift_type": "Day"})
-    shifts.append({"employee_id": "H001", "name": "Dr. Sarah Chen", "date": "2026-07-08", "start": "07:00", "end": "19:00", "role": "Resident", "shift_type": "Day"})
-    shifts.append({"employee_id": "H001", "name": "Dr. Sarah Chen", "date": "2026-07-09", "start": "07:00", "end": "19:00", "role": "Resident", "shift_type": "Day"})
+    shifts.append({"employee_id": "H001", "name": "Dr. Sarah Chen", "date": "2026-07-06", "start": "19:00", "end": "07:00", "role": "Senior Resident (PGY-3)", "shift_type": "Night"})
+    shifts.append({"employee_id": "H001", "name": "Dr. Sarah Chen", "date": "2026-07-07", "start": "07:00", "end": "19:00", "role": "Senior Resident (PGY-3)", "shift_type": "Day"})
+    shifts.append({"employee_id": "H001", "name": "Dr. Sarah Chen", "date": "2026-07-08", "start": "07:00", "end": "19:00", "role": "Senior Resident (PGY-3)", "shift_type": "Day"})
+    shifts.append({"employee_id": "H001", "name": "Dr. Sarah Chen", "date": "2026-07-09", "start": "07:00", "end": "19:00", "role": "Senior Resident (PGY-3)", "shift_type": "Day"})
 
     # Dr. Williams - EXCESSIVE HOURS (ACGME 80hr/week concern)
-    shifts.append({"employee_id": "H002", "name": "Dr. Marcus Williams", "date": "2026-07-07", "start": "06:00", "end": "18:00", "role": "Resident", "shift_type": "Day"})
-    shifts.append({"employee_id": "H002", "name": "Dr. Marcus Williams", "date": "2026-07-08", "start": "06:00", "end": "18:00", "role": "Resident", "shift_type": "Day"})
-    shifts.append({"employee_id": "H002", "name": "Dr. Marcus Williams", "date": "2026-07-09", "start": "06:00", "end": "18:00", "role": "Resident", "shift_type": "Day"})
-    shifts.append({"employee_id": "H002", "name": "Dr. Marcus Williams", "date": "2026-07-10", "start": "06:00", "end": "18:00", "role": "Resident", "shift_type": "Day"})
-    shifts.append({"employee_id": "H002", "name": "Dr. Marcus Williams", "date": "2026-07-11", "start": "06:00", "end": "18:00", "role": "Resident", "shift_type": "Day"})
-    shifts.append({"employee_id": "H002", "name": "Dr. Marcus Williams", "date": "2026-07-12", "start": "06:00", "end": "16:00", "role": "Resident", "shift_type": "Day"})
+    shifts.append({"employee_id": "H002", "name": "Dr. Marcus Williams", "date": "2026-07-07", "start": "06:00", "end": "18:00", "role": "Senior Resident (PGY-4)", "shift_type": "Day"})
+    shifts.append({"employee_id": "H002", "name": "Dr. Marcus Williams", "date": "2026-07-08", "start": "06:00", "end": "18:00", "role": "Senior Resident (PGY-4)", "shift_type": "Day"})
+    shifts.append({"employee_id": "H002", "name": "Dr. Marcus Williams", "date": "2026-07-09", "start": "06:00", "end": "18:00", "role": "Senior Resident (PGY-4)", "shift_type": "Day"})
+    shifts.append({"employee_id": "H002", "name": "Dr. Marcus Williams", "date": "2026-07-10", "start": "06:00", "end": "18:00", "role": "Senior Resident (PGY-4)", "shift_type": "Day"})
+    shifts.append({"employee_id": "H002", "name": "Dr. Marcus Williams", "date": "2026-07-11", "start": "06:00", "end": "18:00", "role": "Senior Resident (PGY-4)", "shift_type": "Day"})
+    shifts.append({"employee_id": "H002", "name": "Dr. Marcus Williams", "date": "2026-07-12", "start": "06:00", "end": "16:00", "role": "Senior Resident (PGY-4)", "shift_type": "Day"})
 
     # Dr. Patel - 8 CONSECUTIVE DAYS
     for i in range(8):
         d = (datetime(2026, 7, 1) + timedelta(days=i)).strftime("%Y-%m-%d")
-        shifts.append({"employee_id": "H003", "name": "Dr. Priya Patel", "date": d, "start": "07:00", "end": "19:00", "role": "Resident", "shift_type": "Day"})
+        shifts.append({"employee_id": "H003", "name": "Dr. Priya Patel", "date": d, "start": "07:00", "end": "19:00", "role": "Junior Resident (PGY-1)", "shift_type": "Day"})
 
     # RN Jessica - 5 consecutive NIGHT shifts
     for i in range(5):
         d = (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
-        shifts.append({"employee_id": "H004", "name": "Jessica Thompson, RN", "date": d, "start": "19:00", "end": "07:00", "role": "RN", "shift_type": "Night"})
+        shifts.append({"employee_id": "H004", "name": "Jessica Thompson, RN", "date": d, "start": "19:00", "end": "07:00", "role": "Staff RN", "shift_type": "Night"})
 
     # RN Maria - normal schedule
     for i in range(4):
         d = (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
-        shifts.append({"employee_id": "H005", "name": "Maria Rodriguez, RN", "date": d, "start": "07:00", "end": "19:00", "role": "RN", "shift_type": "Day"})
+        shifts.append({"employee_id": "H005", "name": "Maria Rodriguez, RN", "date": d, "start": "07:00", "end": "19:00", "role": "Staff RN", "shift_type": "Day"})
 
     # RN David - normal
     for i in range(4):
         d = (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
-        shifts.append({"employee_id": "H006", "name": "David Kim, RN", "date": d, "start": "07:00", "end": "15:30", "role": "RN", "shift_type": "Day"})
+        shifts.append({"employee_id": "H006", "name": "David Kim, RN", "date": d, "start": "07:00", "end": "15:30", "role": "Staff RN", "shift_type": "Day"})
 
     # CNA Aisha - short shift violation
-    shifts.append({"employee_id": "H007", "name": "Aisha Ali, CNA", "date": "2026-07-07", "start": "11:00", "end": "14:00", "role": "CNA", "shift_type": "Short"})
+    shifts.append({"employee_id": "H007", "name": "Aisha Ali, CNA", "date": "2026-07-07", "start": "11:00", "end": "14:00", "role": "CNA / Patient Care Tech", "shift_type": "Short"})
     for i in range(1, 5):
         d = (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
-        shifts.append({"employee_id": "H007", "name": "Aisha Ali, CNA", "date": d, "start": "07:00", "end": "15:30", "role": "CNA", "shift_type": "Day"})
+        shifts.append({"employee_id": "H007", "name": "Aisha Ali, CNA", "date": d, "start": "07:00", "end": "15:30", "role": "CNA / Patient Care Tech", "shift_type": "Day"})
 
     # Tyler (minor CNA) - night shift violation
-    shifts.append({"employee_id": "H010", "name": "Tyler Brooks", "date": "2026-07-07", "start": "15:00", "end": "23:30", "role": "CNA", "shift_type": "Evening"})
-    shifts.append({"employee_id": "H010", "name": "Tyler Brooks", "date": "2026-07-08", "start": "07:00", "end": "15:00", "role": "CNA", "shift_type": "Day"})
+    shifts.append({"employee_id": "H010", "name": "Tyler Brooks", "date": "2026-07-07", "start": "15:00", "end": "23:30", "role": "CNA / Patient Care Tech", "shift_type": "Evening"})
+    shifts.append({"employee_id": "H010", "name": "Tyler Brooks", "date": "2026-07-08", "start": "07:00", "end": "15:00", "role": "CNA / Patient Care Tech", "shift_type": "Day"})
 
     # Normal shifts for others
     for i in range(5):
         d = (week_start + timedelta(days=i)).strftime("%Y-%m-%d")
-        shifts.append({"employee_id": "H008", "name": "Jake Morrison, CNA", "date": d, "start": "07:00", "end": "15:30", "role": "CNA", "shift_type": "Day"})
-        shifts.append({"employee_id": "H009", "name": "Rosa Hernandez, Tech", "date": d, "start": "07:00", "end": "15:30", "role": "Tech", "shift_type": "Day"})
+        shifts.append({"employee_id": "H008", "name": "Jake Morrison, CNA", "date": d, "start": "07:00", "end": "15:30", "role": "CNA / Patient Care Tech", "shift_type": "Day"})
+        shifts.append({"employee_id": "H009", "name": "Rosa Hernandez, Tech", "date": d, "start": "07:00", "end": "15:30", "role": "Respiratory Therapist (RRT)", "shift_type": "Day"})
 
     return {
         "employees": employees,
