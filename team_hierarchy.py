@@ -328,6 +328,161 @@ def create_healthcare_hierarchy():
     return org
 
 
+def create_warehouse_hierarchy():
+    """Create a warehouse/FC hierarchy."""
+    org = Organization("ORG002", "Midwest Distribution Inc.", "warehouse")
+    fc = org.add_site("SITE01", "CHI-FC-001 (Chicago Fulfillment Center)", "Chicago, IL")
+
+    # Inbound
+    inbound = fc.add_department("IB", "Inbound", manager_id="MGR_IB")
+
+    ib_receive = inbound.add_team("IB_RECEIVE", "Receive / Dock", manager_id="MGR_IB_RCV")
+    ib_receive.set_shift_pattern("warehouse_2shift")
+    ib_receive.add_member({"id": "E004", "name": "Marcus Johnson", "role": "Stow", "seniority": 4})
+    ib_receive.add_member({"id": "E007", "name": "Rosa Hernandez", "role": "Stow", "seniority": 7})
+
+    ib_stow = inbound.add_team("IB_STOW", "Stow", manager_id="MGR_IB_STOW")
+    ib_stow.set_shift_pattern("warehouse_2shift")
+    ib_stow.add_member({"id": "E001", "name": "Sarah Martinez", "role": "Pick", "seniority": 1})
+    ib_stow.add_member({"id": "E003", "name": "Aisha Patel", "role": "Pick", "seniority": 3})
+    ib_stow.add_member({"id": "E005", "name": "Chen Wei", "role": "Pick", "seniority": 5})
+
+    # Outbound
+    outbound = fc.add_department("OB", "Outbound", manager_id="MGR_OB")
+
+    ob_pick = outbound.add_team("OB_PICK", "Pick", manager_id="MGR_OB_PICK")
+    ob_pick.set_shift_pattern("warehouse_2shift")
+    ob_pick.add_member({"id": "E008", "name": "David Kim", "role": "Pick", "seniority": 8})
+    ob_pick.add_member({"id": "E010", "name": "Jake Thompson", "role": "Pick", "seniority": 10})
+
+    ob_pack = outbound.add_team("OB_PACK", "Pack / Ship", manager_id="MGR_OB_PACK")
+    ob_pack.set_shift_pattern("warehouse_2shift")
+    ob_pack.add_member({"id": "E002", "name": "James Wilson", "role": "Pack", "seniority": 2})
+    ob_pack.add_member({"id": "E006", "name": "Tyler Brooks", "role": "Pack", "seniority": 6})
+    ob_pack.add_member({"id": "E009", "name": "Fatima Ali", "role": "Ship", "seniority": 9})
+
+    return org
+
+
+def create_retail_hierarchy():
+    """Create a retail store hierarchy."""
+    org = Organization("ORG003", "Metro Retail Group", "retail")
+    store = org.add_site("SITE01", "Store #4521 - Downtown Chicago", "Chicago, IL")
+
+    # Sales Floor
+    sales = store.add_department("SALES", "Sales Floor", manager_id="MGR_SALES")
+
+    sales_team = sales.add_team("SALES_ASSOC", "Sales Associates", manager_id="MGR_SALES_ASSOC")
+    sales_team.set_shift_pattern("retail_standard")
+    sales_team.add_member({"id": "R002", "name": "Carlos Mendez", "role": "Sales Associate", "seniority": 2})
+    sales_team.add_member({"id": "R003", "name": "Tanya Washington", "role": "Sales Associate", "seniority": 3})
+    sales_team.add_member({"id": "R006", "name": "DeShawn Harris", "role": "Sales Associate", "seniority": 6})
+    sales_team.add_member({"id": "R007", "name": "Emily Nguyen", "role": "Visual Merchandiser", "seniority": 7})
+
+    # Front End
+    frontend = store.add_department("FE", "Front End", manager_id="MGR_FE")
+
+    cashiers = frontend.add_team("FE_CASHIERS", "Cashiers", manager_id="MGR_FE_CASH")
+    cashiers.set_shift_pattern("retail_standard")
+    cashiers.add_member({"id": "R004", "name": "Kevin O'Brien", "role": "Cashier", "seniority": 4})
+    cashiers.add_member({"id": "R008", "name": "Jordan Riley", "role": "Cashier", "seniority": 8})
+
+    # Stock / Receiving
+    stock = store.add_department("STOCK", "Receiving & Stock", manager_id="MGR_STOCK")
+
+    stock_team = stock.add_team("STOCK_TEAM", "Stock Associates", manager_id="MGR_STOCK_ASSOC")
+    stock_team.set_shift_pattern("retail_standard")
+    stock_team.add_member({"id": "R005", "name": "Lisa Chang", "role": "Stock Associate", "seniority": 5})
+
+    # Store leadership
+    leadership = store.add_department("MGMT", "Store Management", manager_id="MGR_STORE")
+    leaders = leadership.add_team("MGMT_TEAM", "Leadership", manager_id="MGR_STORE")
+    leaders.add_member({"id": "R001", "name": "Amanda Foster", "role": "Store Manager", "seniority": 1})
+
+    return org
+
+
+def create_hospitality_hierarchy():
+    """Create a hospitality (restaurant/hotel) hierarchy."""
+    org = Organization("ORG004", "Grand Plaza Hospitality Group", "hospitality")
+    hotel = org.add_site("SITE01", "Grand Plaza Hotel - Chicago", "Chicago, IL")
+
+    # Front of House (Restaurant)
+    foh = hotel.add_department("FOH", "Front of House (Restaurant)", manager_id="MGR_FOH")
+
+    servers = foh.add_team("FOH_SERVERS", "Servers & Bar", manager_id="MGR_FOH_SRV")
+    servers.set_shift_pattern("retail_standard")
+    servers.add_member({"id": "HO05", "name": "Sophie Laurent", "role": "Server", "seniority": 5})
+    servers.add_member({"id": "HO06", "name": "Marcus Williams", "role": "Server", "seniority": 6})
+    servers.add_member({"id": "HO07", "name": "Priya Sharma", "role": "Host/Hostess", "seniority": 7})
+    servers.add_member({"id": "HO08", "name": "Carlos Mendez", "role": "Bartender", "seniority": 8})
+    servers.add_member({"id": "HO09", "name": "Jake Morrison", "role": "Busser", "seniority": 9})
+
+    # Back of House (Kitchen)
+    boh = hotel.add_department("BOH", "Back of House (Kitchen)", manager_id="MGR_BOH")
+
+    kitchen = boh.add_team("BOH_KITCHEN", "Kitchen Team", manager_id="MGR_BOH_CHEF")
+    kitchen.set_shift_pattern("retail_standard")
+    kitchen.add_member({"id": "HO01", "name": "Chef Marco Rivera", "role": "Executive Chef", "seniority": 1})
+    kitchen.add_member({"id": "HO02", "name": "Ana Torres", "role": "Sous Chef", "seniority": 2})
+    kitchen.add_member({"id": "HO03", "name": "DeShawn Mitchell", "role": "Line Cook", "seniority": 3})
+    kitchen.add_member({"id": "HO04", "name": "Yuki Tanaka", "role": "Line Cook", "seniority": 4})
+    kitchen.add_member({"id": "HO10", "name": "Emma Nguyen", "role": "Dishwasher", "seniority": 10})
+
+    return org
+
+
+def create_manufacturing_hierarchy():
+    """Create a manufacturing plant hierarchy."""
+    org = Organization("ORG005", "Midwest Manufacturing Corp.", "manufacturing")
+    plant = org.add_site("SITE01", "Assembly Plant - Line 3", "Detroit, MI")
+
+    # Production
+    production = plant.add_department("PROD", "Production", manager_id="MGR_PROD")
+
+    operators = production.add_team("PROD_OPS", "Machine Operators & Assembly", manager_id="MGR_PROD_OPS")
+    operators.set_shift_pattern("warehouse_2shift")
+    operators.add_member({"id": "MF02", "name": "Maria Kowalski", "role": "Machine Operator", "seniority": 2})
+    operators.add_member({"id": "MF03", "name": "James Okafor", "role": "Machine Operator", "seniority": 3})
+    operators.add_member({"id": "MF04", "name": "Tanya Reeves", "role": "Assembler", "seniority": 4})
+    operators.add_member({"id": "MF06", "name": "Sarah Peterson", "role": "Material Handler", "seniority": 6})
+    operators.add_member({"id": "MF09", "name": "Diego Ramirez", "role": "Assembler", "seniority": 9})
+    operators.add_member({"id": "MF10", "name": "Kyle Brooks", "role": "Material Handler", "seniority": 10})
+
+    leadership = production.add_team("PROD_LEAD", "Production Leadership", manager_id="MGR_PROD")
+    leadership.add_member({"id": "MF01", "name": "Robert Chen", "role": "Production Supervisor", "seniority": 1})
+
+    # Quality
+    quality = plant.add_department("QA", "Quality", manager_id="MGR_QA")
+
+    qa_team = quality.add_team("QA_INSPECT", "QC Inspectors", manager_id="MGR_QA_INSP")
+    qa_team.add_member({"id": "MF05", "name": "Hassan Ali", "role": "QC Inspector", "seniority": 5})
+
+    # Maintenance
+    maintenance = plant.add_department("MAINT", "Maintenance", manager_id="MGR_MAINT")
+
+    maint_team = maintenance.add_team("MAINT_TECHS", "Maintenance Technicians", manager_id="MGR_MAINT_TECH")
+    maint_team.add_member({"id": "MF07", "name": "Viktor Petrov", "role": "Industrial Electrician", "seniority": 7})
+    maint_team.add_member({"id": "MF08", "name": "Linda Zhang", "role": "PLC Technician", "seniority": 8})
+
+    return org
+
+
+def create_hierarchy_for_industry(industry_key):
+    """Get the hierarchy for any industry."""
+    if industry_key == "healthcare":
+        return create_healthcare_hierarchy()
+    elif industry_key == "warehouse":
+        return create_warehouse_hierarchy()
+    elif industry_key == "retail":
+        return create_retail_hierarchy()
+    elif industry_key == "hospitality":
+        return create_hospitality_hierarchy()
+    elif industry_key == "manufacturing":
+        return create_manufacturing_hierarchy()
+    return None
+
+
 if __name__ == "__main__":
     org = create_healthcare_hierarchy()
 
