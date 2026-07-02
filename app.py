@@ -19,6 +19,8 @@ from shift_intelligence import (
     generate_holiday_coverage_plan, get_holidays_in_range,
     check_night_shift_compliance, is_holiday
 )
+from worker_portal import WorkerPortal, create_demo_portal, STATUS_AUTO_APPROVED, STATUS_ESCALATED, STATUS_PENDING
+from manager_queue import ManagerQueue
 
 
 def parse_uploaded_file(uploaded_file):
@@ -439,6 +441,387 @@ def render_shift_intelligence(schedule, reference_date):
                     st.markdown(f"- {c['name']} — {c['reason']}")
 
 
+def render_worker_view(portal):
+    """Render the worker self-service portal view."""
+    st.markdown("### Worker Self-Service Portal")
+    st.markdown("*Submit requests, set preferences, respond to VET, pick up open shifts.*")
+
+    # Select which worker to view as
+    emp_names = [a["name"] for a in portal.shift_assignments]
+    selected = st.selectbox("View as:", emp_names, index=0, key="worker_view_emp")
+    emp_id = next(a["employee_id"] for a in portal.shift_assignments if a["name"] == selected)
+
+    dashboard = portal.get_worker_dashboard(emp_id)
+
+    # Schedule info
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Shift Code", dashboard["shift_code"])
+    with col2:
+        st.metric("Weekly Hours", dashboard["weekly_hours"])
+    with col3:
+        st.metric("Days On", ", ".join(dashboard["days_on"]))
+    with col4:
+        st.metric("Days Off", ", ".join(dashboard["days_off"]))
+
+    st.divider()
+
+    # Tabs within worker view
+    w_tab1, w_tab2, w_tab3, w_tab4, w_tab5 = st.tabs([
+        "My Requests", "Request Time Off", "VET & Open Shifts", "Shift Swap", "My Preferences"
+    ])
+
+    with w_tab1:
+        st.markdown("#### My Request History")
+        my_requests = [r for r in portal.requests if r["employee_id"] == emp_id]
+
+        if my_requests:
+            for r in my_requests:
+                status_color = {
+                    "AUTO_APPROVED": "#28a745", "APPROVED": "#28a745",
+                    "PENDING": "#ffc107", "ESCALATED": "#fd7e14",
+                    "DENIED": "#dc3545",
+                }.get(r["status"], "#6c757d")
+
+                if r["type"] == "HOLIDAY":
+                    detail = f"{r['start_date']} to {r['end_date']} (Priority {r['priority']})"
+                elif r["type"] == "SHIFT_SWAP":
+                    detail = f"Swap with {r.get('target_employee_name', 'N/A')}"
+                elif r["type"] == "PREFERENCE":
+                    detail = "Preferences updated"
+                else:
+                    detail = r["type"]
+
+                st.markdown(
+                    f'<span style="background-color:{status_color};color:white;padding:2px 8px;'
+                    f'border-radius:4px;font-size:0.8em;">{r["status"]}</span> '
+                    f'**{r["type"]}** — {detail}',
+                    unsafe_allow_html=True,
+                )
+
+                if r.get("auto_approval_result"):
+                    result = r["auto_approval_result"]
+                    if result.get("checks_passed"):
+                        with st.expander("Approval details"):
+                            for c in result["checks_passed"]:
+                                st.markdown(f"- :white_check_mark: {c}")
+                            for c in result.get("checks_failed", []):
+                                st.markdown(f"- :x: {c}")
+        else:
+            st.info("No requests submitted yet.")
+
+    with w_tab2:
+        st.markdown("#### Request Time Off")
+        st.markdown("*Submit with priority ranking. Higher priority = more important to you.*")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            req_start = st.date_input("Start date", key="req_start",
+                                      value=datetime.now() + timedelta(days=30))
+        with col2:
+            req_end = st.date_input("End date", key="req_end",
+                                    value=datetime.now() + timedelta(days=36))
+
+        req_priority = st.selectbox("Priority", [1, 2, 3],
+                                    format_func=lambda x: f"Priority {x}" + (" (most important)" if x == 1 else ""),
+                                    key="req_priority")
+        req_reason = st.text_input("Reason (optional)", key="req_reason",
+                                   placeholder="e.g., Family vacation, Lunar New Year, School break")
+        req_flexible = st.checkbox("I'm flexible on exact dates", key="req_flexible")
+
+        if st.button("Submit Request", type="primary", key="submit_holiday"):
+            result = portal.submit_holiday_request(
+                emp_id,
+                req_start.strftime("%Y-%m-%d"),
+                req_end.strftime("%Y-%m-%d"),
+                priority=req_priority,
+                reason=req_reason,
+                flexible=req_flexible,
+            )
+            if result["status"] == STATUS_AUTO_APPROVED:
+                st.success(f"Request auto-approved! ({result['id']})")
+            elif result["status"] == STATUS_ESCALATED:
+                st.warning(f"Request submitted for manager review ({result['id']}). "
+                          f"Reason: {result['auto_approval_result']['reason']}")
+            else:
+                st.info(f"Request submitted ({result['id']}). Awaiting review.")
+
+    with w_tab3:
+        st.markdown("#### VET Offers & Open Shifts")
+
+        # VET offers
+        my_vet = [o for o in portal.vet_offers
+                  if (o.get("offered_to") == emp_id or o.get("offered_to_all"))
+                  and o.get("status") == "PENDING"]
+
+        if my_vet:
+            st.markdown("**VET Offers for You:**")
+            for offer in my_vet:
+                details = offer["shift_details"]
+                st.markdown(f"- **{details['date']}** {details['start']}-{details['end']} "
+                          f"({details['role']}, {details['department']})")
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Accept", key=f"vet_accept_{offer['id']}"):
+                        portal.respond_to_vet(emp_id, offer["id"], accept=True)
+                        st.success("VET accepted!")
+                with col2:
+                    if st.button("Decline", key=f"vet_decline_{offer['id']}"):
+                        portal.respond_to_vet(emp_id, offer["id"], accept=False)
+                        st.info("VET declined.")
+        else:
+            st.info("No VET offers pending.")
+
+        st.divider()
+
+        # Open shifts
+        open_shifts = [s for s in portal.open_shifts if not s.get("taken_by")]
+        if open_shifts:
+            st.markdown("**Open Shifts Available:**")
+            for shift in open_shifts:
+                st.markdown(f"- **{shift['date']}** {shift['start']}-{shift['end']} "
+                          f"({shift['role']}) — {shift['reason']}")
+                if st.button("Pick Up", key=f"pickup_{shift['id']}"):
+                    result = portal.pickup_open_shift(emp_id, shift["id"])
+                    if result.get("status") == STATUS_AUTO_APPROVED:
+                        st.success("Shift picked up!")
+                    else:
+                        st.warning(f"Needs review: {result.get('compliance_check', {}).get('reason', '')}")
+        else:
+            st.info("No open shifts available.")
+
+    with w_tab4:
+        st.markdown("#### Propose Shift Swap")
+        st.markdown("*Propose swapping one of your shifts with a colleague.*")
+
+        other_emps = [a for a in portal.shift_assignments if a["employee_id"] != emp_id]
+        target_name = st.selectbox("Swap with:", [a["name"] for a in other_emps], key="swap_target")
+        target_id = next(a["employee_id"] for a in other_emps if a["name"] == target_name)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            my_date = st.date_input("Your shift date", key="swap_my_date",
+                                    value=datetime.now() + timedelta(days=3))
+        with col2:
+            their_date = st.date_input("Their shift date", key="swap_their_date",
+                                       value=datetime.now() + timedelta(days=5))
+
+        swap_reason = st.text_input("Reason", key="swap_reason",
+                                    placeholder="e.g., Doctor appointment")
+
+        if st.button("Propose Swap", type="primary", key="submit_swap"):
+            result = portal.submit_shift_swap(
+                emp_id, target_id,
+                my_date.strftime("%Y-%m-%d"),
+                their_date.strftime("%Y-%m-%d"),
+                reason=swap_reason,
+            )
+            compliance = result.get("compliance_check", {})
+            if compliance.get("both_compliant"):
+                st.success(f"Swap proposed ({result['id']}). Awaiting {target_name}'s acceptance.")
+            else:
+                st.warning(f"Swap has compliance concerns ({result['id']}). Escalated to manager.")
+
+        # Swap requests for me
+        swaps_for_me = [
+            r for r in portal.requests
+            if r["type"] == "SHIFT_SWAP"
+            and r.get("target_employee_id") == emp_id
+            and r.get("target_accepted") is None
+        ]
+        if swaps_for_me:
+            st.divider()
+            st.markdown("**Swap Requests for You:**")
+            for r in swaps_for_me:
+                st.markdown(f"- {r['employee_name']} wants to swap their {r['requester_date']} "
+                          f"for your {r['target_date']}")
+                if st.button("Accept Swap", key=f"accept_swap_{r['id']}"):
+                    result = portal.accept_swap(r["id"], emp_id)
+                    st.success(result["message"])
+
+    with w_tab5:
+        st.markdown("#### My Preferences")
+        st.markdown("*Set your availability and scheduling preferences.*")
+
+        current_prefs = portal.preferences.get(emp_id, {})
+
+        pref_shift = st.selectbox(
+            "Preferred shift type",
+            ["day", "evening", "night"],
+            index=["day", "evening", "night"].index(current_prefs.get("preferred_shift_type", "day")),
+            key="pref_shift"
+        )
+
+        all_days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        pref_vet_days = st.multiselect(
+            "Days available for VET (your off-days you'd accept extra work)",
+            all_days,
+            default=current_prefs.get("vet_available_days", []),
+            key="pref_vet"
+        )
+
+        pref_max_hours = st.slider(
+            "Max weekly hours preferred",
+            40, 60, current_prefs.get("max_weekly_hours_preferred", 50),
+            key="pref_max_hrs"
+        )
+
+        pref_notes = st.text_area(
+            "Additional notes",
+            value=current_prefs.get("notes", ""),
+            key="pref_notes",
+            placeholder="e.g., No Fridays (childcare), prefer mornings, available for holidays in December"
+        )
+
+        if st.button("Save Preferences", type="primary", key="save_prefs"):
+            portal.update_preferences(emp_id, {
+                "preferred_shift_type": pref_shift,
+                "vet_available_days": pref_vet_days,
+                "max_weekly_hours_preferred": pref_max_hours,
+                "notes": pref_notes,
+            })
+            st.success("Preferences saved!")
+
+
+def render_manager_queue_tab(portal, queue):
+    """Render the manager queue tab."""
+    st.markdown("### Manager Queue")
+    st.markdown("*Only items that need your attention. The rest was auto-resolved.*")
+
+    summary = queue.get_queue_summary()
+
+    # Summary cards
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Needs Action", summary["needs_action"])
+    with col2:
+        st.metric("Auto-Resolved", summary["auto_resolved"])
+    with col3:
+        st.metric("Auto-Rate", f"{summary['auto_resolution_rate']}%")
+    with col4:
+        st.metric("Time Saved", summary["time_saved_estimate"])
+
+    st.divider()
+
+    # Tabs within manager queue
+    m_tab1, m_tab2, m_tab3, m_tab4 = st.tabs([
+        "Action Required", "Auto-Approved Log", "Coverage Gaps", "Analytics"
+    ])
+
+    with m_tab1:
+        items = queue.get_action_items()
+        if items:
+            for i, item in enumerate(items):
+                r = item["request"]
+                urgency_color = {"HIGH": "#dc3545", "MEDIUM": "#ffc107", "LOW": "#28a745"}.get(
+                    item["urgency"], "#6c757d")
+
+                if r["type"] == "HOLIDAY":
+                    title = f"{r['employee_name']} — {r['start_date']} to {r['end_date']} (P{r['priority']})"
+                elif r["type"] == "SHIFT_SWAP":
+                    title = f"{r['employee_name']} swap with {r.get('target_employee_name', 'N/A')}"
+                else:
+                    title = f"{r['employee_name']} — {r['type']}"
+
+                with st.expander(
+                    f"[{item['urgency']}] {title}"
+                ):
+                    st.markdown(
+                        f'<span style="background-color:{urgency_color};color:white;padding:2px 8px;'
+                        f'border-radius:4px;font-size:0.8em;">{item["urgency"]} URGENCY</span>',
+                        unsafe_allow_html=True,
+                    )
+
+                    if r["type"] == "HOLIDAY":
+                        st.markdown(f"**Reason:** {r.get('reason', 'Not provided')}")
+                        st.markdown(f"**Priority:** {r.get('priority', 'N/A')} (1 = most important to them)")
+
+                    st.markdown(f"**Suggested action:** {item['suggested_action']}")
+
+                    # Impact assessment
+                    if item.get("impact_if_denied"):
+                        denial = item["impact_if_denied"]
+                        if denial.get("note"):
+                            st.warning(denial["note"])
+
+                    # Alternatives
+                    if item["alternatives"]:
+                        st.markdown("**If denying, suggest:**")
+                        for alt in item["alternatives"]:
+                            st.markdown(f"- {alt['description']}")
+
+                    # Action buttons
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("Approve", key=f"mgr_approve_{r['id']}", type="primary"):
+                            queue.approve_request(r["id"], "Approved by manager")
+                            st.success("Approved!")
+                            st.rerun()
+                    with col2:
+                        if st.button("Deny", key=f"mgr_deny_{r['id']}"):
+                            queue.deny_request(r["id"], "Coverage not available")
+                            st.error("Denied.")
+                            st.rerun()
+        else:
+            st.success("All clear! No items need your attention.")
+
+    with m_tab2:
+        st.markdown("#### Auto-Approved (for your awareness)")
+        st.markdown("*These were resolved automatically. No action needed.*")
+
+        log = queue.get_auto_approved_log()
+        if log:
+            rows = [{
+                "ID": e["request_id"],
+                "Type": e["type"],
+                "Employee": e["employee"],
+                "Details": e["details"],
+                "Reason": e["reason"],
+            } for e in log]
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        else:
+            st.info("No auto-approved items yet.")
+
+    with m_tab3:
+        st.markdown("#### Upcoming Coverage Gaps")
+        st.markdown("*Time-off approved — need to find coverage.*")
+
+        gaps = queue.get_coverage_gaps()
+        if gaps:
+            rows = [{
+                "Employee": g["employee"],
+                "Start": g["start_date"],
+                "End": g["end_date"],
+                "Days": g["days"],
+                "Coverage Found": "No" if not g["coverage_found"] else "Yes",
+            } for g in gaps]
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        else:
+            st.info("No coverage gaps identified.")
+
+    with m_tab4:
+        st.markdown("#### Request Analytics")
+        analytics = queue.get_request_analytics()
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Requests", analytics["total_requests"])
+        with col2:
+            st.metric("Avg per Employee", analytics["avg_requests_per_employee"])
+        with col3:
+            st.metric("Most Active", analytics["most_active_requester"][0])
+
+        if analytics["by_type"]:
+            st.markdown("**By Type:**")
+            for t, count in analytics["by_type"].items():
+                st.markdown(f"- {t}: {count}")
+
+        if analytics["peak_holiday_months"]:
+            st.markdown("**Peak Holiday Request Months:**")
+            for month, count in analytics["peak_holiday_months"]:
+                st.markdown(f"- {month}: {count} requests")
+
+
 def main():
     st.set_page_config(
         page_title="Workforce Compliance AI",
@@ -516,12 +899,23 @@ def main():
         f"**Source:** {source_label}"
     )
 
+    # Initialize portal and queue in session state
+    if "portal" not in st.session_state:
+        st.session_state["portal"] = create_demo_portal()
+    if "queue" not in st.session_state:
+        st.session_state["queue"] = ManagerQueue(st.session_state["portal"])
+
+    portal = st.session_state["portal"]
+    queue = st.session_state["queue"]
+
     # Main tabs
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "Compliance Violations",
-        "Hours & Fatigue Dashboard",
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "Compliance",
+        "Hours & Fatigue",
         "Coverage Finder",
-        "Shift Intelligence"
+        "Shift Intelligence",
+        "Worker Portal",
+        "Manager Queue",
     ])
 
     with tab1:
@@ -535,6 +929,12 @@ def main():
 
     with tab4:
         render_shift_intelligence(schedule, ref_date)
+
+    with tab5:
+        render_worker_view(portal)
+
+    with tab6:
+        render_manager_queue_tab(portal, queue)
 
     # Footer
     st.divider()
