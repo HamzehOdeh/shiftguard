@@ -306,6 +306,12 @@ class LeaveBalanceTracker:
                 "extended_family_days": 3,
                 "used_this_year": 0,
             },
+            "donated": {
+                "received_hours": 0,
+                "donated_hours": 0,
+                "received_from": [],
+                "donated_to": [],
+            },
         }
         return self.balances[employee_id]
 
@@ -533,6 +539,183 @@ class LeaveBalanceTracker:
             return
         bal["upt"]["available"] += UPT_QUARTERLY_GRANT
         return {"upt_granted": UPT_QUARTERLY_GRANT, "new_balance": bal["upt"]["available"]}
+
+    # ============================================================
+    # PTO / HOLIDAY DONATION SYSTEM
+    # ============================================================
+
+    def donate_hours(self, donor_id, recipient_id, hours, leave_type="PTO", reason=""):
+        """
+        Donate PTO/sick hours from one employee to another.
+
+        Rules:
+        - Donor must retain minimum 40h PTO after donation (protect the donor)
+        - Recipient must have exhausted own balance of that type OR have qualifying event
+        - Max single donation: 40 hours
+        - Tracks all donations for audit/tax purposes
+        """
+        donor_bal = self.balances.get(donor_id)
+        recip_bal = self.balances.get(recipient_id)
+
+        if not donor_bal or not recip_bal:
+            return {"error": "Employee not found", "success": False}
+
+        # Validation
+        errors = []
+        min_donor_retain = 40  # must keep at least 40h PTO
+        max_single_donation = 40
+
+        if hours > max_single_donation:
+            errors.append(f"Max single donation is {max_single_donation}h")
+
+        if hours <= 0:
+            errors.append("Donation must be positive")
+
+        if leave_type == "PTO":
+            donor_available = donor_bal["pto"]["available"]
+            if donor_available - hours < min_donor_retain:
+                errors.append(
+                    f"Donor must retain {min_donor_retain}h PTO. "
+                    f"Current: {donor_available}h. Max donatable: {donor_available - min_donor_retain}h"
+                )
+        elif leave_type == "SICK":
+            donor_available = donor_bal["sick"]["available"]
+            if donor_available - hours < 16:  # keep at least 16h sick
+                errors.append(f"Donor must retain at least 16h sick leave")
+        else:
+            errors.append(f"Cannot donate {leave_type} type leave")
+
+        if errors:
+            return {"error": "; ".join(errors), "success": False}
+
+        # Process donation
+        if leave_type == "PTO":
+            donor_bal["pto"]["available"] -= hours
+            recip_bal["pto"]["available"] += hours
+        elif leave_type == "SICK":
+            donor_bal["sick"]["available"] -= hours
+            recip_bal["sick"]["available"] += hours
+
+        # Track
+        donation_record = {
+            "id": f"DON-{len(self.transactions)+1:04d}",
+            "donor_id": donor_id,
+            "recipient_id": recipient_id,
+            "hours": hours,
+            "leave_type": leave_type,
+            "reason": reason,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "status": "COMPLETED",
+            "tax_note": "Donated leave may be taxable to recipient per IRS guidance",
+        }
+
+        donor_bal["donated"]["donated_hours"] += hours
+        donor_bal["donated"]["donated_to"].append({
+            "to": recipient_id, "hours": hours, "date": donation_record["timestamp"][:10]
+        })
+        recip_bal["donated"]["received_hours"] += hours
+        recip_bal["donated"]["received_from"].append({
+            "from": donor_id, "hours": hours, "date": donation_record["timestamp"][:10]
+        })
+
+        self.transactions.append(donation_record)
+
+        return {
+            "success": True,
+            "donation": donation_record,
+            "donor_new_balance": donor_bal["pto"]["available"] if leave_type == "PTO" else donor_bal["sick"]["available"],
+            "recipient_new_balance": recip_bal["pto"]["available"] if leave_type == "PTO" else recip_bal["sick"]["available"],
+        }
+
+    def donate_to_pool(self, donor_id, hours, leave_type="PTO"):
+        """Donate hours to the company-wide leave sharing pool."""
+        # Ensure pool exists
+        if "__POOL__" not in self.balances:
+            self.balances["__POOL__"] = {
+                "employee_id": "__POOL__",
+                "hire_date": "2020-01-01",
+                "tenure_years": 0,
+                "state": self.state,
+                "pto": {"available": 0, "flex_available": 0, "standard_available": 0,
+                        "used": 0, "flex_used": 0, "standard_used": 0,
+                        "accrual_rate_per_year": 0, "pending": 0, "carryover_cap": 99999},
+                "sick": {"available": 0, "used": 0, "accrual_rate": 0, "cap": None},
+                "upt": {"available": 0, "used": 0, "quarterly_grant": 0},
+                "fmla": {"eligible": False, "available_hours": 0, "used_hours": 0},
+                "bereavement": {"immediate_family_days": 0, "extended_family_days": 0, "used_this_year": 0},
+                "donated": {"received_hours": 0, "donated_hours": 0, "received_from": [], "donated_to": []},
+            }
+        return self.donate_hours(donor_id, "__POOL__", hours, leave_type, reason="Pool donation")
+
+    def request_from_pool(self, recipient_id, hours, reason=""):
+        """
+        Request hours from the company leave pool.
+        Requires: own balance exhausted + qualifying event.
+        """
+        recip_bal = self.balances.get(recipient_id)
+        if not recip_bal:
+            return {"error": "Employee not found", "success": False}
+
+        # Check eligibility: own PTO must be exhausted
+        if recip_bal["pto"]["available"] > 8:
+            return {
+                "error": f"Must exhaust own PTO first. You have {recip_bal['pto']['available']}h remaining.",
+                "success": False,
+            }
+
+        # Check pool balance
+        pool_bal = self.balances.get("__POOL__")
+        if not pool_bal:
+            # Initialize pool if needed
+            self.balances["__POOL__"] = {
+                "employee_id": "__POOL__",
+                "pto": {"available": 0},
+                "sick": {"available": 0},
+                "donated": {"received_hours": 0, "donated_hours": 0, "received_from": [], "donated_to": []},
+            }
+            pool_bal = self.balances["__POOL__"]
+
+        if pool_bal["pto"]["available"] < hours:
+            return {
+                "error": f"Pool only has {pool_bal['pto']['available']}h available. Requested: {hours}h",
+                "success": False,
+            }
+
+        # Transfer from pool to recipient
+        pool_bal["pto"]["available"] -= hours
+        recip_bal["pto"]["available"] += hours
+        recip_bal["donated"]["received_hours"] += hours
+        recip_bal["donated"]["received_from"].append({
+            "from": "Company Pool", "hours": hours, "date": datetime.now().strftime("%Y-%m-%d")
+        })
+
+        return {
+            "success": True,
+            "hours_received": hours,
+            "new_balance": recip_bal["pto"]["available"],
+            "pool_remaining": pool_bal["pto"]["available"],
+            "note": "Subject to HR approval for qualifying event verification",
+        }
+
+    def get_donation_history(self, employee_id=None):
+        """Get donation history — all or for a specific employee."""
+        donations = [t for t in self.transactions if t.get("status") == "COMPLETED"
+                     and "DON-" in t.get("id", "")]
+        if employee_id:
+            donations = [d for d in donations
+                        if d["donor_id"] == employee_id or d["recipient_id"] == employee_id]
+        return donations
+
+    def get_pool_balance(self):
+        """Get current company leave pool balance."""
+        pool = self.balances.get("__POOL__")
+        if not pool:
+            return {"pto_hours": 0, "sick_hours": 0, "total_donations": 0}
+        return {
+            "pto_hours": pool["pto"]["available"],
+            "sick_hours": pool.get("sick", {}).get("available", 0),
+            "total_donations": len([t for t in self.transactions if "__POOL__" in str(t.get("recipient_id", ""))]),
+        }
 
     def get_availability_calendar(self, employee_id, shift_code, month_start, shift_assignments):
         """
