@@ -27,6 +27,7 @@ from leave_management import (
     cascade_coverage
 )
 from shift_templates import SHIFT_ASSIGNMENTS
+from ai_chat import AIChat
 
 
 def parse_uploaded_file(uploaded_file):
@@ -1102,8 +1103,20 @@ def main():
     portal = st.session_state["portal"]
     queue = st.session_state["queue"]
 
+    # Initialize AI chat
+    if "ai_chat" not in st.session_state:
+        st.session_state["ai_chat"] = AIChat(
+            employees=EMPLOYEES,
+            schedule_data=schedule,
+            leave_tracker=st.session_state.get("leave_tracker"),
+            employee_history=EMPLOYEE_HISTORY,
+            user_role="MANAGER",
+            user_employee_id="E001",
+        )
+
     # Main tabs
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        "AI Assistant",
         "Compliance",
         "Hours & Fatigue",
         "Coverage Finder",
@@ -1113,21 +1126,67 @@ def main():
     ])
 
     with tab1:
-        render_compliance_tab(schedule, jurisdiction, include_cba, include_company)
+        st.markdown("### AI Scheduling Assistant")
+        st.markdown("*Ask anything about scheduling, coverage, compliance, hours, or leave.*")
+
+        # Suggested queries
+        st.markdown("**Try asking:**")
+        suggestions = [
+            "Who can cover tomorrow's shift?",
+            "How many hours does James have left?",
+            "Are there any compliance violations?",
+            "Show me the fairness report",
+            "Generate next month's schedule",
+            "What's my PTO balance?",
+        ]
+        cols = st.columns(3)
+        for i, s in enumerate(suggestions):
+            with cols[i % 3]:
+                if st.button(s, key=f"suggest_{i}"):
+                    st.session_state["chat_input"] = s
+
+        st.divider()
+
+        # Chat history
+        if "chat_messages" not in st.session_state:
+            st.session_state["chat_messages"] = []
+
+        for msg in st.session_state["chat_messages"]:
+            if msg["role"] == "user":
+                st.markdown(f"**You:** {msg['content']}")
+            else:
+                st.markdown(f"**AI:** {msg['content']}")
+            st.markdown("")
+
+        # Chat input
+        default_input = st.session_state.pop("chat_input", "")
+        user_input = st.text_input("Ask a question:", value=default_input, key="chat_box",
+                                   placeholder="e.g., Who can cover Sarah's shift tomorrow?")
+
+        if user_input and st.button("Send", type="primary", key="send_chat"):
+            st.session_state["chat_messages"].append({"role": "user", "content": user_input})
+            chat = st.session_state["ai_chat"]
+            chat.schedule_data = schedule
+            response = chat.chat(user_input)
+            st.session_state["chat_messages"].append({"role": "assistant", "content": response["message"]})
+            st.rerun()
 
     with tab2:
-        render_hours_dashboard(schedule, ref_date)
+        render_compliance_tab(schedule, jurisdiction, include_cba, include_company)
 
     with tab3:
-        render_coverage_tab(schedule, ref_date)
+        render_hours_dashboard(schedule, ref_date)
 
     with tab4:
-        render_shift_intelligence(schedule, ref_date)
+        render_coverage_tab(schedule, ref_date)
 
     with tab5:
-        render_worker_view(portal)
+        render_shift_intelligence(schedule, ref_date)
 
     with tab6:
+        render_worker_view(portal)
+
+    with tab7:
         render_manager_queue_tab(portal, queue)
 
     # Footer

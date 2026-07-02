@@ -12,6 +12,18 @@ from .core.config import settings
 from .core.auth import decode_token
 from .models.database import get_db, create_tables
 
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from compliance_checker import check_compliance as run_compliance_check
+from hours_tracker import get_all_employee_dashboards, predict_shift_impact
+from coverage_engine import find_coverage, calculate_team_fairness_report
+from leave_management import create_demo_leave_tracker
+from schedule_generator import ScheduleGenerator, SHIFT_PATTERNS
+from cost_calculator import calculate_compliance_cost
+from ai_chat import AIChat
+from sample_schedule import generate_schedule, EMPLOYEES, EMPLOYEE_HISTORY
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.VERSION,
@@ -150,7 +162,15 @@ async def get_schedule(
 @app.post("/api/v1/schedule/check-compliance")
 async def check_compliance(current_user: dict = Depends(require_role(["MANAGER", "HR", "ADMIN"]))):
     """Run compliance check on current/proposed schedule."""
-    return {"status": "compliance_check_placeholder"}
+    schedule = generate_schedule()
+    violations = run_compliance_check(schedule)
+    return {
+        "violations_found": len(violations),
+        "critical": len([v for v in violations if v["severity"] == "CRITICAL"]),
+        "high": len([v for v in violations if v["severity"] == "HIGH"]),
+        "medium": len([v for v in violations if v["severity"] == "MEDIUM"]),
+        "violations": violations,
+    }
 
 
 @app.post("/api/v1/schedule/generate")
@@ -177,7 +197,9 @@ async def get_employee_hours(employee_id: str, current_user: dict = Depends(get_
 @app.get("/api/v1/hours/dashboard")
 async def hours_dashboard(current_user: dict = Depends(require_role(["MANAGER", "HR", "ADMIN"]))):
     """Get hours dashboard for all team members."""
-    return {"status": "dashboard_placeholder"}
+    schedule = generate_schedule()
+    dashboards = get_all_employee_dashboards(schedule["shifts"], EMPLOYEES, datetime.now())
+    return {"employees": dashboards}
 
 
 @app.post("/api/v1/hours/predict-impact")
@@ -275,13 +297,24 @@ async def deny_request(
 # ============================================================
 
 @app.post("/api/v1/coverage/find")
-async def find_coverage(
+async def find_coverage_endpoint(
     date: str, start: str, end: str, role: str,
     absent_employee_id: Optional[str] = None,
     current_user: dict = Depends(require_role(["MANAGER", "HR", "ADMIN"]))
 ):
     """Find fairness-ranked coverage candidates for a gap."""
-    return {"status": "coverage_placeholder"}
+    schedule = generate_schedule()
+    gap_shift = {
+        "date": date, "start": start, "end": end,
+        "role": role, "shift_type": "Coverage",
+    }
+    if absent_employee_id:
+        gap_shift["absent_employee_id"] = absent_employee_id
+
+    candidates = find_coverage(
+        schedule["shifts"], EMPLOYEES, gap_shift, EMPLOYEE_HISTORY, datetime.strptime(date, "%Y-%m-%d")
+    )
+    return {"candidates": candidates[:10], "total_available": len(candidates)}
 
 
 @app.get("/api/v1/coverage/fairness-report")
@@ -394,6 +427,28 @@ async def get_decision_log(
 async def get_alerts(current_user: dict = Depends(require_role(["MANAGER", "HR", "ADMIN"]))):
     """Get active system alerts."""
     return {"alerts": []}
+
+
+# ============================================================
+# PUBLIC ENDPOINTS (no auth — free tools)
+# ============================================================
+
+@app.post("/api/v1/public/cost-calculator")
+async def public_cost_calculator(
+    state: str, headcount: int, industry: str, union: bool = False
+):
+    """Free compliance cost calculator — no auth required. The viral tool."""
+    result = calculate_compliance_cost(state, headcount, industry, union)
+    return result
+
+
+@app.post("/api/v1/public/chat")
+async def public_chat(message: str):
+    """Public AI chat demo — limited functionality without auth."""
+    chat = AIChat(employees=EMPLOYEES, schedule_data=generate_schedule(),
+                  employee_history=EMPLOYEE_HISTORY, user_role="DEMO")
+    response = chat.chat(message)
+    return response
 
 
 # ============================================================
