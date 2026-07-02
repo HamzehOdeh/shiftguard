@@ -7,17 +7,87 @@ import csv
 from datetime import datetime, timedelta
 
 EMPLOYEES = [
-    {"id": "E001", "name": "Sarah Martinez", "seniority": 1, "role": "Pick", "is_minor": False, "hire_date": "2019-03-15"},
-    {"id": "E002", "name": "James Wilson", "seniority": 2, "role": "Pack", "is_minor": False, "hire_date": "2020-01-10"},
-    {"id": "E003", "name": "Aisha Patel", "seniority": 3, "role": "Pick", "is_minor": False, "hire_date": "2020-08-22"},
-    {"id": "E004", "name": "Marcus Johnson", "seniority": 4, "role": "Stow", "is_minor": False, "hire_date": "2021-02-01"},
-    {"id": "E005", "name": "Chen Wei", "seniority": 5, "role": "Pick", "is_minor": False, "hire_date": "2021-06-15"},
-    {"id": "E006", "name": "Tyler Brooks", "seniority": 6, "role": "Pack", "is_minor": True, "hire_date": "2025-06-01"},
-    {"id": "E007", "name": "Rosa Hernandez", "seniority": 7, "role": "Stow", "is_minor": False, "hire_date": "2022-03-10"},
-    {"id": "E008", "name": "David Kim", "seniority": 8, "role": "Pick", "is_minor": False, "hire_date": "2022-09-20"},
-    {"id": "E009", "name": "Fatima Ali", "seniority": 9, "role": "Ship", "is_minor": False, "hire_date": "2023-01-05"},
-    {"id": "E010", "name": "Jake Thompson", "seniority": 10, "role": "Pick", "is_minor": False, "hire_date": "2023-11-15"},
+    {"id": "E001", "name": "Sarah Martinez", "seniority": 1, "role": "Pick", "is_minor": False, "hire_date": "2019-03-15", "hourly_rate": 22.50, "certifications": ["forklift", "hazmat"]},
+    {"id": "E002", "name": "James Wilson", "seniority": 2, "role": "Pack", "is_minor": False, "hire_date": "2020-01-10", "hourly_rate": 21.00, "certifications": ["forklift"]},
+    {"id": "E003", "name": "Aisha Patel", "seniority": 3, "role": "Pick", "is_minor": False, "hire_date": "2020-08-22", "hourly_rate": 20.50, "certifications": []},
+    {"id": "E004", "name": "Marcus Johnson", "seniority": 4, "role": "Stow", "is_minor": False, "hire_date": "2021-02-01", "hourly_rate": 20.00, "certifications": ["forklift"]},
+    {"id": "E005", "name": "Chen Wei", "seniority": 5, "role": "Pick", "is_minor": False, "hire_date": "2021-06-15", "hourly_rate": 19.50, "certifications": []},
+    {"id": "E006", "name": "Tyler Brooks", "seniority": 6, "role": "Pack", "is_minor": True, "hire_date": "2025-06-01", "hourly_rate": 16.00, "certifications": []},
+    {"id": "E007", "name": "Rosa Hernandez", "seniority": 7, "role": "Stow", "is_minor": False, "hire_date": "2022-03-10", "hourly_rate": 19.00, "certifications": []},
+    {"id": "E008", "name": "David Kim", "seniority": 8, "role": "Pick", "is_minor": False, "hire_date": "2022-09-20", "hourly_rate": 19.00, "certifications": ["forklift"]},
+    {"id": "E009", "name": "Fatima Ali", "seniority": 9, "role": "Ship", "is_minor": False, "hire_date": "2023-01-05", "hourly_rate": 18.50, "certifications": []},
+    {"id": "E010", "name": "Jake Thompson", "seniority": 10, "role": "Pick", "is_minor": False, "hire_date": "2023-11-15", "hourly_rate": 18.00, "certifications": []},
 ]
+
+# Historical fairness data (simulated — in production comes from database)
+EMPLOYEE_HISTORY = {
+    "E001": {
+        "coverage_requests_received": 5, "coverage_requests_accepted": 4,
+        "holidays_worked_this_year": 3, "holidays_off_this_year": 1,
+        "weekend_shifts_this_month": 3, "night_shifts_this_month": 2,
+        "voluntary_covers": 3, "forced_covers": 1, "team_avg_requests": 3,
+        "worked_Christmas Day_last_year": True, "worked_Thanksgiving Day_last_year": False,
+        "priority_holidays": [
+            {"dates": "2026-12-21 to 2026-12-27", "priority": 1, "reason": "Family visit"},
+            {"dates": "2026-09-07 to 2026-09-13", "priority": 2, "reason": "Vacation"},
+        ],
+    },
+    "E002": {
+        "coverage_requests_received": 2, "coverage_requests_accepted": 2,
+        "holidays_worked_this_year": 1, "holidays_off_this_year": 3,
+        "weekend_shifts_this_month": 1, "night_shifts_this_month": 0,
+        "voluntary_covers": 2, "forced_covers": 0, "team_avg_requests": 3,
+        "worked_Christmas Day_last_year": False, "worked_Thanksgiving Day_last_year": True,
+        "priority_holidays": [
+            {"dates": "2026-11-23 to 2026-11-29", "priority": 1, "reason": "Thanksgiving family"},
+            {"dates": "2026-05-18 to 2026-05-24", "priority": 2, "reason": "Anniversary trip"},
+        ],
+    },
+    "E003": {
+        "coverage_requests_received": 1, "coverage_requests_accepted": 1,
+        "holidays_worked_this_year": 0, "holidays_off_this_year": 3,
+        "weekend_shifts_this_month": 0, "night_shifts_this_month": 0,
+        "voluntary_covers": 1, "forced_covers": 0, "team_avg_requests": 3,
+        "worked_Christmas Day_last_year": False, "worked_Thanksgiving Day_last_year": False,
+        "priority_holidays": [
+            {"dates": "2026-03-16 to 2026-03-22", "priority": 1, "reason": "Spring break with kids"},
+            {"dates": "2026-12-24 to 2026-12-31", "priority": 2, "reason": "Holiday"},
+        ],
+    },
+    "E005": {
+        "coverage_requests_received": 4, "coverage_requests_accepted": 3,
+        "holidays_worked_this_year": 2, "holidays_off_this_year": 2,
+        "weekend_shifts_this_month": 2, "night_shifts_this_month": 3,
+        "voluntary_covers": 1, "forced_covers": 2, "team_avg_requests": 3,
+        "worked_Christmas Day_last_year": True, "worked_Thanksgiving Day_last_year": True,
+        "priority_holidays": [
+            {"dates": "2026-01-28 to 2026-02-03", "priority": 1, "reason": "Lunar New Year"},
+            {"dates": "2026-08-10 to 2026-08-16", "priority": 2, "reason": "Summer vacation"},
+        ],
+    },
+    "E008": {
+        "coverage_requests_received": 3, "coverage_requests_accepted": 2,
+        "holidays_worked_this_year": 1, "holidays_off_this_year": 2,
+        "weekend_shifts_this_month": 1, "night_shifts_this_month": 1,
+        "voluntary_covers": 2, "forced_covers": 0, "team_avg_requests": 3,
+        "worked_Christmas Day_last_year": False, "worked_Thanksgiving Day_last_year": True,
+        "priority_holidays": [
+            {"dates": "2026-09-28 to 2026-10-04", "priority": 1, "reason": "Chuseok"},
+            {"dates": "2026-12-21 to 2026-12-27", "priority": 2, "reason": "Christmas"},
+        ],
+    },
+    "E010": {
+        "coverage_requests_received": 0, "coverage_requests_accepted": 0,
+        "holidays_worked_this_year": 0, "holidays_off_this_year": 2,
+        "weekend_shifts_this_month": 0, "night_shifts_this_month": 0,
+        "voluntary_covers": 0, "forced_covers": 0, "team_avg_requests": 3,
+        "worked_Christmas Day_last_year": False, "worked_Thanksgiving Day_last_year": False,
+        "priority_holidays": [
+            {"dates": "2026-07-20 to 2026-07-26", "priority": 1, "reason": "Summer trip"},
+            {"dates": "2026-12-24 to 2026-12-31", "priority": 2, "reason": "Holiday"},
+        ],
+    },
+}
 
 def generate_schedule():
     """
@@ -75,8 +145,15 @@ def generate_schedule():
     shifts.append({"employee_id": "E007", "name": "Rosa Hernandez", "date": "2026-07-09", "start": "07:00", "end": "15:30", "role": "Stow", "shift_type": "Day"})
     shifts.append({"employee_id": "E007", "name": "Rosa Hernandez", "date": "2026-07-10", "start": "07:00", "end": "15:30", "role": "Stow", "shift_type": "Day"})
 
+    # --- Chen Wei (E005) - NIGHT SHIFT BLOCK (5 consecutive nights - violation) ---
+    shifts.append({"employee_id": "E005", "name": "Chen Wei", "date": "2026-07-07", "start": "22:00", "end": "06:30", "role": "Pick", "shift_type": "Night"})
+    shifts.append({"employee_id": "E005", "name": "Chen Wei", "date": "2026-07-08", "start": "22:00", "end": "06:30", "role": "Pick", "shift_type": "Night"})
+    shifts.append({"employee_id": "E005", "name": "Chen Wei", "date": "2026-07-09", "start": "22:00", "end": "06:30", "role": "Pick", "shift_type": "Night"})
+    shifts.append({"employee_id": "E005", "name": "Chen Wei", "date": "2026-07-10", "start": "22:00", "end": "06:30", "role": "Pick", "shift_type": "Night"})
+    shifts.append({"employee_id": "E005", "name": "Chen Wei", "date": "2026-07-11", "start": "22:00", "end": "06:30", "role": "Pick", "shift_type": "Night"})  # 5th consecutive night!
+
     # --- Normal schedules for others ---
-    for emp_id, name, role in [("E003", "Aisha Patel", "Pick"), ("E005", "Chen Wei", "Pick"),
+    for emp_id, name, role in [("E003", "Aisha Patel", "Pick"),
                                 ("E008", "David Kim", "Pick"), ("E009", "Fatima Ali", "Ship"),
                                 ("E010", "Jake Thompson", "Pick")]:
         for day_offset in range(5):  # Mon-Fri normal
