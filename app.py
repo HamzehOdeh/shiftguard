@@ -108,6 +108,21 @@ def render_compliance_tab(schedule, jurisdiction, include_cba, include_company):
     medium = [v for v in violations if v["severity"] == "MEDIUM"]
     penalty_low, penalty_high = estimate_penalty_exposure(violations)
 
+    # Big penalty number (the hook)
+    st.markdown(
+        f'<div style="text-align:center;padding:15px;background:#2d1b1b;border-radius:10px;margin-bottom:20px;">'
+        f'<p style="color:#ff9999;margin:0;font-size:0.9em;">ESTIMATED WEEKLY PENALTY EXPOSURE</p>'
+        f'<h1 style="color:#ff4444;margin:5px 0;font-size:2.5em;">${penalty_low:,} - ${penalty_high:,}</h1>'
+        f'<p style="color:#aaa;margin:0;">{len(violations)} violations found across {len(set(v["affected_employees"] for v in violations))} employees</p>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Compliance score
+    max_penalty = max(1, penalty_high)
+    compliance_score = max(0, min(100, round(100 - (penalty_high / 200))))
+    score_color = "#28a745" if compliance_score >= 80 else ("#ffc107" if compliance_score >= 50 else "#dc3545")
+
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Critical", len(critical))
@@ -116,7 +131,13 @@ def render_compliance_tab(schedule, jurisdiction, include_cba, include_company):
     with col3:
         st.metric("Medium", len(medium))
     with col4:
-        st.metric("Penalty Exposure", f"${penalty_low:,}-${penalty_high:,}")
+        st.markdown(
+            f'<div style="text-align:center;">'
+            f'<p style="margin:0;font-size:0.85em;color:#888;">Compliance Score</p>'
+            f'<p style="margin:0;font-size:2em;font-weight:bold;color:{score_color};">{compliance_score}/100</p>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
     st.divider()
 
@@ -142,6 +163,18 @@ def render_compliance_tab(schedule, jurisdiction, include_cba, include_company):
                 st.markdown(f"**Cost Impact:** {v['cost_impact']}")
             st.markdown(f"**Issue:** {v['description']}")
             st.markdown(f"**Fix:** {v['recommendation']}")
+
+            # Inline action buttons
+            st.markdown("")
+            act_cols = st.columns(4)
+            with act_cols[0]:
+                st.button("Resolve", key=f"resolve_{i}", type="primary")
+            with act_cols[1]:
+                st.button("Reassign", key=f"reassign_{i}")
+            with act_cols[2]:
+                st.button("Notify Worker", key=f"notify_{i}")
+            with act_cols[3]:
+                st.button("Accept Risk", key=f"accept_{i}")
 
 
 def render_hours_dashboard(schedule, reference_date):
@@ -1015,14 +1048,13 @@ def main():
     with st.sidebar:
         st.header("Industry")
         industry_keys = list(INDUSTRY_OPTIONS.keys())
-        industry_labels = [f"{v['name']} — {v['subtitle']}" for v in INDUSTRY_OPTIONS.values()]
-        selected_industry_idx = st.selectbox(
+        industry_labels = [f"{v['name']} - {v['subtitle']}" for v in INDUSTRY_OPTIONS.values()]
+        selected_label = st.selectbox(
             "Select your industry",
-            range(len(industry_keys)),
-            format_func=lambda i: industry_labels[i],
+            options=industry_labels,
             index=0,
         )
-        selected_industry = industry_keys[selected_industry_idx]
+        selected_industry = industry_keys[industry_labels.index(selected_label)]
         industry_info = INDUSTRY_OPTIONS[selected_industry]
 
         st.divider()
@@ -1066,19 +1098,12 @@ def main():
         schedule = st.session_state["schedule"]
 
     if schedule is None:
-        st.info("Upload a schedule or click **Run Demo** to get started.")
-
-        st.markdown("### Features")
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.markdown("**Compliance**\n\nCatch violations before publishing schedules")
-        with col2:
-            st.markdown("**Hours Tracking**\n\nReal-time fatigue scoring & OT countdown")
-        with col3:
-            st.markdown("**Coverage Finder**\n\nFairness-ranked replacement suggestions")
-        with col4:
-            st.markdown("**Shift Intelligence**\n\nDay/night, holidays, premium pay")
-        return
+        # Auto-load demo on first visit for instant wow moment
+        demo_data = generate_demo_for_industry(selected_industry)
+        schedule = demo_data["schedule"]
+        st.session_state["schedule"] = schedule
+        st.session_state["source"] = f"demo ({industry_info['name']})"
+        st.session_state["demo_employees"] = demo_data["employees"]
 
     # Reference date for calculations
     ref_date = datetime.strptime(schedule["week_end"], "%Y-%m-%d")
@@ -1124,17 +1149,34 @@ def main():
         "Worker Portal",
         "Manager Queue",
     ])
+    # Note: Streamlit tab names must be simple strings with proper spacing
 
     with tab1:
         st.markdown("### AI Scheduling Assistant")
-        st.markdown("*Ask anything about scheduling, coverage, compliance, hours, or leave.*")
 
-        # Suggested queries
+        # Proactive opening: show violation summary as the hook
+        violations = check_compliance(schedule) if schedule else []
+        if violations and "chat_opened" not in st.session_state:
+            penalty_low, penalty_high = estimate_penalty_exposure(violations)
+            critical = len([v for v in violations if v["severity"] == "CRITICAL"])
+            high = len([v for v in violations if v["severity"] == "HIGH"])
+
+            st.markdown(
+                f'<div style="background:#1a1a2e;padding:20px;border-radius:10px;border-left:4px solid #dc3545;">'
+                f'<h3 style="color:#dc3545;margin:0;">I found {len(violations)} compliance violations this week</h3>'
+                f'<p style="color:#ccc;font-size:1.1em;">Estimated exposure: <strong style="color:#ff6b6b;">${penalty_low:,} - ${penalty_high:,}</strong></p>'
+                f'<p style="color:#aaa;">{critical} critical, {high} high severity. Want me to walk you through fixing them?</p>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            st.session_state["chat_opened"] = True
+            st.markdown("")
+
         st.markdown("**Try asking:**")
         suggestions = [
+            "Walk me through the violations",
             "Who can cover tomorrow's shift?",
             "How many hours does James have left?",
-            "Are there any compliance violations?",
             "Show me the fairness report",
             "Generate next month's schedule",
             "What's my PTO balance?",
