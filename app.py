@@ -177,9 +177,20 @@ def render_compliance_tab(schedule, jurisdiction, include_cba, include_company):
                 st.button("Accept Risk", key=f"accept_{i}")
 
 
+def _get_active_employees():
+    """Get the currently active employee list (industry-specific)."""
+    return st.session_state.get("demo_employees", EMPLOYEES)
+
+
+def _get_active_history():
+    """Get employee history (only available for warehouse demo)."""
+    active = st.session_state.get("demo_employees", EMPLOYEES)
+    return EMPLOYEE_HISTORY if active is EMPLOYEES else {}
+
+
 def render_hours_dashboard(schedule, reference_date):
     """Render the hours tracking dashboard."""
-    dashboards = get_all_employee_dashboards(schedule["shifts"], EMPLOYEES, reference_date)
+    dashboards = get_all_employee_dashboards(schedule["shifts"], _get_active_employees(), reference_date)
 
     st.markdown("### Real-Time Hours & Fatigue")
 
@@ -223,7 +234,7 @@ def render_hours_dashboard(schedule, reference_date):
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        emp_names = [e["name"] for e in EMPLOYEES]
+        emp_names = [e["name"] for e in _get_active_employees()]
         selected_emp = st.selectbox("Employee", emp_names, index=1)
     with col2:
         proposed_date = st.date_input("Date", value=reference_date + timedelta(days=2))
@@ -232,14 +243,14 @@ def render_hours_dashboard(schedule, reference_date):
     with col4:
         proposed_end = st.selectbox("End", ["14:30", "22:30", "06:30"], index=0)
 
-    emp_id = next(e["id"] for e in EMPLOYEES if e["name"] == selected_emp)
+    emp_id = next(e["id"] for e in _get_active_employees() if e["name"] == selected_emp)
     proposed_shift = {
         "employee_id": emp_id,
         "name": selected_emp,
         "date": proposed_date.strftime("%Y-%m-%d"),
         "start": proposed_start,
         "end": proposed_end,
-        "role": next(e["role"] for e in EMPLOYEES if e["name"] == selected_emp),
+        "role": next(e["role"] for e in _get_active_employees() if e["name"] == selected_emp),
         "shift_type": "Proposed",
     }
 
@@ -288,7 +299,7 @@ def render_coverage_tab(schedule, reference_date):
 
     absent_emp = st.selectbox(
         "Who called out?",
-        ["(none)"] + [e["name"] for e in EMPLOYEES],
+        ["(none)"] + [e["name"] for e in _get_active_employees()],
         index=0, key="absent_emp"
     )
 
@@ -302,11 +313,11 @@ def render_coverage_tab(schedule, reference_date):
     }
     if absent_emp != "(none)":
         gap_shift["absent_employee_id"] = next(
-            (e["id"] for e in EMPLOYEES if e["name"] == absent_emp), None
+            (e["id"] for e in _get_active_employees() if e["name"] == absent_emp), None
         )
 
     candidates = find_coverage(
-        schedule["shifts"], EMPLOYEES, gap_shift, EMPLOYEE_HISTORY, reference_date
+        schedule["shifts"], _get_active_employees(), gap_shift, _get_active_history(), reference_date
     )
 
     if candidates:
@@ -339,7 +350,7 @@ def render_coverage_tab(schedule, reference_date):
     st.markdown("### Team Fairness Report")
 
     report = calculate_team_fairness_report(
-        schedule["shifts"], EMPLOYEES, EMPLOYEE_HISTORY, reference_date
+        schedule["shifts"], _get_active_employees(), _get_active_history(), reference_date
     )
 
     rows = []
@@ -385,7 +396,7 @@ def render_shift_intelligence(schedule, reference_date):
 
     dist_rows = []
     for emp_id, dist in analysis["employee_distribution"].items():
-        emp_name = next((e["name"] for e in EMPLOYEES if e["id"] == emp_id), emp_id)
+        emp_name = next((e["name"] for e in _get_active_employees() if e["id"] == emp_id), emp_id)
         dist_rows.append({
             "Employee": emp_name,
             "Day": dist["day"],
@@ -428,7 +439,7 @@ def render_shift_intelligence(schedule, reference_date):
     st.markdown("### Night Shift Compliance")
 
     night_violations = []
-    for emp in EMPLOYEES:
+    for emp in _get_active_employees():
         vs = check_night_shift_compliance(schedule["shifts"], emp["id"])
         night_violations.extend(vs)
 
@@ -467,7 +478,7 @@ def render_shift_intelligence(schedule, reference_date):
             shifts_needed = st.number_input("Shifts needed", 1, 10, 3, key="shifts_needed")
 
             plan = generate_holiday_coverage_plan(
-                EMPLOYEES, h_date, shifts_needed,
+                _get_active_employees(), h_date, shifts_needed,
                 employee_history=EMPLOYEE_HISTORY
             )
 
@@ -1108,6 +1119,10 @@ def main():
     # Reference date for calculations
     ref_date = datetime.strptime(schedule["week_end"], "%Y-%m-%d")
 
+    # Use industry-specific employees (not hardcoded warehouse data)
+    active_employees = st.session_state.get("demo_employees", EMPLOYEES)
+    active_history = EMPLOYEE_HISTORY if active_employees is EMPLOYEES else {}
+
     # Schedule info bar
     source_label = st.session_state.get("source", "unknown")
     st.markdown(
@@ -1128,16 +1143,17 @@ def main():
     portal = st.session_state["portal"]
     queue = st.session_state["queue"]
 
-    # Initialize AI chat
-    if "ai_chat" not in st.session_state:
+    # Initialize AI chat with industry-specific employees
+    if "ai_chat" not in st.session_state or st.session_state.get("ai_chat_industry") != selected_industry:
         st.session_state["ai_chat"] = AIChat(
-            employees=EMPLOYEES,
+            employees=active_employees,
             schedule_data=schedule,
             leave_tracker=st.session_state.get("leave_tracker"),
-            employee_history=EMPLOYEE_HISTORY,
+            employee_history=active_history,
             user_role="MANAGER",
-            user_employee_id="E001",
+            user_employee_id=active_employees[0]["id"] if active_employees else "E001",
         )
+        st.session_state["ai_chat_industry"] = selected_industry
 
     # Main tabs
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
