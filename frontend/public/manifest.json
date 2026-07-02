@@ -1,0 +1,22 @@
+{
+  "name": "ShiftGuard",
+  "short_name": "ShiftGuard",
+  "description": "Schedule with confidence. Never pay another compliance fine.",
+  "start_url": "/worker",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#0ea5e9",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
