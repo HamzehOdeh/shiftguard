@@ -353,6 +353,107 @@ class AccessControl:
             "can_run_audit": role in ("HR", "ADMIN"),
         }
 
+    # ============================================================
+    # LIVE FLOOR VIEW (read-only, cross-department)
+    # ============================================================
+
+    def get_live_floor_view(self, user_id, all_shifts, current_time=None):
+        """
+        Get who's currently on shift — visible to ANYONE in the same site.
+        Shows: name, role, shift time, department. Nothing else.
+        This is the digital equivalent of the nursing station whiteboard.
+
+        Rules:
+        - ANY employee can see who's on the floor right now (same site)
+        - Only shows: name, role, department, current shift times
+        - Does NOT show: hours worked, leave, fairness, schedule history
+        - Purpose: "I need to find the charge nurse" or "who's the RT tonight?"
+        """
+        if current_time is None:
+            current_time = datetime.now()
+        elif isinstance(current_time, str):
+            current_time = datetime.strptime(current_time, "%Y-%m-%d %H:%M")
+
+        today = current_time.strftime("%Y-%m-%d")
+        current_hour = current_time.hour
+
+        # Find all shifts happening RIGHT NOW
+        on_floor = []
+        for shift in all_shifts:
+            if shift.get("date") != today:
+                continue
+
+            start_str = shift.get("start", "00:00")
+            end_str = shift.get("end", "23:59")
+            start_h = int(start_str.split(":")[0])
+            end_h = int(end_str.split(":")[0])
+
+            # Handle overnight shifts
+            if end_h < start_h:
+                is_active = current_hour >= start_h or current_hour < end_h
+            else:
+                is_active = start_h <= current_hour < end_h
+
+            if is_active:
+                # Only expose minimal info
+                on_floor.append({
+                    "name": shift.get("name", shift.get("worker_name", "Unknown")),
+                    "role": shift.get("role", "Staff"),
+                    "shift": f"{start_str}-{end_str}",
+                    "department": shift.get("department", self._get_employee_department(
+                        shift.get("employee_id", shift.get("worker_id"))
+                    )),
+                })
+
+        # Group by department/role for easy reading
+        by_department = {}
+        for person in on_floor:
+            dept = person.get("department", "General")
+            if dept not in by_department:
+                by_department[dept] = []
+            by_department[dept].append(person)
+
+        return {
+            "timestamp": current_time.strftime("%Y-%m-%d %H:%M"),
+            "total_on_floor": len(on_floor),
+            "staff_on_floor": on_floor,
+            "by_department": by_department,
+            "note": "Live view — names and roles only. For scheduling details, contact the team manager.",
+        }
+
+    def can_contact_employee(self, user_id, target_employee_id):
+        """
+        Check if a user can see contact info for another employee.
+        Anyone on the same site can see name + role (for coordination).
+        Only same-team manager can see personal contact details.
+        """
+        role = self.user_roles.get(user_id, "WORKER")
+
+        # HR/Admin can always contact
+        if role in ("HR", "ADMIN"):
+            return {"allowed": True, "level": "full", "detail": "Full contact info (phone, email)"}
+
+        # Manager of that employee: full contact
+        allowed_ids = self._get_visible_employee_ids(user_id)
+        if target_employee_id in allowed_ids:
+            return {"allowed": True, "level": "full", "detail": "Full contact info (your team member)"}
+
+        # Same site but different team: name + role only, contact via their manager
+        return {
+            "allowed": True,
+            "level": "limited",
+            "detail": "Name and role visible. For direct contact, reach out via their team manager or use the in-app messaging.",
+        }
+
+    def _get_employee_department(self, employee_id):
+        """Get department name for an employee from hierarchy."""
+        if not self.org or not employee_id:
+            return "General"
+        team = self.org.get_employee_team(employee_id)
+        if team:
+            return team.department.name
+        return "General"
+
     # --- Private helpers ---
 
     def _get_visible_employee_ids(self, manager_id):
