@@ -261,16 +261,28 @@ class LeaveBalanceTracker:
         # FMLA eligibility
         fmla_eligible = tenure_years >= 1 and hours_worked_ytd >= 1250
 
+        # PTO breakdown: flex vs standard
+        flex_pct = 0.25  # 25% of PTO is flex (can be used in smaller increments)
+        standard_pct = 0.75
+        pto_available = round(pto_annual * 0.5, 1)  # mid-year estimate
+        flex_available = round(pto_available * flex_pct, 1)
+        standard_available = round(pto_available * standard_pct, 1)
+
         self.balances[employee_id] = {
             "employee_id": employee_id,
             "hire_date": hire_date.strftime("%Y-%m-%d"),
             "tenure_years": round(tenure_years, 1),
             "state": self.state,
             "pto": {
-                "available": round(pto_annual * 0.5, 1),  # mid-year estimate
+                "available": pto_available,
+                "flex_available": flex_available,
+                "standard_available": standard_available,
                 "used": 0,
+                "flex_used": 0,
+                "standard_used": 0,
                 "accrual_rate_per_year": pto_annual,
                 "pending": 0,
+                "carryover_cap": round(pto_annual * 1.5, 1),  # typical cap = 1.5x annual
             },
             "sick": {
                 "available": round(sick_accrued, 1),
@@ -302,7 +314,7 @@ class LeaveBalanceTracker:
         return self.balances.get(employee_id, None)
 
     def get_balance_summary(self, employee_id):
-        """Get a worker-friendly balance summary."""
+        """Get a worker-friendly balance summary with PTO breakdown and at-risk hours."""
         bal = self.balances.get(employee_id)
         if not bal:
             return None
@@ -313,9 +325,26 @@ class LeaveBalanceTracker:
         if bal["pto"]["available"] <= 8:
             warnings.append(f"PTO LOW: Only {bal['pto']['available']}h remaining")
 
+        # Calculate at-risk hours (won't carry over at year-end)
+        at_risk = self._calculate_at_risk_hours(employee_id)
+        if at_risk["pto_at_risk"] > 0:
+            warnings.append(
+                f"AT RISK: {at_risk['pto_at_risk']}h PTO will NOT carry over after "
+                f"{at_risk['year_end']} (state: {bal['state']}). Use by then or lose it."
+            )
+        if at_risk["sick_at_risk"] > 0:
+            warnings.append(
+                f"SICK AT RISK: {at_risk['sick_at_risk']}h sick leave exceeds carryover cap. "
+                f"Use {at_risk['sick_at_risk']}h before year-end."
+            )
+
         return {
             "pto_hours": bal["pto"]["available"],
             "pto_days": round(bal["pto"]["available"] / 8, 1),
+            "pto_flex_hours": bal["pto"].get("flex_available", 0),
+            "pto_standard_hours": bal["pto"].get("standard_available", 0),
+            "pto_flex_days": round(bal["pto"].get("flex_available", 0) / 8, 1),
+            "pto_standard_days": round(bal["pto"].get("standard_available", 0) / 8, 1),
             "sick_hours": bal["sick"]["available"],
             "sick_days": round(bal["sick"]["available"] / 8, 1),
             "upt_hours": bal["upt"]["available"],
@@ -324,8 +353,74 @@ class LeaveBalanceTracker:
             "fmla_weeks_remaining": round(
                 (bal["fmla"]["available_hours"] - bal["fmla"]["used_hours"]) / 40, 1
             ),
+            "at_risk": at_risk,
             "warnings": warnings,
+            "days_until_year_end": at_risk["days_until_year_end"],
         }
+
+    def _calculate_at_risk_hours(self, employee_id):
+        """
+        Calculate hours at risk of being lost at year-end based on state law.
+        - California/Illinois/Colorado: NO use-it-or-lose-it (PTO never expires)
+        - Michigan/Oregon/New York: use-it-or-lose-it allowed with written policy
+        - Sick leave: may have carryover caps
+        """
+        bal = self.balances.get(employee_id)
+        if not bal:
+            return {"pto_at_risk": 0, "sick_at_risk": 0}
+
+        state = bal["state"]
+        year_end = f"{datetime.now().year}-12-31"
+        days_left = (datetime.strptime(year_end, "%Y-%m-%d") - datetime.now()).days
+
+        # PTO at-risk depends on state
+        # States where PTO CANNOT be forfeited (no at-risk)
+        no_forfeit_states = {"California", "Illinois", "Colorado"}
+
+        pto_at_risk = 0
+        if state not in no_forfeit_states:
+            # Use-it-or-lose-it states: anything above carryover cap is at risk
+            carryover_cap = bal["pto"].get("carryover_cap", bal["pto"]["accrual_rate_per_year"])
+            if bal["pto"]["available"] > carryover_cap:
+                pto_at_risk = round(bal["pto"]["available"] - carryover_cap, 1)
+
+        # Sick leave at-risk (carryover cap)
+        sick_at_risk = 0
+        state_rules = ACCRUAL_RATES.get(state, {})
+        sick_rules = state_rules.get("sick", {})
+        sick_carryover_cap = sick_rules.get("carryover_cap")
+
+        if sick_carryover_cap and bal["sick"]["available"] > sick_carryover_cap:
+            sick_at_risk = round(bal["sick"]["available"] - sick_carryover_cap, 1)
+
+        return {
+            "pto_at_risk": pto_at_risk,
+            "sick_at_risk": sick_at_risk,
+            "year_end": year_end,
+            "days_until_year_end": max(0, days_left),
+            "state": state,
+            "state_rule": "No forfeiture" if state in no_forfeit_states else "Use-it-or-lose-it (with policy)",
+            "pto_carryover_cap": bal["pto"].get("carryover_cap", "Unlimited"),
+            "sick_carryover_cap": sick_carryover_cap or "Unlimited",
+            "recommendation": self._at_risk_recommendation(pto_at_risk, sick_at_risk, days_left),
+        }
+
+    def _at_risk_recommendation(self, pto_at_risk, sick_at_risk, days_left):
+        """Generate recommendation for at-risk hours."""
+        if pto_at_risk == 0 and sick_at_risk == 0:
+            return "No hours at risk. Your state protects accrued time."
+
+        parts = []
+        if pto_at_risk > 0:
+            days_needed = max(1, int(pto_at_risk / 8))
+            parts.append(f"Schedule {days_needed} PTO day(s) before year-end to avoid losing {pto_at_risk}h")
+        if sick_at_risk > 0:
+            parts.append(f"{sick_at_risk}h sick exceeds carryover cap")
+
+        if days_left < 60 and pto_at_risk > 0:
+            parts.append("URGENT: Less than 60 days remaining")
+
+        return ". ".join(parts)
 
     def record_leave(self, employee_id, leave_type, start_date, end_date,
                      hours=None, reason="", documentation=None):

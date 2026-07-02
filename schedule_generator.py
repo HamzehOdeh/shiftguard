@@ -96,11 +96,22 @@ class ScheduleGenerator:
         current_date = start_date
         while current_date <= end_date:
             date_str = current_date.strftime("%Y-%m-%d")
+            prev_date_str = (current_date - timedelta(days=1)).strftime("%Y-%m-%d")
             is_weekend = current_date.weekday() in WEEKEND_DAYS
             is_holiday = date_str in HOLIDAYS_2026
 
+            # Reset consecutive counters for workers who had yesterday off
+            for wid, c in counters.items():
+                if c["last_shift_date"] != prev_date_str and c["last_shift_date"] != date_str:
+                    c["consecutive_days"] = 0
+                    c["consecutive_nights"] = 0
+
             for shift_def in self.pattern["shifts"]:
                 candidates = self._rank_candidates(date_str, shift_def, counters, is_weekend, is_holiday)
+
+                # Fallback: if no candidates pass constraints, relax and pick least-worked
+                if not candidates:
+                    candidates = self._rank_candidates_relaxed(date_str, shift_def, counters)
 
                 assigned = 0
                 for candidate in candidates:
@@ -238,6 +249,19 @@ class ScheduleGenerator:
         ws = week_start.strftime("%Y-%m-%d")
         we = week_end.strftime("%Y-%m-%d")
         return [s for s in self.schedule if ws <= s["date"] <= we]
+
+    def _rank_candidates_relaxed(self, date_str, shift_def, counters):
+        """Fallback when no candidates pass strict constraints — pick least-worked."""
+        candidates = []
+        for w in self.workers:
+            wid = w["id"]
+            if self._is_blocked(wid, date_str):
+                continue
+            c = counters[wid]
+            score = c["total_shifts"] * 10
+            candidates.append({"id": wid, "name": w["name"], "priority": score})
+        candidates.sort(key=lambda x: x["priority"])
+        return candidates
 
     def _rank_candidates(self, date_str, shift_def, counters, is_weekend, is_holiday):
         candidates = []
