@@ -1369,7 +1369,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
         with admin_tab1:
             st.markdown("#### Active Violations")
-            for v in violations[:5]:
+            for i, v in enumerate(violations[:5]):
                 color = "#dc3545" if v["severity"] == "CRITICAL" else "#fd7e14" if v["severity"] == "HIGH" else "#ffc107"
                 st.markdown(
                     f'<div style="background:#1a1a2e;padding:10px;border-radius:8px;'
@@ -1378,6 +1378,25 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     f'<span style="color:#28a745;">Fix: {v["recommendation"]}</span></div>',
                     unsafe_allow_html=True,
                 )
+                if st.button(f"🤖 Ask Otto why", key=f"ask_otto_v_{i}"):
+                    if "hc_ai_chat" not in st.session_state:
+                        st.session_state["hc_ai_chat"] = AIChat(
+                            employees=employees, schedule_data=schedule,
+                            leave_tracker=st.session_state.get("leave_tracker"),
+                            user_role="ADMIN",
+                            user_employee_id=employees[0]["id"] if employees else "R001",
+                        )
+                    question = (f"Explain this violation in plain English and tell me exactly how to fix it: "
+                               f"{v['severity']} - {v['description']} affecting {v['affected_employees']}. "
+                               f"We are in {st.session_state.get('hospital_state_global', 'Illinois')}.")
+                    with st.spinner("Otto is analyzing..."):
+                        response = st.session_state["hc_ai_chat"].chat(question)
+                    st.markdown(
+                        f'<div style="background:#0c4a6e;padding:12px;border-radius:8px;'
+                        f'margin:6px 0;border-left:4px solid #0ea5e9;">'
+                        f'🤖 <strong>Otto:</strong> {response["message"]}</div>',
+                        unsafe_allow_html=True,
+                    )
 
         with admin_tab2:
             st.markdown("#### FMLA & Protected Leave Management")
