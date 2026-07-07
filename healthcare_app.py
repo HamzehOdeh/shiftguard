@@ -1663,7 +1663,8 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
     # Floating button (visual only — actual chat is in sidebar for Streamlit compatibility)
     st.markdown(
-        '<div class="floating-ai-btn" title="Ask Otto — your scheduling assistant">🤖</div>',
+        '<div class="floating-ai-btn" title="Ask Otto — tap sidebar to chat">🤖</div>'
+        '<style>@media (max-width: 768px) { .floating-ai-btn { display: none !important; } }</style>',
         unsafe_allow_html=True,
     )
 
