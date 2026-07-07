@@ -2221,74 +2221,14 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         unsafe_allow_html=True,
     )
 
-    # ================================================================
-    # FLOATING AI CHAT WIDGET (bottom-right, persistent across all tabs)
-    # ================================================================
-    if "ai_widget_open" not in st.session_state:
-        st.session_state["ai_widget_open"] = False
-
-    # Floating button + chat panel via CSS
-    st.markdown("""
-    <style>
-    .floating-ai-btn {
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        width: 56px;
-        height: 56px;
-        background: #0ea5e9;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 4px 16px rgba(14,165,233,0.4);
-        z-index: 9999;
-        font-size: 24px;
-        transition: transform 0.2s;
-    }
-    .floating-ai-btn:hover { transform: scale(1.1); }
-    .floating-ai-panel {
-        position: fixed;
-        bottom: 90px;
-        right: 24px;
-        width: 360px;
-        max-height: 480px;
-        background: #111827;
-        border: 1px solid #374151;
-        border-radius: 16px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-        z-index: 9998;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
-    .floating-ai-header {
-        padding: 12px 16px;
-        background: #0ea5e9;
-        color: white;
-        font-weight: bold;
-        font-size: 14px;
-    }
-    .floating-ai-body {
-        padding: 12px 16px;
-        flex: 1;
-        overflow-y: auto;
-        color: #d1d5db;
-        font-size: 13px;
-        line-height: 1.5;
-    }
-    .floating-ai-body p { margin: 8px 0; }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # Chat panel content
+    # Sidebar AI chat (accessible from any tab via sidebar)
     with st.sidebar:
         st.divider()
         st.markdown("#### 🤖 Ask Otto")
+        st.caption("Quick question from any page:")
         ai_quick = st.text_input("Ask anything:", key="floating_ai_input",
                                   placeholder="e.g., Can Dr. Kim cover tonight?")
-        if ai_quick and st.button("Ask", key="floating_ai_send"):
+        if ai_quick and st.button("Ask", key="floating_ai_send", type="primary"):
             if "hc_ai_chat" not in st.session_state:
                 st.session_state["hc_ai_chat"] = AIChat(
                     employees=employees,
@@ -2303,13 +2243,6 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 f'🤖 <strong>Otto:</strong> {response["message"]}</div>',
                 unsafe_allow_html=True,
             )
-
-    # Floating button (visual only — actual chat is in sidebar for Streamlit compatibility)
-    st.markdown(
-        '<div class="floating-ai-btn" title="Ask Otto — tap sidebar to chat">🤖</div>'
-        '<style>@media (max-width: 768px) { .floating-ai-btn { display: none !important; } }</style>',
-        unsafe_allow_html=True,
-    )
 
 
 if __name__ == "__main__":
