@@ -1234,21 +1234,34 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         if "hc_chat_messages" not in st.session_state:
             st.session_state["hc_chat_messages"] = []
 
+        # Display chat messages
         for msg in st.session_state["hc_chat_messages"]:
-            if msg["role"] == "user":
-                st.markdown(f"**You:** {msg['content']}")
-            else:
-                st.markdown(f"**AI:** {msg['content']}")
+            with st.chat_message("user" if msg["role"] == "user" else "assistant",
+                                 avatar="👤" if msg["role"] == "user" else "🤖"):
+                st.markdown(msg["content"])
 
-        # Input
-        default_input = st.session_state.pop("hc_chat_input", "")
-        user_input = st.text_input("Ask:", value=default_input, key="hc_chat_box",
-                                   placeholder="e.g., Is it safe to assign Dr. Chen to cover Friday night?")
+        # Handle suggestion button clicks
+        if "hc_chat_input" in st.session_state:
+            suggestion_text = st.session_state.pop("hc_chat_input")
+            st.session_state["hc_chat_messages"].append({"role": "user", "content": suggestion_text})
+            if "hc_ai_chat" not in st.session_state:
+                st.session_state["hc_ai_chat"] = AIChat(
+                    employees=employees, schedule_data=schedule,
+                    leave_tracker=st.session_state.get("leave_tracker"),
+                    user_role="MANAGER",
+                    user_employee_id=employees[0]["id"] if employees else "R001",
+                )
+            response = st.session_state["hc_ai_chat"].chat(suggestion_text)
+            st.session_state["hc_chat_messages"].append({"role": "assistant", "content": response["message"]})
+            st.rerun()
 
-        if user_input and st.button("Send", type="primary", key="hc_send"):
+        # Chat input (auto-submits on Enter — works on mobile)
+        user_input = st.chat_input("Ask Otto anything...", key="hc_chat_input_box")
+
+        if user_input:
             st.session_state["hc_chat_messages"].append({"role": "user", "content": user_input})
 
-            # Initialize AI chat with healthcare context
+            # Initialize AI chat
             if "hc_ai_chat" not in st.session_state:
                 st.session_state["hc_ai_chat"] = AIChat(
                     employees=employees,
