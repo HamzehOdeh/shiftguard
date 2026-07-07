@@ -33,26 +33,48 @@ def main():
         layout="wide",
     )
 
-    # Center-align tables
+    # Global styling — professional look
     st.markdown("""<style>
         [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th { text-align: center !important; }
+        /* Clean up radio buttons */
+        div[data-testid="stRadio"] > label { font-weight: 600; }
+        /* Tab styling */
+        button[data-baseweb="tab"] { font-weight: 600; }
+        /* Remove Streamlit branding */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        /* Improve button styling */
+        .stButton button[kind="primary"] {
+            background: linear-gradient(135deg, #0ea5e9, #0369a1);
+            border: none;
+            font-weight: 600;
+        }
+        .stButton button[kind="primary"]:hover {
+            background: linear-gradient(135deg, #38bdf8, #0284c7);
+        }
     </style>""", unsafe_allow_html=True)
 
-    # Header
+    # Professional branded header
     import os as _os
-    logo_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "frontend", "public", "logo.png")
-    if _os.path.exists(logo_path):
-        st.image(logo_path, width=180)
-    else:
-        st.markdown("# 🏥 ShiftGuard")
-    st.markdown("### ShiftGuard for Healthcare")
-    st.markdown("*ACGME compliance. Nurse staffing ratios. Fair scheduling. Zero violations.*")
-
-    # Legal disclaimer
     st.markdown(
-        '<div style="background:#1a1a2e;padding:6px 12px;border-radius:6px;'
-        'border-left:3px solid #6c757d;font-size:0.75em;color:#888;">'
-        '⚖️ Compliance analysis tool — not legal advice. Verify with your GME office and employment counsel.</div>',
+        '<div style="padding:20px 0 10px 0;">'
+        '<div style="display:flex;align-items:center;gap:14px;">'
+        '<div style="width:48px;height:48px;background:linear-gradient(135deg,#0ea5e9,#0369a1);'
+        'border-radius:12px;display:flex;align-items:center;justify-content:center;'
+        'font-size:22px;font-weight:900;color:white;letter-spacing:-1px;'
+        'box-shadow:0 4px 12px rgba(14,165,233,0.3);">SG</div>'
+        '<div>'
+        '<h1 style="margin:0;font-size:1.6em;font-weight:800;color:white;letter-spacing:-0.5px;">'
+        'ShiftGuard<span style="color:#0ea5e9;"> for Healthcare</span></h1>'
+        '<p style="margin:0;color:#94a3b8;font-size:0.85em;">ACGME compliance · Nurse staffing ratios · Fair scheduling · Zero violations</p>'
+        '</div></div></div>',
+        unsafe_allow_html=True,
+    )
+
+    # Subtle legal note (not a big ugly banner)
+    st.markdown(
+        '<p style="font-size:0.7em;color:#475569;margin:2px 0 8px 0;">⚖️ Compliance analysis — not legal advice. Verify with counsel.</p>',
         unsafe_allow_html=True,
     )
 
@@ -78,14 +100,7 @@ def main():
         st.caption(f"Penalties & leave rules set for {hospital_state}.")
 
     # Demo mode banner
-    st.markdown(
-        '<div style="background:#2d2d1a;padding:6px 12px;border-radius:6px;'
-        'border-left:3px solid #ffc107;font-size:0.78em;color:#ccc;margin-top:4px;">'
-        '📊 <strong>DEMO MODE</strong> — Using sample data. '
-        'To use your real schedule: select your role below → go to the Setup/Manage Staff tab → Upload File (CSV/Excel).</div>',
-        unsafe_allow_html=True,
-    )
-    st.divider()
+    st.markdown("")
 
     # Simple JSON persistence helper
     import json as _json
@@ -2199,7 +2214,12 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
     # Footer
     st.divider()
-    st.caption("ShiftGuard for Healthcare v2.0 | ACGME + State Labor Law + CBA Compliance")
+    st.markdown(
+        '<div style="text-align:center;padding:20px 0 10px 0;border-top:1px solid #1e293b;margin-top:30px;">'
+        '<span style="color:#475569;font-size:0.75em;">ShiftGuard for Healthcare · ACGME + State Labor Law + CBA Compliance</span>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
     # ================================================================
     # FLOATING AI CHAT WIDGET (bottom-right, persistent across all tabs)
