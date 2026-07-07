@@ -61,7 +61,7 @@ def main():
         '<div style="background:#2d2d1a;padding:6px 12px;border-radius:6px;'
         'border-left:3px solid #ffc107;font-size:0.78em;color:#ccc;margin-top:4px;">'
         '📊 <strong>DEMO MODE</strong> — Using sample data. '
-        'Connect your Epic/UKG or upload your roster to see your real schedule.</div>',
+        'To use your real schedule: select your role below → go to the Setup/Manage Staff tab → Upload File (CSV/Excel).</div>',
         unsafe_allow_html=True,
     )
     st.divider()
@@ -1597,7 +1597,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
         import os
         if not os.getenv("ANTHROPIC_API_KEY"):
-            st.caption("💡 Running in rule-based mode. Set ANTHROPIC_API_KEY for full AI.")
+            st.caption("💡 Otto is using quick-response mode. Full AI conversations available with API configuration.")
 
         # Suggestion chips
         suggestions = [
@@ -2074,7 +2074,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
     # Footer
     st.divider()
-    st.caption("ShiftGuard for Healthcare v2.0 | ACGME + State Labor Law + CBA Compliance | shiftguard.ai")
+    st.caption("ShiftGuard for Healthcare v2.0 | ACGME + State Labor Law + CBA Compliance")
 
     # ================================================================
     # FLOATING AI CHAT WIDGET (bottom-right, persistent across all tabs)
