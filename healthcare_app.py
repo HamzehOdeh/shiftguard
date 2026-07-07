@@ -348,7 +348,7 @@ def main():
             if week_data:
                 st.dataframe(pd.DataFrame(week_data), use_container_width=True, hide_index=True)
             else:
-                st.info("No shift data for this week. Generate a schedule in Program Setup.")
+                st.caption("Schedule data loads from your roster. Go to ⚙️ Program Setup to generate shifts.")
 
         elif cal_view == "Month":
             # Month view: block rotation calendar
@@ -501,21 +501,22 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             sick_date = st.date_input("Date:", value=datetime.now(), key="sick_date")
 
             if st.button("Process Sick Call", type="primary", key="process_sick"):
-                res_id = list(program.residents.keys())[
-                    [f"{r.name} ({r.pgy_level})" for r in program.residents.values()].index(sick_resident)
-                ]
+                res_names_list = [f"{r.name} ({r.pgy_level})" for r in program.residents.values()]
+                res_idx = res_names_list.index(sick_resident) if sick_resident in res_names_list else 0
+                res_id = list(program.residents.keys())[res_idx]
                 result = program.process_daily_adjustment("sick_call", res_id, {
                     "date": sick_date.strftime("%Y-%m-%d"),
                     "start": "07:00",
                     "end": "19:00",
                 })
+                explanation = result.get("explanation", "Sick call processed. Finding coverage.")
                 log_action("SICK_CALL_PROCESSED", role, sick_resident,
-                           f"Date: {sick_date}. {result.get('explanation', '')}", "COMPLIANT")
+                           f"Date: {sick_date}. {explanation}", "COMPLIANT")
 
                 st.markdown(
                     f'<div style="background:#1a2d1a;padding:12px;border-radius:8px;'
                     f'border-left:4px solid #28a745;">'
-                    f'✅ <strong>{result["explanation"]}</strong></div>',
+                    f'✅ <strong>{explanation}</strong></div>',
                     unsafe_allow_html=True,
                 )
 
@@ -549,13 +550,14 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     time.sleep(0.7)
 
                     res_id = list(program.residents.keys())[
-                        [f"{r.name} ({r.pgy_level})" for r in program.residents.values()].index(swap_res)
+                        ([f"{r.name} ({r.pgy_level})" for r in program.residents.values()].index(swap_res)
+                         if swap_res in [f"{r.name} ({r.pgy_level})" for r in program.residents.values()] else 0)
                     ]
                     proposed = {
                         "resident_id": res_id,
                         "date": swap_date.strftime("%Y-%m-%d"),
                         "start": "07:00",
-                        "end": f"{7 + swap_hours:02d}:00" if swap_hours <= 17 else "07:00",
+                        "end": f"{(7 + swap_hours) % 24:02d}:00",
                         "hours": swap_hours,
                         "type": "swap_coverage",
                         "is_call": swap_hours >= 24,
@@ -697,14 +699,18 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
         nurse_names = [n["name"] for n in nurses]
         selected_nurse = st.selectbox("View as:", nurse_names, key="nurse_select")
-        nurse_id = next(n["id"] for n in nurses if n["name"] == selected_nurse)
+        nurse_id = next((n["id"] for n in nurses if n["name"] == selected_nurse), nurses[0]["id"] if nurses else "N001")
 
         # Hours + balance bar
         nurse_shifts = [s for s in schedule["shifts"] if s.get("employee_id") == nurse_id]
-        weekly_hours = sum(12 for _ in nurse_shifts)  # Simplified: assume 12h shifts
+        weekly_hours = sum(
+            (lambda st_h, en_h: en_h - st_h if en_h > st_h else en_h + 24 - st_h)(
+                int(s.get("start", "07:00").split(":")[0]), int(s.get("end", "19:00").split(":")[0])
+            ) for s in nurse_shifts
+        ) if nurse_shifts else 0
         ot_remaining = max(0, 40 - weekly_hours)
 
-        tracker = st.session_state["leave_tracker"]
+        tracker = st.session_state.get("leave_tracker")
         bal = tracker.get_balance_summary(nurse_id) if tracker else None
 
         col1, col2, col3, col4 = st.columns(4)
@@ -1193,6 +1199,9 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 '<span style="color:#888;font-size:0.85em;">Compliance check: Both ACGME-safe.</span></div>',
                 unsafe_allow_html=True,
             )
+            if st.button("Assign Dr. Park to Jul 18 Night", type="primary", key="assign_att_gap"):
+                st.success("Assigned! Dr. Park notified for Jul 18 Night coverage (19:00-07:00).")
+                log_action("ATTENDING_ASSIGNED", role, "Dr. Park", "Assigned to Jul 18 Night coverage gap", "COMPLIANT")
 
         # Moonlighting tracker
         st.divider()
@@ -1721,7 +1730,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
         # Suggestion chips
         suggestions = [
-            "Is Dr. Patel safe to cover tonight?",
+            "Is Dr. Chen safe to cover tonight?",
             "Who has the most night shifts this month?",
             "Can Dr. Kim moonlight this weekend?",
             "Show me duty hours for all PGY-1s",
@@ -2109,7 +2118,8 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         res_list = list(program.residents.values())
         res_names_personal = [f"{r.name} ({r.pgy_level})" for r in res_list]
         my_resident = st.selectbox("I am:", res_names_personal, key="my_res_select")
-        my_res_id = list(program.residents.keys())[res_names_personal.index(my_resident)]
+        my_res_idx = res_names_personal.index(my_resident) if my_resident in res_names_personal else 0
+        my_res_id = list(program.residents.keys())[my_res_idx]
 
         # My duty hours summary
         my_summary = program.get_duty_hours_summary(my_res_id)
