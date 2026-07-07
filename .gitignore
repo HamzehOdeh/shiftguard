@@ -4,6 +4,7 @@ __pycache__/
 .streamlit/secrets.toml
 data/*.json
 data/sync.log
+docs/PRFAQ_*
 frontend/node_modules/
 frontend/.next/
 build.log
