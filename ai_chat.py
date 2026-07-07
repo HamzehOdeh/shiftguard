@@ -167,26 +167,61 @@ class AIChat:
             return self._handle_fairness_query()
 
         # --- Compliance ---
-        if any(kw in msg for kw in ["violation", "compliance", "legal", "breaking"]):
+        if any(kw in msg for kw in ["violation", "compliance", "legal", "breaking", "acgme", "rule"]):
             return self._handle_compliance_query()
 
-        # --- General help ---
+        # --- Duty hours / ACGME specific ---
+        if any(kw in msg for kw in ["duty hour", "80 hour", "safe to cover", "can .* cover",
+                                     "at risk", "who's over", "weekly hours", "how many hour"]):
+            return self._handle_hours_query(msg)
+
+        # --- Night/weekend/call questions ---
+        if any(kw in msg for kw in ["night shift", "who's on call", "jeopardy", "backup",
+                                     "who's working", "on call", "tonight", "tomorrow"]):
+            return self._handle_coverage_query(msg)
+
+        # --- Schedule / roster ---
+        if any(kw in msg for kw in ["schedule", "roster", "who's off", "who is off", "staffing"]):
+            return self._handle_schedule_generation(msg)
+
+        # --- Greeting / hi / hello ---
+        if any(kw in msg for kw in ["hi", "hello", "hey", "good morning", "good evening"]):
+            return {
+                "message": (
+                    "Hey! I'm Otto, your scheduling assistant. "
+                    "I can check duty hours, find coverage, verify swaps, or generate schedules. "
+                    "What do you need help with right now?"
+                )
+            }
+
+        # --- Thank you ---
+        if any(kw in msg for kw in ["thank", "thanks", "great", "perfect", "awesome"]):
+            return {"message": "You're welcome! Let me know if you need anything else."}
+
+        # --- Fallback: try to be helpful based on context ---
+        # Instead of repeating the template, give a contextual response
+        if self.employees:
+            emp_count = len(self.employees)
+            return {
+                "message": (
+                    f"I'm not sure I understood that. I have data for **{emp_count} staff members** "
+                    f"in the system right now.\n\n"
+                    f"Try asking me something specific like:\n"
+                    f"- \"Is Dr. Patel safe to cover tonight?\"\n"
+                    f"- \"Who has the fewest night shifts this month?\"\n"
+                    f"- \"What's the duty hour status for all residents?\"\n"
+                    f"- \"Can I swap Monday with Wednesday?\"\n\n"
+                    f"Or just tell me what you need and I'll figure it out!"
+                )
+            }
+
         return {
             "message": (
-                "I can help you with:\n\n"
-                "**Scheduling:**\n"
-                "- \"Generate next month's schedule for my team\"\n"
-                "- \"Who can cover tomorrow's day shift?\"\n"
-                "- \"What if I add Sarah to Saturday night?\"\n\n"
-                "**Hours & Leave:**\n"
-                "- \"How many hours does Marcus have left this week?\"\n"
-                "- \"What's my PTO balance?\"\n"
-                "- \"Request Christmas week off as priority 1\"\n\n"
-                "**Fairness & Compliance:**\n"
-                "- \"Show me the fairness report\"\n"
-                "- \"Are there any compliance violations?\"\n"
-                "- \"Who's worked the most nights this month?\"\n\n"
-                "What would you like to do?"
+                "I'm not sure I understood that. Try asking something like:\n"
+                "- \"Who can cover tomorrow?\"\n"
+                "- \"Is it safe to assign Dr. Kim to Friday night?\"\n"
+                "- \"Show me the duty hours dashboard\"\n\n"
+                "I work best with specific questions about scheduling, hours, or coverage."
             )
         }
 
