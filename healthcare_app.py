@@ -196,6 +196,7 @@ def main():
         "ai": "🤖 Otto",
         "residency": "🩺 Residency Program",
         "nursing": "👩‍⚕️ Nursing",
+        "my_schedule": "📅 My Schedule",
         "physicians": "👨‍⚕️ Physicians",
         "admin": "📋 Admin / HR",
         "setup": "⚙️ Program Setup",
@@ -206,7 +207,7 @@ def main():
         "Chief Resident": ["ai", "residency", "setup"],
         "Nurse Manager": ["ai", "nursing", "admin"],
         "Staff Nurse": ["ai", "nursing"],
-        "Resident": ["ai", "nursing"],
+        "Resident": ["ai", "my_schedule"],
         "Admin / HR": ["ai", "admin", "residency", "nursing", "setup"],
     }
 
@@ -225,6 +226,7 @@ def main():
     tab3 = tab_by_key.get("physicians")
     tab4 = tab_by_key.get("admin")
     tab6 = tab_by_key.get("setup")
+    tab_my_sched = tab_by_key.get("my_schedule")
 
     # ================================================================
     # TAB 1: RESIDENCY PROGRAM
@@ -1901,6 +1903,101 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         if st.button("Export (CSV)", key="export_sched", use_container_width=True):
                             csv = score_df.to_csv(index=False)
                             st.download_button("Download", csv, file_name="residency_schedule_2026-27.csv", mime="text/csv")
+
+    # ================================================================
+    # TAB: MY SCHEDULE (Resident's personal view)
+    # ================================================================
+    if tab_my_sched:
+     with tab_my_sched:
+        st.markdown("## My Duty Hours & Schedule")
+        st.markdown("*Your personal ACGME compliance dashboard.*")
+
+        # Pick which resident you are (in production: from login)
+        res_list = list(program.residents.values())
+        res_names_personal = [f"{r.name} ({r.pgy_level})" for r in res_list]
+        my_resident = st.selectbox("I am:", res_names_personal, key="my_res_select")
+        my_res_id = list(program.residents.keys())[res_names_personal.index(my_resident)]
+
+        # My duty hours summary
+        my_summary = program.get_duty_hours_summary(my_res_id)
+        if my_summary:
+            risk_colors = {"CRITICAL": "#dc3545", "HIGH": "#fd7e14", "MODERATE": "#ffc107", "SAFE": "#28a745"}
+            risk_color = risk_colors.get(my_summary["risk_level"], "#6c757d")
+
+            st.markdown(
+                f'<div style="background:#1a1a2e;padding:14px;border-radius:10px;'
+                f'border-left:4px solid {risk_color};margin-bottom:12px;">'
+                f'<strong style="color:{risk_color};font-size:1.2em;">{my_summary["risk_level"]}</strong> — '
+                f'{my_summary["explanation"]}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("This Week", f"{my_summary['this_week_hours']}h")
+            with col2:
+                st.metric("4-Wk Average", f"{my_summary['four_week_average']}h",
+                          delta=f"{80 - my_summary['four_week_average']:.0f}h to cap")
+            with col3:
+                st.metric("Remaining", f"{my_summary['remaining_this_week']}h")
+            with col4:
+                st.metric("Consecutive Days", my_summary["consecutive_days"])
+
+        # My upcoming shifts
+        st.divider()
+        st.markdown("#### My Upcoming Shifts")
+        my_res = program.residents.get(my_res_id)
+        if my_res and my_res.daily_shifts:
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            upcoming = sorted([s for s in my_res.daily_shifts if s["date"] >= today_str],
+                              key=lambda s: s["date"])[:10]
+            if upcoming:
+                shift_rows = []
+                for s in upcoming:
+                    try:
+                        d = datetime.strptime(s["date"], "%Y-%m-%d")
+                        day_label = d.strftime("%a %b %d")
+                    except (ValueError, TypeError):
+                        day_label = s["date"]
+                    shift_rows.append({
+                        "Date": day_label,
+                        "Time": f"{s['start']}-{s['end']}",
+                        "Type": s.get("type", "clinical").capitalize(),
+                        "Hours": s.get("hours", "—"),
+                        "Call": "Yes" if s.get("is_call") else "No",
+                    })
+                st.dataframe(pd.DataFrame(shift_rows), use_container_width=True, hide_index=True)
+            else:
+                st.info("No upcoming shifts in loaded data.")
+        else:
+            st.info("No shift data loaded. Ask your chief resident or check Program Setup.")
+
+        # Quick actions for resident
+        st.divider()
+        st.markdown("#### Quick Actions")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("Request Day Off", key="res_req_off", use_container_width=True):
+                st.info("Use the Otto tab to request: 'I need Friday off'")
+        with col2:
+            if st.button("Request Swap", key="res_req_swap", use_container_width=True):
+                st.info("Use Otto: 'Can I swap my Monday with Dr. Kim's Wednesday?'")
+        with col3:
+            if st.button("Report Sick", key="res_sick", use_container_width=True):
+                st.success("Sick call recorded. Jeopardy backup will be activated.")
+
+        # ACGME rules reminder
+        with st.expander("My ACGME Limits"):
+            pgy = my_res.pgy_level if my_res else "PGY-1"
+            st.markdown(f"""
+            **Your limits ({pgy}):**
+            - Weekly hours: **80h max** (averaged over 4 weeks)
+            - Continuous duty: **24h + 4h** transition max
+            - Rest between shifts: **8h minimum** (10h recommended)
+            - Days off: **1 per 7 days** (4 per 28 days)
+            - Night float: **6 consecutive max**
+            """)
 
     # Footer
     st.divider()
