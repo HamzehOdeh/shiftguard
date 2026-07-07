@@ -1209,16 +1209,101 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         st.markdown("## Admin & HR Dashboard")
         st.markdown("*Compliance overview, reporting, FMLA management, bias audit.*")
 
-        # Compliance overview
+        # State-specific penalty & leave rules
+        STATE_PENALTY_RULES = {
+            "California": {
+                "multiplier": 1.8,
+                "laws": ["Labor Code §226.7 (meal/rest)", "Predictive Scheduling (SF/LA)", "Paid Sick Leave (min 40h/yr)", "No PTO forfeiture"],
+                "critical_fine": 10000, "high_fine": 2500, "medium_fine": 500,
+                "pto_rule": "No use-it-or-lose-it. Accrued PTO cannot be forfeited.",
+                "sick_accrual": "1h per 30h worked, cap 80h",
+            },
+            "Illinois": {
+                "multiplier": 1.3,
+                "laws": ["Chicago Fair Workweek", "ODRISA", "Paid Leave for All Workers Act (40h/yr)"],
+                "critical_fine": 7500, "high_fine": 1500, "medium_fine": 300,
+                "pto_rule": "No forfeiture (IL law protects accrued vacation).",
+                "sick_accrual": "1h per 40h worked, cap 40h",
+            },
+            "New York": {
+                "multiplier": 1.5,
+                "laws": ["NYC Fair Workweek", "Wage Theft Prevention Act", "Paid Safe & Sick Leave (56h/yr)"],
+                "critical_fine": 8000, "high_fine": 2000, "medium_fine": 500,
+                "pto_rule": "NYC: 56h paid safe/sick leave required. Carryover required.",
+                "sick_accrual": "1h per 30h worked, 56h/yr for 100+ employees",
+            },
+            "Oregon": {
+                "multiplier": 1.4,
+                "laws": ["Predictive Scheduling", "Paid Sick Leave (40h/yr)", "Equal Pay Act"],
+                "critical_fine": 7000, "high_fine": 1800, "medium_fine": 400,
+                "pto_rule": "Carryover required up to 40h. Cannot require use-it-or-lose-it.",
+                "sick_accrual": "1h per 30h worked, cap 40h",
+            },
+            "Texas": {
+                "multiplier": 0.8,
+                "laws": ["TX Payday Law", "Workers Comp", "No state sick leave mandate"],
+                "critical_fine": 4000, "high_fine": 800, "medium_fine": 200,
+                "pto_rule": "No state law. Employer policy governs. Use-it-or-lose-it allowed.",
+                "sick_accrual": "No state requirement. Federal FMLA only.",
+            },
+            "Florida": {
+                "multiplier": 0.7,
+                "laws": ["FL Min Wage Amendment", "Workers Comp", "No state sick leave mandate"],
+                "critical_fine": 3500, "high_fine": 700, "medium_fine": 150,
+                "pto_rule": "No state law. Employer policy governs.",
+                "sick_accrual": "No state requirement.",
+            },
+            "Washington": {
+                "multiplier": 1.3,
+                "laws": ["Secure Scheduling (Seattle)", "Paid Sick Leave", "Rest Breaks"],
+                "critical_fine": 7000, "high_fine": 1500, "medium_fine": 350,
+                "pto_rule": "Paid sick leave carries over. No cap on carryover.",
+                "sick_accrual": "1h per 40h worked, no cap on accrual",
+            },
+            "Massachusetts": {
+                "multiplier": 1.4,
+                "laws": ["Earned Sick Time (40h/yr)", "Sunday Premium Pay", "Predictive Scheduling (proposed)"],
+                "critical_fine": 7500, "high_fine": 1800, "medium_fine": 400,
+                "pto_rule": "Earned sick time carries over (up to 40h). PTO per employer policy.",
+                "sick_accrual": "1h per 30h worked, 40h/yr",
+            },
+        }
+
+        # Hospital location selector
+        hospital_state = st.selectbox(
+            "Hospital State (determines applicable laws & penalty rates):",
+            list(STATE_PENALTY_RULES.keys()),
+            index=1,  # Default Illinois
+            key="hospital_state_admin",
+        )
+        state_rules = STATE_PENALTY_RULES[hospital_state]
+
+        # Show which laws apply
+        st.markdown(
+            f'<div style="background:#1a1a2e;padding:8px 12px;border-radius:6px;font-size:0.8em;color:#ccc;">'
+            f'📍 <strong>{hospital_state}</strong> — Active laws: {", ".join(state_rules["laws"])}<br>'
+            f'💼 PTO Rule: {state_rules["pto_rule"]}<br>'
+            f'🏥 Sick Accrual: {state_rules["sick_accrual"]}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown("")
+
+        # Compliance overview with STATE-SPECIFIC penalties
         violations = check_compliance(schedule)
-        penalty_low = sum(5000 if v["severity"] == "CRITICAL" else 1000 if v["severity"] == "HIGH" else 300 for v in violations)
-        penalty_high = penalty_low * 2
+        penalty_exposure = sum(
+            state_rules["critical_fine"] if v["severity"] == "CRITICAL"
+            else state_rules["high_fine"] if v["severity"] == "HIGH"
+            else state_rules["medium_fine"]
+            for v in violations
+        )
+        penalty_high = int(penalty_exposure * state_rules["multiplier"])
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Total Violations", len(violations))
         with col2:
-            st.metric("Penalty Exposure", f"${penalty_high:,}/week")
+            st.metric("Penalty Exposure", f"${penalty_high:,}/week",
+                      help=f"Based on {hospital_state} penalty rates (×{state_rules['multiplier']} multiplier)")
         with col3:
             compliance_score = max(0, 100 - len(violations) * 7)
             st.metric("Compliance Score", f"{compliance_score}/100")
