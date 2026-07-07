@@ -854,7 +854,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         st.divider()
         st.markdown("#### Manage Nursing Staff")
 
-        nurse_mgmt = st.radio("", ["View Roster", "Add Staff", "Bulk Import", "Upload File"],
+        nurse_mgmt = st.radio("", ["View Roster", "Add Staff", "Bulk Import", "Upload File", "Locum / Agency"],
                               horizontal=True, key="nurse_mgmt_mode")
 
         if nurse_mgmt == "View Roster":
@@ -961,6 +961,113 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         st.rerun()
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
+
+        elif nurse_mgmt == "Locum / Agency":
+            st.markdown("#### Locum & Agency Nurse Management")
+            st.markdown("*Track travel nurses, agency staff, and contract workers.*")
+
+            locum_action = st.radio("", ["Active Locums", "Add Locum", "Agency Settings"],
+                                    horizontal=True, key="locum_action")
+
+            if locum_action == "Active Locums":
+                if "locum_nurses" not in st.session_state:
+                    st.session_state["locum_nurses"] = [
+                        {"Name": "Lisa Park, RN", "Agency": "Aya Healthcare", "Unit": "ED", "Shift": "12h Nights",
+                         "Contract Start": "2026-04-01", "Contract End": "2026-09-30", "Rate": "$85/hr",
+                         "Creds Verified": "✅ Yes", "Orientation": "Complete", "Status": "Active"},
+                        {"Name": "Michael Torres, RN", "Agency": "Cross Country", "Unit": "ICU", "Shift": "12h Days",
+                         "Contract Start": "2026-06-01", "Contract End": "2026-08-31", "Rate": "$92/hr",
+                         "Creds Verified": "✅ Yes", "Orientation": "Complete", "Status": "Active"},
+                        {"Name": "Jennifer Adams, RN", "Agency": "TravelNurse.com", "Unit": "ED", "Shift": "12h Days",
+                         "Contract Start": "2026-07-01", "Contract End": "2026-10-01", "Rate": "$78/hr",
+                         "Creds Verified": "⚠️ Pending (ACLS)", "Orientation": "In Progress", "Status": "Restricted"},
+                    ]
+                st.dataframe(pd.DataFrame(st.session_state["locum_nurses"]), use_container_width=True, hide_index=True)
+
+                # Contract alerts
+                st.markdown("")
+                for loc in st.session_state["locum_nurses"]:
+                    try:
+                        end = datetime.strptime(loc["Contract End"], "%Y-%m-%d")
+                        days_left = (end - datetime.now()).days
+                        if days_left <= 30:
+                            st.markdown(
+                                f'<div style="background:#2d2d1a;padding:8px 12px;border-radius:6px;'
+                                f'border-left:3px solid #ffc107;margin-bottom:4px;font-size:0.85em;">'
+                                f'⚠️ <strong>{loc["Name"]}</strong> ({loc["Agency"]}) — contract expires in '
+                                f'<strong>{days_left} days</strong> ({loc["Contract End"]}). '
+                                f'Extend or find replacement.</div>',
+                                unsafe_allow_html=True,
+                            )
+                    except (ValueError, TypeError):
+                        pass
+
+                # Ratio warning
+                total_staff = len(st.session_state.get("nursing_staff", [])) + len(st.session_state["locum_nurses"])
+                locum_pct = len(st.session_state["locum_nurses"]) / max(1, total_staff) * 100
+                if locum_pct > 40:
+                    st.warning(f"⚠️ Agency staff at {locum_pct:.0f}% of unit — exceeds recommended 40% max for patient safety.")
+                else:
+                    st.success(f"Agency staff: {locum_pct:.0f}% — within safe limits.")
+
+            elif locum_action == "Add Locum":
+                st.markdown("**Add a locum/travel/agency nurse:**")
+                col1, col2 = st.columns(2)
+                with col1:
+                    loc_name = st.text_input("Full Name:", key="loc_name", placeholder="Jane Smith, RN")
+                    loc_agency = st.selectbox("Agency:", ["Aya Healthcare", "Cross Country", "AMN Healthcare",
+                                                          "Medical Solutions", "TravelNurse.com", "FlexCare", "Other"], key="loc_agency")
+                    loc_unit = st.selectbox("Assigned Unit:", ["ED", "ICU", "Med-Surg", "L&D", "NICU", "Tele", "Float"], key="loc_unit")
+                    loc_shift = st.selectbox("Shift:", ["12h Days", "12h Nights", "8h Days", "8h Eves", "8h Nights"], key="loc_shift")
+                with col2:
+                    loc_start = st.date_input("Contract Start:", key="loc_start", value=datetime.now())
+                    loc_end = st.date_input("Contract End:", key="loc_end", value=datetime.now() + timedelta(days=90))
+                    loc_rate = st.text_input("Hourly Rate ($):", key="loc_rate", placeholder="85")
+                    loc_creds = st.selectbox("Credentials Verified?", ["✅ Yes", "⚠️ Pending", "❌ Not yet"], key="loc_creds")
+
+                loc_orientation = st.selectbox("Orientation Status:", ["Not Started", "In Progress", "Complete"], key="loc_orient")
+                loc_restrict = st.multiselect("Restrictions:", ["No Charge", "No Float", "Requires Preceptor",
+                                                                "Day Shift Only", "No Pediatrics"], key="loc_restrict")
+
+                if st.button("Add Locum Nurse", type="primary", key="add_locum"):
+                    if loc_name:
+                        if "locum_nurses" not in st.session_state:
+                            st.session_state["locum_nurses"] = []
+                        status = "Active" if loc_creds == "✅ Yes" and loc_orientation == "Complete" else "Restricted"
+                        st.session_state["locum_nurses"].append({
+                            "Name": loc_name,
+                            "Agency": loc_agency,
+                            "Unit": loc_unit,
+                            "Shift": loc_shift,
+                            "Contract Start": loc_start.strftime("%Y-%m-%d"),
+                            "Contract End": loc_end.strftime("%Y-%m-%d"),
+                            "Rate": f"${loc_rate}/hr" if loc_rate else "TBD",
+                            "Creds Verified": loc_creds,
+                            "Orientation": loc_orientation,
+                            "Status": status,
+                        })
+                        st.success(f"Added: {loc_name} ({loc_agency}) — Status: {status}")
+                        if status == "Restricted":
+                            st.warning("Cannot schedule until credentials verified and orientation complete.")
+                        st.rerun()
+
+            elif locum_action == "Agency Settings":
+                st.markdown("#### Agency Policies")
+                st.markdown("*Configure rules for agency/locum staff.*")
+
+                st.number_input("Max % agency staff per shift:", min_value=10, max_value=80, value=40, key="max_agency_pct")
+                st.number_input("Orientation hours required:", min_value=4, max_value=40, value=12, key="orient_hours")
+                st.checkbox("Block scheduling until orientation complete", value=True, key="block_no_orient")
+                st.checkbox("Block scheduling if credentials expired/pending", value=True, key="block_no_creds")
+                st.checkbox("Alert when contract expires within 30 days", value=True, key="alert_contract")
+                st.checkbox("Restrict locums from Charge role", value=True, key="no_locum_charge")
+
+                st.divider()
+                st.markdown("**Approved Agencies:**")
+                agencies = st.text_area("One per line:", key="approved_agencies",
+                                        value="Aya Healthcare\nCross Country\nAMN Healthcare\nMedical Solutions\nFlexCare")
+                if st.button("Save Agency Settings", type="primary", key="save_agency_settings"):
+                    st.success("Agency policies saved.")
 
     # ================================================================
     # TAB 3: PHYSICIANS
