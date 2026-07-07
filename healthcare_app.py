@@ -56,6 +56,17 @@ def main():
         unsafe_allow_html=True,
     )
 
+    # Hospital location (affects all penalty/leave rules)
+    with st.sidebar:
+        st.markdown("#### Your Hospital")
+        hospital_state = st.selectbox(
+            "State:",
+            ["California", "Illinois", "New York", "Oregon", "Washington", "Massachusetts", "Texas", "Florida"],
+            index=1,
+            key="hospital_state_global",
+        )
+        st.caption(f"Penalties & leave rules set for {hospital_state} law.")
+
     # Demo mode banner
     st.markdown(
         '<div style="background:#2d2d1a;padding:6px 12px;border-radius:6px;'
