@@ -108,7 +108,7 @@ def main():
     # Role selector — in production, this would be from login. For demo, pick your role.
     role = st.radio(
         "I am a:",
-        ["Program Director", "Chief Resident", "Staff Nurse", "Resident", "Admin / HR"],
+        ["Program Director", "Chief Resident", "Nurse Manager", "Staff Nurse", "Resident", "Admin / HR"],
         horizontal=True,
         key="hc_role",
     )
@@ -117,6 +117,7 @@ def main():
     greetings = {
         "Program Director": "Welcome, Dr. — your program compliance dashboard is ready.",
         "Chief Resident": "Welcome, Chief — daily operations and ACGME tracking below.",
+        "Nurse Manager": "Welcome — build schedules, manage staff, and check compliance.",
         "Staff Nurse": "Welcome — your schedule, leave, and team view are here.",
         "Resident": "Welcome — your duty hours and shift management below.",
         "Admin / HR": "Welcome — compliance, FMLA, and reporting ready.",
@@ -203,6 +204,7 @@ def main():
     ROLE_TAB_KEYS = {
         "Program Director": ["ai", "residency", "physicians", "admin", "setup"],
         "Chief Resident": ["ai", "residency", "setup"],
+        "Nurse Manager": ["ai", "nursing", "admin"],
         "Staff Nurse": ["ai", "nursing"],
         "Resident": ["ai", "nursing"],
         "Admin / HR": ["ai", "admin", "residency", "nursing", "setup"],
