@@ -7,6 +7,36 @@ export default function WorkerHome() {
         <p className="text-gray-400 text-sm">ED Nursing | Staff RN</p>
       </div>
 
+      {/* Smart Notifications */}
+      <div className="space-y-2">
+        <NotificationCard
+          icon="🌙"
+          priority="high"
+          title="Night shift in 24h — starts at 19:00"
+          message="You're on night shift tomorrow 19:00-07:00. Tip: Nap for 90 minutes between 2-4 PM before your shift for peak alertness."
+          actionLabel="View Schedule"
+        />
+        <NotificationCard
+          icon="⏱️"
+          priority="normal"
+          title="Only 4h before overtime"
+          message="At 36h this week, your next shift triggers OT pay (1.5x rate)."
+        />
+        <NotificationCard
+          icon="💵"
+          priority="high"
+          title="VET Available: Thu Jul 10, 07:00-19:00"
+          message="Premium pay shift covering for Maria. First to accept gets it!"
+          actionLabel="Accept"
+        />
+        <NotificationCard
+          icon="✅"
+          priority="low"
+          title="PTO Approved: Jul 15-17"
+          message="Your time off was auto-approved. Coverage maintained. Enjoy!"
+        />
+      </div>
+
       {/* Today's Shift */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
         <div className="flex items-center justify-between mb-2">
@@ -108,6 +138,35 @@ export default function WorkerHome() {
           <ShiftRow day="Wed" date="Jul 9" time="07:00-19:00" type="Day" />
           <ShiftRow day="Thu" date="Jul 10" time="Off" type="Off" off />
           <ShiftRow day="Fri" date="Jul 11" time="19:00-07:00" type="Night" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function NotificationCard({ icon, priority, title, message, actionLabel }: {
+  icon: string, priority: 'urgent' | 'high' | 'normal' | 'low',
+  title: string, message: string, actionLabel?: string
+}) {
+  const borderColor = {
+    urgent: 'border-l-red-500',
+    high: 'border-l-orange-500',
+    normal: 'border-l-brand-500',
+    low: 'border-l-gray-600',
+  }[priority]
+
+  return (
+    <div className={`bg-gray-900 border border-gray-800 border-l-4 ${borderColor} rounded-lg p-3`}>
+      <div className="flex items-start gap-2">
+        <span className="text-lg flex-shrink-0">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium leading-tight">{title}</p>
+          <p className="text-xs text-gray-400 mt-1 leading-relaxed">{message}</p>
+          {actionLabel && (
+            <button className="mt-2 text-xs bg-brand-600 hover:bg-brand-700 px-3 py-1 rounded-md font-medium transition">
+              {actionLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>

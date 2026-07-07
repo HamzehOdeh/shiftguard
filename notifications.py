@@ -351,6 +351,553 @@ class NotificationEngine:
 
 
 # ============================================================
+# SMART NOTIFICATION GENERATOR
+# Context-aware alerts based on schedule, fatigue, leave data
+# ============================================================
+
+NIGHT_SHIFT_TIPS = [
+    "Nap for 90 minutes between 2-4 PM before your shift for peak alertness.",
+    "Avoid caffeine within 6 hours of your planned post-shift sleep time.",
+    "Wear sunglasses on the drive home to signal your brain it's bedtime.",
+    "Keep your bedroom cool (65-68°F) and pitch dark for daytime sleep.",
+    "Eat a light meal before your shift — heavy meals increase drowsiness at 3-4 AM.",
+]
+
+EARLY_SHIFT_TIPS = [
+    "Set your alarm 15 minutes earlier than you think — rushing increases cortisol.",
+    "Prepare your uniform and lunch tonight to save 20 minutes tomorrow.",
+    "Avoid screens 1 hour before bed tonight for better sleep quality.",
+    "Early start means lights out by 10 PM for 7+ hours of sleep.",
+]
+
+REST_PERIOD_TIPS = [
+    "You have less than 10 hours between shifts. Prioritize sleep over everything else.",
+    "Short turnaround ahead — skip the gym tonight and focus on recovery.",
+    "Quick turnaround: set a hard bedtime alarm, not just a wake-up alarm.",
+]
+
+HYDRATION_TIPS = [
+    "12-hour shift ahead — aim for 8+ glasses of water. Dehydration kills focus by hour 8.",
+    "Long shift today. Pack extra snacks — your brain needs fuel at the 6-hour mark.",
+]
+
+
+class SmartNotificationGenerator:
+    """
+    Generates personalized, context-aware notifications for workers.
+    Uses schedule + fatigue + leave + portal data to produce smart nudges.
+    """
+
+    def __init__(self, employees=None, shifts=None, leave_tracker=None, portal=None):
+        self.employees = employees or []
+        self.shifts = shifts or []
+        self.leave_tracker = leave_tracker
+        self.portal = portal
+
+    def generate_worker_notifications(self, employee_id, reference_date=None):
+        """Generate all smart notifications for a worker at this moment."""
+        if reference_date is None:
+            reference_date = datetime.now()
+        if isinstance(reference_date, str):
+            reference_date = datetime.strptime(reference_date, "%Y-%m-%d")
+
+        notifications = []
+        notifications.extend(self._shift_reminders(employee_id, reference_date))
+        notifications.extend(self._fatigue_alerts(employee_id, reference_date))
+        notifications.extend(self._ot_warnings(employee_id, reference_date))
+        notifications.extend(self._pto_updates(employee_id, reference_date))
+        notifications.extend(self._coverage_opportunities(employee_id, reference_date))
+        notifications.extend(self._wellness_nudges(employee_id, reference_date))
+        notifications.extend(self._team_updates(employee_id, reference_date))
+
+        notifications.sort(key=lambda n: n["priority"])
+        return notifications
+
+    def generate_manager_notifications(self, reference_date=None):
+        """Generate notifications for a manager about their team."""
+        if reference_date is None:
+            reference_date = datetime.now()
+        if isinstance(reference_date, str):
+            reference_date = datetime.strptime(reference_date, "%Y-%m-%d")
+
+        notifications = []
+        tomorrow_str = (reference_date + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        # Team fatigue risks
+        red_workers = []
+        yellow_workers = []
+        for emp in self.employees:
+            emp_id = emp.get("id", emp.get("employee_id"))
+            emp_shifts = [s for s in self.shifts if s.get("employee_id") == emp_id]
+            weekly_hours = sum(self._shift_hours(s) for s in emp_shifts)
+
+            if weekly_hours > 50:
+                red_workers.append(emp["name"])
+            elif weekly_hours > 44:
+                yellow_workers.append(emp["name"])
+
+        if red_workers:
+            notifications.append({
+                "priority": 1,
+                "priority_label": "URGENT",
+                "category": "FATIGUE",
+                "icon": "🔴",
+                "title": f"Fatigue Risk: {len(red_workers)} worker(s) over 50h",
+                "message": f"{', '.join(red_workers[:3])}{'...' if len(red_workers) > 3 else ''} "
+                           f"are in the danger zone. Consider reassignment or mandatory rest.",
+                "action_label": "View Hours",
+                "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+            })
+
+        # OT cost alert
+        ot_workers = [e["name"] for e in self.employees
+                      if sum(self._shift_hours(s) for s in self.shifts
+                             if s.get("employee_id") == e.get("id", e.get("employee_id"))) > 40]
+        if ot_workers:
+            est_cost = len(ot_workers) * 180
+            notifications.append({
+                "priority": 2,
+                "priority_label": "HIGH",
+                "category": "OT_COST",
+                "icon": "💰",
+                "title": f"OT Alert: {len(ot_workers)} in overtime (est. +${est_cost:,}/week)",
+                "message": f"{', '.join(ot_workers[:4])} exceeded 40h. "
+                           f"Redistribute remaining shifts to reduce OT spend.",
+                "action_label": "Rebalance",
+                "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+            })
+
+        # Tomorrow's coverage
+        if self.leave_tracker:
+            on_leave = [
+                r for r in self.leave_tracker.leave_records
+                if r["start_date"] <= tomorrow_str <= r["end_date"]
+                and r["status"] == "ACTIVE"
+            ]
+            if on_leave:
+                names = [next((e["name"] for e in self.employees
+                              if e.get("id", e.get("employee_id")) == r["employee_id"]),
+                             r["employee_id"]) for r in on_leave[:4]]
+                notifications.append({
+                    "priority": 3,
+                    "priority_label": "NORMAL",
+                    "category": "COVERAGE",
+                    "icon": "👥",
+                    "title": f"Tomorrow: {len(on_leave)} off, verify coverage",
+                    "message": f"{', '.join(names)} will be out. Check coverage is filled.",
+                    "action_label": "Check Coverage",
+                    "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                })
+
+        notifications.sort(key=lambda n: n["priority"])
+        return notifications
+
+    def _shift_reminders(self, employee_id, reference_date):
+        """24-hour shift reminders with context-aware sleep/prep tips."""
+        notifications = []
+        tomorrow = reference_date + timedelta(days=1)
+        tomorrow_str = tomorrow.strftime("%Y-%m-%d")
+        today_str = reference_date.strftime("%Y-%m-%d")
+
+        tomorrow_shifts = [
+            s for s in self.shifts
+            if s.get("employee_id") == employee_id and s.get("date") == tomorrow_str
+        ]
+
+        for shift in tomorrow_shifts:
+            start_hour = int(shift.get("start", "08:00").split(":")[0])
+            end_hour = int(shift.get("end", "16:00").split(":")[0])
+            duration = self._shift_hours(shift)
+            role = shift.get("role", "")
+
+            # Night shift
+            if start_hour >= 22 or start_hour <= 5:
+                tip = NIGHT_SHIFT_TIPS[hash(employee_id + tomorrow_str) % len(NIGHT_SHIFT_TIPS)]
+                notifications.append({
+                    "priority": 2,
+                    "priority_label": "HIGH",
+                    "category": "SHIFT_REMINDER",
+                    "icon": "🌙",
+                    "title": f"Night shift in 24h — starts at {shift['start']}",
+                    "message": f"You're on night shift tomorrow {shift['start']}-{shift['end']} "
+                               f"({role}). Make sure to get enough sleep today. "
+                               f"Tip: {tip}",
+                    "action_label": "View Schedule",
+                    "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                })
+
+            # Early morning
+            elif start_hour <= 7:
+                tip = EARLY_SHIFT_TIPS[hash(employee_id + tomorrow_str) % len(EARLY_SHIFT_TIPS)]
+                notifications.append({
+                    "priority": 3,
+                    "priority_label": "NORMAL",
+                    "category": "SHIFT_REMINDER",
+                    "icon": "🌅",
+                    "title": f"Early shift tomorrow at {shift['start']}",
+                    "message": f"Tomorrow: {shift['start']}-{shift['end']} ({role}). "
+                               f"Tip: {tip}",
+                    "action_label": "View Schedule",
+                    "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                })
+
+            # Long shift (12h+)
+            elif duration >= 12:
+                tip = HYDRATION_TIPS[hash(employee_id) % len(HYDRATION_TIPS)]
+                notifications.append({
+                    "priority": 3,
+                    "priority_label": "NORMAL",
+                    "category": "SHIFT_REMINDER",
+                    "icon": "⏱️",
+                    "title": f"{duration:.0f}h shift tomorrow ({shift['start']}-{shift['end']})",
+                    "message": f"Long day ahead — {shift['start']} to {shift['end']} ({role}). "
+                               f"Tip: {tip}",
+                    "action_label": "View Schedule",
+                    "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                })
+
+            # Standard shift
+            else:
+                notifications.append({
+                    "priority": 4,
+                    "priority_label": "LOW",
+                    "category": "SHIFT_REMINDER",
+                    "icon": "📋",
+                    "title": f"Shift tomorrow: {shift['start']}-{shift['end']}",
+                    "message": f"You're on at {shift['start']} tomorrow ({role}). Have a great shift!",
+                    "action_label": None,
+                    "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                })
+
+            # Short rest / clopening detection
+            today_shifts = [
+                s for s in self.shifts
+                if s.get("employee_id") == employee_id and s.get("date") == today_str
+            ]
+            for today_shift in today_shifts:
+                today_end = int(today_shift.get("end", "16:00").split(":")[0])
+                if today_end >= 20 and start_hour <= 8:
+                    rest_hours = (24 - today_end) + start_hour
+                    if rest_hours < 11:
+                        tip = REST_PERIOD_TIPS[hash(employee_id) % len(REST_PERIOD_TIPS)]
+                        notifications.append({
+                            "priority": 1,
+                            "priority_label": "URGENT",
+                            "category": "FATIGUE",
+                            "icon": "⚠️",
+                            "title": f"Short rest: only {rest_hours}h between shifts",
+                            "message": f"You end at {today_shift['end']} tonight and start at "
+                                       f"{shift['start']} tomorrow — only {rest_hours}h rest. "
+                                       f"{tip}",
+                            "action_label": "Request Swap",
+                            "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                        })
+
+        return notifications
+
+    def _fatigue_alerts(self, employee_id, reference_date):
+        """Alerts based on cumulative fatigue."""
+        notifications = []
+        emp_shifts = [s for s in self.shifts if s.get("employee_id") == employee_id]
+        weekly_hours = sum(self._shift_hours(s) for s in emp_shifts)
+
+        # Count consecutive days
+        dates = sorted(set(s.get("date", "") for s in emp_shifts))
+        consec = 0
+        for i in range(len(dates) - 1, -1, -1):
+            try:
+                d = datetime.strptime(dates[i], "%Y-%m-%d")
+                expected = reference_date - timedelta(days=len(dates) - 1 - i)
+                if d.date() == expected.date():
+                    consec += 1
+                else:
+                    break
+            except (ValueError, TypeError):
+                break
+
+        if weekly_hours > 50:
+            notifications.append({
+                "priority": 1,
+                "priority_label": "URGENT",
+                "category": "FATIGUE",
+                "icon": "🔴",
+                "title": f"High fatigue: {weekly_hours:.0f}h this week",
+                "message": f"You've worked {weekly_hours:.0f}h this week — well above safe limits. "
+                           f"Performance drops 25% at this level. Consider requesting time off "
+                           f"or declining extra shifts.",
+                "action_label": "Request Day Off",
+                "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+            })
+        elif weekly_hours > 44:
+            notifications.append({
+                "priority": 3,
+                "priority_label": "NORMAL",
+                "category": "FATIGUE",
+                "icon": "🟡",
+                "title": f"Moderate fatigue: {weekly_hours:.0f}h this week",
+                "message": f"At {weekly_hours:.0f}h, you're above standard (40h). "
+                           f"Take your breaks, stay hydrated, and protect your off-days.",
+                "action_label": None,
+                "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+            })
+
+        if consec >= 6:
+            notifications.append({
+                "priority": 1,
+                "priority_label": "URGENT",
+                "category": "WELLNESS",
+                "icon": "😴",
+                "title": f"{consec} consecutive days — rest is overdue",
+                "message": f"You've worked {consec} days straight. Injury risk increases 37% "
+                           f"after 6 consecutive days. Your next day off is critical.",
+                "action_label": "View Schedule",
+                "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+            })
+        elif consec >= 5:
+            notifications.append({
+                "priority": 2,
+                "priority_label": "HIGH",
+                "category": "WELLNESS",
+                "icon": "📊",
+                "title": f"{consec} consecutive days worked",
+                "message": f"Day {consec} in a row. Research shows focus drops significantly "
+                           f"after 5 consecutive days. Make your upcoming day off count.",
+                "action_label": None,
+                "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+            })
+
+        return notifications
+
+    def _ot_warnings(self, employee_id, reference_date):
+        """Overtime proximity and cap warnings."""
+        notifications = []
+        emp_shifts = [s for s in self.shifts if s.get("employee_id") == employee_id]
+        weekly_hours = sum(self._shift_hours(s) for s in emp_shifts)
+        remaining_before_ot = max(0, 40 - weekly_hours)
+
+        if weekly_hours > 40:
+            ot_hours = weekly_hours - 40
+            notifications.append({
+                "priority": 3,
+                "priority_label": "NORMAL",
+                "category": "OT",
+                "icon": "💰",
+                "title": f"In overtime: {ot_hours:.1f}h OT this week",
+                "message": f"You're at {weekly_hours:.0f}h ({ot_hours:.1f}h overtime at 1.5x pay). "
+                           f"This is tracked for fairness across the team.",
+                "action_label": None,
+                "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+            })
+        elif remaining_before_ot <= 4:
+            notifications.append({
+                "priority": 3,
+                "priority_label": "NORMAL",
+                "category": "OT",
+                "icon": "⏱️",
+                "title": f"Only {remaining_before_ot:.1f}h before overtime",
+                "message": f"At {weekly_hours:.0f}h this week, you're {remaining_before_ot:.1f}h "
+                           f"from the OT threshold. Next shift triggers overtime pay.",
+                "action_label": None,
+                "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+            })
+
+        return notifications
+
+    def _pto_updates(self, employee_id, reference_date):
+        """PTO request results and balance warnings."""
+        notifications = []
+
+        if self.portal:
+            for req in self.portal.requests:
+                if req["employee_id"] == employee_id and req["type"] == "HOLIDAY":
+                    if req["status"] == "AUTO_APPROVED":
+                        notifications.append({
+                            "priority": 4,
+                            "priority_label": "LOW",
+                            "category": "PTO",
+                            "icon": "✅",
+                            "title": f"PTO Approved: {req['start_date']} to {req['end_date']}",
+                            "message": "Your request was auto-approved. Coverage is maintained. Enjoy!",
+                            "action_label": None,
+                            "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                        })
+                    elif req["status"] == "ESCALATED":
+                        notifications.append({
+                            "priority": 3,
+                            "priority_label": "NORMAL",
+                            "category": "PTO",
+                            "icon": "⏳",
+                            "title": f"PTO Pending: {req['start_date']} to {req['end_date']}",
+                            "message": f"Your request is with your manager for review. "
+                                       f"Reason: {req.get('auto_approval_result', {}).get('reason', 'needs coverage check')}.",
+                            "action_label": "View Status",
+                            "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                        })
+
+        if self.leave_tracker:
+            bal = self.leave_tracker.get_balance_summary(employee_id)
+            if bal:
+                if bal.get("upt_hours", 20) <= 4:
+                    notifications.append({
+                        "priority": 1,
+                        "priority_label": "URGENT",
+                        "category": "BALANCE",
+                        "icon": "🚨",
+                        "title": f"UPT Critical: {bal['upt_hours']}h remaining",
+                        "message": f"Your UPT is dangerously low. Zero balance = termination review. "
+                                   f"Avoid unplanned absences until next quarterly grant.",
+                        "action_label": "View Balances",
+                        "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                    })
+
+                at_risk = bal.get("at_risk", {})
+                if at_risk.get("pto_at_risk", 0) > 0:
+                    notifications.append({
+                        "priority": 3,
+                        "priority_label": "NORMAL",
+                        "category": "BALANCE",
+                        "icon": "📅",
+                        "title": f"Use-it-or-lose-it: {at_risk['pto_at_risk']}h at risk",
+                        "message": f"{at_risk['pto_at_risk']}h PTO won't carry over past year-end. "
+                                   f"{at_risk.get('days_until_year_end', '?')} days to use it.",
+                        "action_label": "Request PTO",
+                        "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                    })
+
+        return notifications
+
+    def _coverage_opportunities(self, employee_id, reference_date):
+        """VET offers and open shift notifications."""
+        notifications = []
+
+        if self.portal:
+            my_vet = [
+                o for o in self.portal.vet_offers
+                if (o.get("offered_to") == employee_id or o.get("offered_to_all"))
+                and o.get("status") == "PENDING"
+            ]
+            for offer in my_vet:
+                details = offer.get("shift_details", {})
+                notifications.append({
+                    "priority": 2,
+                    "priority_label": "HIGH",
+                    "category": "VET",
+                    "icon": "💵",
+                    "title": f"VET: {details.get('date', '')} {details.get('start', '')}-{details.get('end', '')}",
+                    "message": f"Premium pay shift available ({details.get('department', '')}). "
+                               f"First to accept gets it!",
+                    "action_label": "Accept",
+                    "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                })
+
+            open_count = len([s for s in self.portal.open_shifts if not s.get("taken_by")])
+            if open_count:
+                notifications.append({
+                    "priority": 4,
+                    "priority_label": "LOW",
+                    "category": "OPEN_SHIFT",
+                    "icon": "📢",
+                    "title": f"{open_count} open shift(s) available",
+                    "message": "Pick up extra hours if you want them. First come, first served.",
+                    "action_label": "Browse",
+                    "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                })
+
+        return notifications
+
+    def _wellness_nudges(self, employee_id, reference_date):
+        """Proactive wellness based on schedule patterns."""
+        notifications = []
+        emp_shifts = sorted(
+            [s for s in self.shifts if s.get("employee_id") == employee_id],
+            key=lambda s: s.get("date", "")
+        )
+
+        # Detect clopening pattern
+        for i in range(len(emp_shifts) - 1):
+            curr = emp_shifts[i]
+            nxt = emp_shifts[i + 1]
+            try:
+                d1 = datetime.strptime(curr.get("date", ""), "%Y-%m-%d")
+                d2 = datetime.strptime(nxt.get("date", ""), "%Y-%m-%d")
+                if (d2 - d1).days != 1:
+                    continue
+                curr_end = int(curr.get("end", "16:00").split(":")[0])
+                nxt_start = int(nxt.get("start", "08:00").split(":")[0])
+                if curr_end >= 22 and nxt_start <= 7 and d2.date() >= reference_date.date():
+                    rest = (24 - curr_end) + nxt_start
+                    notifications.append({
+                        "priority": 2,
+                        "priority_label": "HIGH",
+                        "category": "WELLNESS",
+                        "icon": "😴",
+                        "title": f"Clopening alert: {rest}h between shifts",
+                        "message": f"Close at {curr['end']} ({curr['date']}) then open at "
+                                   f"{nxt['start']} ({nxt['date']}). Get to bed immediately "
+                                   f"after your shift. Every minute of sleep counts.",
+                        "action_label": "Request Swap",
+                        "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                    })
+                    break
+            except (ValueError, TypeError):
+                continue
+
+        return notifications
+
+    def _team_updates(self, employee_id, reference_date):
+        """Relevant team info (who's off tomorrow, etc.)."""
+        notifications = []
+        tomorrow_str = (reference_date + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        if self.leave_tracker:
+            on_leave = [
+                r for r in self.leave_tracker.leave_records
+                if r["start_date"] <= tomorrow_str <= r["end_date"]
+                and r["status"] == "ACTIVE"
+                and r["employee_id"] != employee_id
+            ]
+            if on_leave:
+                names = [next((e["name"] for e in self.employees
+                              if e.get("id", e.get("employee_id")) == r["employee_id"]),
+                             r["employee_id"]) for r in on_leave[:3]]
+                notifications.append({
+                    "priority": 4,
+                    "priority_label": "LOW",
+                    "category": "TEAM",
+                    "icon": "👥",
+                    "title": f"{len(on_leave)} teammate(s) off tomorrow",
+                    "message": f"{', '.join(names)} out tomorrow. Team may be lean.",
+                    "action_label": None,
+                    "created_at": reference_date.strftime("%Y-%m-%d %H:%M"),
+                })
+
+        return notifications
+
+    def _shift_hours(self, shift):
+        """Calculate hours from a shift dict."""
+        try:
+            start_parts = shift.get("start", "08:00").split(":")
+            end_parts = shift.get("end", "16:00").split(":")
+            start_h = int(start_parts[0]) + int(start_parts[1]) / 60
+            end_h = int(end_parts[0]) + int(end_parts[1]) / 60
+            if end_h <= start_h:
+                end_h += 24
+            return end_h - start_h
+        except (ValueError, IndexError):
+            return 8
+
+
+def create_demo_smart_notifications(employees, shifts, leave_tracker=None, portal=None):
+    """Create a SmartNotificationGenerator with the demo data."""
+    return SmartNotificationGenerator(
+        employees=employees,
+        shifts=shifts,
+        leave_tracker=leave_tracker,
+        portal=portal,
+    )
+
+
+# ============================================================
 # DEMO
 # ============================================================
 
