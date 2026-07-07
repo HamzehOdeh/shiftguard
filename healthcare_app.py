@@ -1255,8 +1255,12 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             st.session_state["hc_chat_messages"].append({"role": "assistant", "content": response["message"]})
             st.rerun()
 
-        # Chat input (auto-submits on Enter — works on mobile)
-        user_input = st.chat_input("Ask Otto anything...", key="hc_chat_input_box")
+        # Chat input (form-based for tab compatibility)
+        with st.form("otto_chat_form", clear_on_submit=True):
+            user_input = st.text_input("Ask Otto:", key="hc_chat_input_box",
+                                       placeholder="Type your question and press Enter...")
+            submitted = st.form_submit_button("Send", type="primary", use_container_width=True)
+        user_input = user_input if submitted else None
 
         if user_input:
             st.session_state["hc_chat_messages"].append({"role": "user", "content": user_input})
