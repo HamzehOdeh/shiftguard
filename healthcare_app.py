@@ -57,15 +57,25 @@ def main():
     )
 
     # Hospital location (affects all penalty/leave rules)
+    US_STATES = [
+        "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
+        "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
+        "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan",
+        "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
+        "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio",
+        "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
+        "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia",
+        "Wisconsin", "Wyoming",
+    ]
     with st.sidebar:
         st.markdown("#### Your Hospital")
         hospital_state = st.selectbox(
             "State:",
-            ["California", "Illinois", "New York", "Oregon", "Washington", "Massachusetts", "Texas", "Florida"],
-            index=1,
+            US_STATES,
+            index=US_STATES.index("Illinois"),
             key="hospital_state_global",
         )
-        st.caption(f"Penalties & leave rules set for {hospital_state} law.")
+        st.caption(f"Penalties & leave rules set for {hospital_state}.")
 
     # Demo mode banner
     st.markdown(
@@ -1304,14 +1314,19 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             },
         }
 
-        # Hospital location selector
-        hospital_state = st.selectbox(
-            "Hospital State (determines applicable laws & penalty rates):",
-            list(STATE_PENALTY_RULES.keys()),
-            index=1,  # Default Illinois
-            key="hospital_state_admin",
-        )
-        state_rules = STATE_PENALTY_RULES[hospital_state]
+        # Use the global state from sidebar
+        STATE_PENALTY_RULES["_default"] = {
+            "multiplier": 1.0,
+            "laws": ["Federal FLSA", "FMLA", "State-specific (check your state DOL)"],
+            "critical_fine": 5000, "high_fine": 1200, "medium_fine": 300,
+            "pto_rule": "Varies by state. Check your state Department of Labor.",
+            "sick_accrual": "No federal mandate. Check state law.",
+        }
+        # Get state from sidebar selector
+        selected_state = st.session_state.get("hospital_state_global", "Illinois")
+        state_rules = STATE_PENALTY_RULES.get(selected_state, STATE_PENALTY_RULES["_default"])
+
+        st.markdown(f"**Compliance rules for: {selected_state}**")
 
         # Show which laws apply
         st.markdown(
