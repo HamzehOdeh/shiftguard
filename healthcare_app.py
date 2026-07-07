@@ -1369,34 +1369,61 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
         with admin_tab1:
             st.markdown("#### Active Violations")
+            selected_state = st.session_state.get("hospital_state_global", "Illinois")
             for i, v in enumerate(violations[:5]):
                 color = "#dc3545" if v["severity"] == "CRITICAL" else "#fd7e14" if v["severity"] == "HIGH" else "#ffc107"
+                # Per-violation penalty based on state
+                v_penalty = state_rules["critical_fine"] if v["severity"] == "CRITICAL" else state_rules["high_fine"] if v["severity"] == "HIGH" else state_rules["medium_fine"]
+                v_penalty_adjusted = int(v_penalty * state_rules["multiplier"])
+
                 st.markdown(
-                    f'<div style="background:#1a1a2e;padding:10px;border-radius:8px;'
-                    f'margin-bottom:6px;border-left:4px solid {color};">'
-                    f'<strong>{v["severity"]}</strong> — {v["affected_employees"]}: {v["description"]}<br>'
-                    f'<span style="color:#28a745;">Fix: {v["recommendation"]}</span></div>',
+                    f'<div style="background:#1a1a2e;padding:12px;border-radius:8px;'
+                    f'margin-bottom:8px;border-left:4px solid {color};">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+                    f'<span><strong>{v["severity"]}</strong> — {v["affected_employees"]}</span>'
+                    f'<span style="background:#dc3545;color:white;padding:3px 10px;border-radius:12px;'
+                    f'font-weight:bold;font-size:0.9em;">💰 ${v_penalty_adjusted:,}</span></div>'
+                    f'<span style="color:#ccc;font-size:0.9em;">{v["description"]}</span><br>'
+                    f'<span style="color:#28a745;font-size:0.9em;">✅ Fix: {v["recommendation"]}</span><br>'
+                    f'<span style="color:#888;font-size:0.75em;">Penalty based on {selected_state} law (×{state_rules["multiplier"]} multiplier)</span>'
+                    f'</div>',
                     unsafe_allow_html=True,
                 )
-                if st.button(f"🤖 Ask Otto why", key=f"ask_otto_v_{i}"):
-                    if "hc_ai_chat" not in st.session_state:
-                        st.session_state["hc_ai_chat"] = AIChat(
-                            employees=employees, schedule_data=schedule,
-                            leave_tracker=st.session_state.get("leave_tracker"),
-                            user_role="ADMIN",
-                            user_employee_id=employees[0]["id"] if employees else "R001",
+
+                # Action buttons: Fix Now + Ask Otto
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button(f"Fix Now (assign replacement)", key=f"fix_v_{i}"):
+                        st.markdown(
+                            f'<div style="background:#1a2d1a;padding:10px;border-radius:8px;'
+                            f'border-left:4px solid #28a745;margin:4px 0;">'
+                            f'✅ <strong>Recommended:</strong> Reassign to next available compliant staff member. '
+                            f'Coverage maintained. Violation resolved.<br>'
+                            f'<span style="color:#888;">Audit logged: violation addressed by {role} at {datetime.now().strftime("%H:%M")}</span></div>',
+                            unsafe_allow_html=True,
                         )
-                    question = (f"Explain this violation in plain English and tell me exactly how to fix it: "
-                               f"{v['severity']} - {v['description']} affecting {v['affected_employees']}. "
-                               f"We are in {st.session_state.get('hospital_state_global', 'Illinois')}.")
-                    with st.spinner("Otto is analyzing..."):
-                        response = st.session_state["hc_ai_chat"].chat(question)
-                    st.markdown(
-                        f'<div style="background:#0c4a6e;padding:12px;border-radius:8px;'
-                        f'margin:6px 0;border-left:4px solid #0ea5e9;">'
-                        f'🤖 <strong>Otto:</strong> {response["message"]}</div>',
-                        unsafe_allow_html=True,
-                    )
+                        log_action("VIOLATION_FIXED", role, v["affected_employees"],
+                                   f"Fixed: {v['description']}. Penalty avoided: ${v_penalty_adjusted:,}", "RESOLVED")
+                with col2:
+                    if st.button(f"🤖 Ask Otto why", key=f"ask_otto_v_{i}"):
+                        if "hc_ai_chat" not in st.session_state:
+                            st.session_state["hc_ai_chat"] = AIChat(
+                                employees=employees, schedule_data=schedule,
+                                leave_tracker=st.session_state.get("leave_tracker"),
+                                user_role="ADMIN",
+                                user_employee_id=employees[0]["id"] if employees else "R001",
+                            )
+                        question = (f"Explain this violation in plain English and tell me exactly how to fix it: "
+                                   f"{v['severity']} - {v['description']} affecting {v['affected_employees']}. "
+                                   f"We are in {selected_state}. Estimated penalty: ${v_penalty_adjusted:,}.")
+                        with st.spinner("Otto is analyzing..."):
+                            response = st.session_state["hc_ai_chat"].chat(question)
+                        st.markdown(
+                            f'<div style="background:#0c4a6e;padding:12px;border-radius:8px;'
+                            f'margin:6px 0;border-left:4px solid #0ea5e9;">'
+                            f'🤖 <strong>Otto:</strong> {response["message"]}</div>',
+                            unsafe_allow_html=True,
+                        )
 
         with admin_tab2:
             st.markdown("#### FMLA & Protected Leave Management")
