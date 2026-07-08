@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 type Industry = 'healthcare' | 'warehouse' | 'retail' | 'hospitality' | 'manufacturing'
 
@@ -75,8 +76,23 @@ const DEMO_DATA: Record<Industry, { facility: string; violations: Violation[]; e
 }
 
 export default function DemoPage() {
-  const [industry, setIndustry] = useState<Industry>('healthcare')
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-950" />}>
+      <DemoContent />
+    </Suspense>
+  )
+}
+
+function DemoContent() {
+  const searchParams = useSearchParams()
+  const initialIndustry = (searchParams.get('industry') as Industry) || 'healthcare'
+  const [industry, setIndustry] = useState<Industry>(initialIndustry)
   const [showResults, setShowResults] = useState(true)
+
+  useEffect(() => {
+    const param = searchParams.get('industry') as Industry
+    if (param && DEMO_DATA[param]) setIndustry(param)
+  }, [searchParams])
 
   const data = DEMO_DATA[industry]
   const totalPenalty = data.violations.reduce((sum, v) => sum + v.penalty, 0)

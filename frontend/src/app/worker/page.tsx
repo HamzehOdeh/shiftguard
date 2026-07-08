@@ -1,4 +1,11 @@
 export default function WorkerHome() {
+  function handleVetAccept() {
+    alert('VET shift accepted! You\'ll receive confirmation shortly.')
+  }
+  function handleVetDecline() {
+    alert('VET declined. It will be offered to the next eligible worker.')
+  }
+
   return (
     <div className="px-4 py-5 space-y-5">
       {/* Greeting */}
@@ -77,10 +84,10 @@ export default function WorkerHome() {
         <p className="text-gray-400 text-sm">07:00 - 19:00 | Covering for: Maria Rodriguez</p>
         <p className="text-gray-500 text-xs mt-1">Premium pay applies | Expires in 28 min</p>
         <div className="flex gap-3 mt-4">
-          <button className="flex-1 bg-brand-600 hover:bg-brand-700 py-2.5 rounded-lg font-medium text-sm transition">
+          <button onClick={handleVetAccept} className="flex-1 bg-brand-600 hover:bg-brand-700 py-2.5 rounded-lg font-medium text-sm transition">
             Accept
           </button>
-          <button className="flex-1 border border-gray-700 hover:border-gray-500 py-2.5 rounded-lg text-sm text-gray-300 transition">
+          <button onClick={handleVetDecline} className="flex-1 border border-gray-700 hover:border-gray-500 py-2.5 rounded-lg text-sm text-gray-300 transition">
             Decline
           </button>
         </div>
@@ -88,26 +95,26 @@ export default function WorkerHome() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3">
-        <button className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-600 transition">
+        <a href="/worker/request" className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-600 transition block">
           <span className="text-2xl mb-1 block">🤒</span>
           <span className="text-sm font-medium">Report Sick</span>
           <span className="text-xs text-gray-500 block">One-tap callout</span>
-        </button>
-        <button className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-600 transition">
+        </a>
+        <a href="/worker/schedule" className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-600 transition block">
           <span className="text-2xl mb-1 block">🔄</span>
           <span className="text-sm font-medium">Swap Shift</span>
           <span className="text-xs text-gray-500 block">Propose a trade</span>
-        </button>
-        <button className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-600 transition">
+        </a>
+        <a href="/worker/schedule" className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-600 transition block">
           <span className="text-2xl mb-1 block">👥</span>
           <span className="text-sm font-medium">On Floor Now</span>
           <span className="text-xs text-gray-500 block">Who's working</span>
-        </button>
-        <button className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-600 transition">
+        </a>
+        <a href="/worker/balance" className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-600 transition block">
           <span className="text-2xl mb-1 block">💬</span>
           <span className="text-sm font-medium">Ask AI</span>
           <span className="text-xs text-gray-500 block">Hours, balance, etc.</span>
-        </button>
+        </a>
       </div>
 
       {/* Balance Summary */}
@@ -163,9 +170,9 @@ function NotificationCard({ icon, priority, title, message, actionLabel }: {
           <p className="text-sm font-medium leading-tight">{title}</p>
           <p className="text-xs text-gray-400 mt-1 leading-relaxed">{message}</p>
           {actionLabel && (
-            <button className="mt-2 text-xs bg-brand-600 hover:bg-brand-700 px-3 py-1 rounded-md font-medium transition">
+            <a href={actionLabel === 'View Schedule' ? '/worker/schedule' : '/worker'} className="mt-2 inline-block text-xs bg-brand-600 hover:bg-brand-700 px-3 py-1 rounded-md font-medium transition">
               {actionLabel}
-            </button>
+            </a>
           )}
         </div>
       </div>

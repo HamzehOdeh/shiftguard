@@ -109,6 +109,7 @@ export default function WorkerSchedulePage() {
   const [monthOffset, setMonthOffset] = useState(0)
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null)
   const [showRequestForm, setShowRequestForm] = useState(false)
+  const [requestConfirmed, setRequestConfirmed] = useState(false)
 
   const viewDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1)
   const viewYear = viewDate.getFullYear()
@@ -119,6 +120,12 @@ export default function WorkerSchedulePage() {
 
   return (
     <div className="px-4 py-5 space-y-4">
+      {/* Confirmation toast */}
+      {requestConfirmed && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-green-900 border border-green-700 text-green-200 px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-pulse">
+          Request submitted — auto-approved!
+        </div>
+      )}
       {/* Balance bar */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-gray-900 border border-gray-800 rounded-lg p-2.5 text-center">
@@ -332,7 +339,8 @@ export default function WorkerSchedulePage() {
             <button
               onClick={() => {
                 setShowRequestForm(false)
-                alert('Request submitted! Auto-approval check passed.')
+                setRequestConfirmed(true)
+                setTimeout(() => setRequestConfirmed(false), 3000)
               }}
               className="flex-1 bg-brand-600 hover:bg-brand-700 py-2.5 rounded-lg font-medium text-sm transition"
             >

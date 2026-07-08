@@ -14,28 +14,24 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-      const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, tenant_slug: tenant }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.detail || 'Login failed')
-      }
-
-      const data = await res.json()
-      localStorage.setItem('token', data.access_token)
-      localStorage.setItem('user', JSON.stringify(data.user))
-      window.location.href = '/worker'
-    } catch (err: any) {
-      setError(err.message || 'Unable to connect to server')
-    } finally {
-      setLoading(false)
+    const DEMO_USERS: Record<string, { role: string; name: string; redirect: string }> = {
+      'manager@metro-general.com': { role: 'manager', name: 'Dr. Rachel Torres', redirect: '/reporting' },
+      'sarah.chen@metro-general.com': { role: 'worker', name: 'Sarah Chen', redirect: '/worker' },
+      'hr@metro-general.com': { role: 'admin', name: 'Admin User', redirect: '/reporting' },
     }
+
+    await new Promise(resolve => setTimeout(resolve, 800))
+
+    const demoUser = DEMO_USERS[email]
+    if (demoUser && password === 'demo123') {
+      localStorage.setItem('token', 'demo_token_' + demoUser.role)
+      localStorage.setItem('user', JSON.stringify({ email, role: demoUser.role, name: demoUser.name, tenant }))
+      window.location.href = demoUser.redirect
+    } else {
+      setError('Invalid credentials. Use demo credentials shown below.')
+    }
+
+    setLoading(false)
   }
 
   return (

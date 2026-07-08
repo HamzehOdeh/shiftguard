@@ -23,6 +23,7 @@ export default function WorkerRequestPage() {
   const [activeTab, setActiveTab] = useState<'new' | 'history'>('new')
   const [requestType, setRequestType] = useState<'pto' | 'sick_planned' | 'personal'>('pto')
   const [submitted, setSubmitted] = useState(false)
+  const [flexible, setFlexible] = useState(false)
 
   return (
     <div className="px-4 py-5 space-y-4">
@@ -123,13 +124,13 @@ export default function WorkerRequestPage() {
           </div>
 
           {/* Flexibility toggle */}
-          <div className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-lg p-3">
+          <div onClick={() => setFlexible(!flexible)} className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-lg p-3 cursor-pointer">
             <div>
               <p className="text-sm font-medium">Flexible on dates?</p>
               <p className="text-[10px] text-gray-500">We'll suggest alternatives if denied</p>
             </div>
-            <div className="w-10 h-5 bg-gray-700 rounded-full relative cursor-pointer">
-              <div className="w-4 h-4 bg-gray-400 rounded-full absolute top-0.5 left-0.5"></div>
+            <div className={`w-10 h-5 rounded-full relative transition ${flexible ? 'bg-brand-600' : 'bg-gray-700'}`}>
+              <div className={`w-4 h-4 rounded-full absolute top-0.5 transition ${flexible ? 'bg-white left-5' : 'bg-gray-400 left-0.5'}`}></div>
             </div>
           </div>
 

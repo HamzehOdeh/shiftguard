@@ -170,9 +170,9 @@ def main():
 
         col1, col2 = st.columns(2)
         with col1:
-            st.button("Try the Full Demo (Free)", type="primary", use_container_width=True)
+            st.link_button("Try the Full Demo (Free)", "https://shiftguard-giznml7xnt59j5aguqjerc.streamlit.app/", type="primary", use_container_width=True)
         with col2:
-            st.button("Schedule a Walkthrough", use_container_width=True)
+            st.link_button("Schedule a Walkthrough", "mailto:hello@shiftguard.ai?subject=ShiftGuard%20Walkthrough%20Request", use_container_width=True)
 
         st.markdown("")
         st.caption(

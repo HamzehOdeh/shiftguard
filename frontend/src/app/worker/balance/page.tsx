@@ -92,7 +92,7 @@ export default function WorkerBalancePage() {
             <p className="text-[10px] text-gray-500">Received this year</p>
           </div>
         </div>
-        <button className="w-full mt-3 border border-gray-700 hover:border-gray-500 py-2 rounded-lg text-sm text-gray-300 transition">
+        <button onClick={() => alert('Leave donation request submitted to HR for approval. Your colleague will be notified.')} className="w-full mt-3 border border-gray-700 hover:border-gray-500 py-2 rounded-lg text-sm text-gray-300 transition">
           Donate Hours to a Colleague
         </button>
       </div>

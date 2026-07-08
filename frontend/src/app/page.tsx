@@ -10,6 +10,7 @@ export default function Home() {
           <div className="flex items-center gap-6">
             <a href="/calculator" className="text-gray-400 hover:text-white transition">Free Calculator</a>
             <a href="/demo" className="text-gray-400 hover:text-white transition">Live Demo</a>
+            <a href="/reporting" className="text-gray-400 hover:text-white transition">ROI Dashboard</a>
             <a href="/login" className="bg-brand-600 hover:bg-brand-700 px-4 py-2 rounded-lg transition font-medium">Sign In</a>
           </div>
         </nav>

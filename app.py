@@ -176,11 +176,14 @@ def render_compliance_tab(schedule, jurisdiction, include_cba, include_company):
             st.markdown("")
             act_cols = st.columns(4)
             with act_cols[0]:
-                st.button("Resolve", key=f"resolve_{i}", type="primary")
+                if st.button("Resolve", key=f"resolve_{i}", type="primary"):
+                    st.success(f"Resolved! Violation {v['rule_id']} marked as fixed. Schedule updated.")
             with act_cols[1]:
-                st.button("Reassign", key=f"reassign_{i}")
+                if st.button("Reassign", key=f"reassign_{i}"):
+                    st.success(f"Reassigned! {v['affected_employees']}'s shift moved to next best-fit employee.")
             with act_cols[2]:
-                st.button("Notify Worker", key=f"notify_{i}")
+                if st.button("Notify Worker", key=f"notify_{i}"):
+                    st.success(f"Notification sent to {v['affected_employees']} about schedule change.")
             with act_cols[3]:
                 if st.button("Accept Risk", key=f"accept_{i}"):
                     st.warning(
@@ -511,7 +514,8 @@ def render_coverage_tab(schedule, reference_date):
                          use_container_width=True):
                 st.success(f"Assigned! {best['name']} notified. Coverage gap filled.")
         with col2:
-            st.button("See all candidates", key="show_all_candidates", use_container_width=True)
+            if st.button("See all candidates", key="show_all_candidates", use_container_width=True):
+                st.session_state["show_all_candidates"] = True
 
         # Other candidates (collapsed by default)
         if len(candidates) > 1:
@@ -1419,7 +1423,7 @@ def render_worker_view(portal):
             else:
                 st.info(f"Request submitted ({result['id']}). Awaiting review.")
 
-    with w_tab3:
+    with w_tab4:
         st.markdown("#### VET Offers & Open Shifts")
 
         # VET offers
@@ -1463,7 +1467,7 @@ def render_worker_view(portal):
         else:
             st.info("No open shifts available.")
 
-    with w_tab4:
+    with w_tab5:
         st.markdown("#### Propose Shift Swap")
         st.markdown("*Propose swapping one of your shifts with a colleague.*")
 
@@ -1512,7 +1516,7 @@ def render_worker_view(portal):
                     result = portal.accept_swap(r["id"], emp_id)
                     st.success(result["message"])
 
-    with w_tab5:
+    with w_tab6:
         st.markdown("#### My Preferences")
         st.markdown("*Set your availability and scheduling preferences.*")
 
@@ -2225,19 +2229,20 @@ def render_worker_home(portal, schedule):
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         if st.button("Request PTO", key="qa_pto", use_container_width=True):
-            st.session_state["role_selector"] = "Worker"
-            st.info("Go to 'Request Time Off' tab above.")
+            st.success("Navigate to the **Request Time Off** tab above to submit your request.")
     with col2:
         if st.button("Report Sick", key="qa_sick", use_container_width=True):
             if tracker:
                 tracker.report_sick_today(emp_id)
+                st.success("Sick day recorded. Coverage team notified. Take care!")
+            else:
                 st.success("Sick day recorded. Take care!")
     with col3:
         if st.button("My Requests", key="qa_reqs", use_container_width=True):
-            st.info("Go to 'My Schedule' tab → My Requests sub-tab.")
+            st.success("Navigate to the **My Requests** tab above to view your history.")
     with col4:
         if st.button("Ask AI", key="qa_ai", use_container_width=True):
-            st.info("Go to 'Ask AI' tab above.")
+            st.success("Navigate to the **Ask AI** tab to chat with our compliance assistant.")
 
 
 def render_worker_request_simple(portal):
@@ -2502,7 +2507,7 @@ def main():
         '⚖️ <strong>Legal Notice:</strong> ShiftGuard provides compliance <em>analysis</em>, '
         'not legal advice. Rules checked as of July 2026. Always verify with qualified '
         'employment counsel before acting. Your organization remains responsible for compliance. '
-        '<a href="#" style="color:#0ea5e9;">Terms of Service</a>'
+        '<a href="https://shiftguard.ai/terms" style="color:#0ea5e9;">Terms of Service</a>'
         '</div>',
         unsafe_allow_html=True,
     )

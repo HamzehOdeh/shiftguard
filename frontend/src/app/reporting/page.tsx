@@ -1,4 +1,9 @@
+'use client'
+
+import { useState } from 'react'
+
 export default function ReportingPage() {
+  const [timeRange, setTimeRange] = useState('30')
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Header */}
@@ -11,11 +16,11 @@ export default function ReportingPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <select className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white">
-            <option>Last 30 days</option>
-            <option>Last 90 days</option>
-            <option>Year to date</option>
-            <option>All time</option>
+          <select value={timeRange} onChange={(e) => setTimeRange(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white">
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 90 days</option>
+            <option value="ytd">Year to date</option>
+            <option value="all">All time</option>
           </select>
         </div>
       </header>
