@@ -740,8 +740,20 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
         tracker = st.session_state.get("leave_tracker")
         bal = tracker.get_balance_summary(nurse_id) if tracker else None
-        pto_display = f"{bal['pto_days']}d" if bal else "12d"
-        sick_display = f"{bal['sick_days']}d" if bal else "5d"
+
+        state_sick_hours = {
+            "California": "80h/yr (1h per 30h worked)",
+            "Illinois": "40h/yr (1h per 40h worked)",
+            "New York": "56h/yr (safe & sick leave)",
+            "Oregon": "40h/yr (1h per 30h worked)",
+            "Washington": "40h/yr (1h per 40h worked)",
+            "Colorado": "48h/yr (1h per 30h worked)",
+            "Michigan": "40h/yr (1h per 35h worked)",
+        }
+        state_sick_default = "40h/yr"
+        sick_rule = state_sick_hours.get(hospital_state, state_sick_default)
+        pto_display = f"{bal['pto_days']}d" if bal else "96h"
+        sick_display = f"{bal['sick_days']}d" if bal else sick_rule.split("/")[0]
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -750,7 +762,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         with col2:
             st.metric("PTO Left", pto_display)
         with col3:
-            st.metric("Sick Left", sick_display)
+            st.metric("Sick Left", sick_display, help=f"{hospital_state}: {sick_rule}")
         with col4:
             st.metric("Credentials", "All Current ✓")
 
