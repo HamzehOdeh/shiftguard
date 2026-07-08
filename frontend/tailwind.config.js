@@ -19,10 +19,10 @@ module.exports = {
         warning: '#ffc107',
         success: '#28a745',
         surface: {
-          base: '#000000',
-          raised: '#1c1c1e',
-          overlay: '#2c2c2e',
-          highlight: '#3a3a3c',
+          base: '#030712',
+          raised: '#111827',
+          overlay: '#1f2937',
+          highlight: '#374151',
         },
       },
       borderRadius: {

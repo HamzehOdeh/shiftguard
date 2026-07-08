@@ -7,9 +7,9 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname()
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       {/* Header */}
-      <header className="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between sticky top-0 bg-black/90 backdrop-blur-xl z-10 safe-top">
+      <header className="px-5 py-4 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-gray-950/95 backdrop-blur-xl z-10 safe-top">
         <Link href="/worker" className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex items-center justify-center text-xs font-bold shadow-brand-glow">SG</div>
           <span className="font-semibold text-body">ShiftGuard</span>
@@ -30,7 +30,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
       </main>
 
       {/* Bottom Tab Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-white/[0.06] z-20">
+      <nav className="fixed bottom-0 left-0 right-0 bg-gray-950/95 backdrop-blur-xl border-t border-gray-800 z-20">
         <div className="flex justify-around items-center px-4 pt-2 pb-safe" style={{height: '88px'}}>
           <NavItem href="/worker" label="Home" icon="home" active={pathname === '/worker'} />
           <NavItem href="/worker/schedule" label="Schedule" icon="calendar" active={pathname === '/worker/schedule'} />

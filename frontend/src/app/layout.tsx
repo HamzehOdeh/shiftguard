@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className="bg-black text-white min-h-screen overscroll-none">
+      <body className="bg-gray-950 text-white min-h-screen overscroll-none">
         <ServiceWorkerRegister />
         {children}
       </body>
