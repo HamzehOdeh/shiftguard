@@ -67,7 +67,7 @@ def main():
         '<div>'
         '<h1 style="margin:0;font-size:1.6em;font-weight:800;color:white;letter-spacing:-0.5px;">'
         'ShiftGuard<span style="color:#0ea5e9;"> for Healthcare</span></h1>'
-        '<p style="margin:0;color:#94a3b8;font-size:0.85em;">ACGME compliance · Nurse staffing ratios · Fair scheduling · Zero violations</p>'
+        '<p style="margin:0;color:#94a3b8;font-size:0.85em;">Protecting patients by preventing fatigued providers · ACGME compliance · Safe staffing ratios · Fair scheduling</p>'
         '</div></div></div>',
         unsafe_allow_html=True,
     )
@@ -307,7 +307,7 @@ def main():
         st.markdown("*Real-time ACGME duty hour compliance for all residents.*")
 
         if dashboard["all_compliant"]:
-            st.success(f"✅ ALL {dashboard['total_residents']} RESIDENTS COMPLIANT — No ACGME violations")
+            st.success(f"✅ ALL {dashboard['total_residents']} RESIDENTS SAFE — No duty hour violations. No fatigued providers on schedule.")
         else:
             st.error(f"⚠️ {dashboard['at_risk']} RESIDENT(S) AT RISK — Immediate attention needed")
 
@@ -1440,17 +1440,19 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         )
         penalty_high = int(penalty_exposure * state_rules["multiplier"])
 
+        critical_count = sum(1 for v in violations if v["severity"] == "CRITICAL")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("Total Violations", len(violations))
+            st.metric("Patient Safety Risks", critical_count,
+                      help="Critical violations directly increase adverse event probability")
         with col2:
-            st.metric("Penalty Exposure", f"${penalty_high:,}/week",
-                      help=f"Based on {selected_state} penalty rates (×{state_rules['multiplier']} multiplier)")
+            st.metric("Total Violations", len(violations))
         with col3:
             compliance_score = max(0, 100 - len(violations) * 7)
-            st.metric("Compliance Score", f"{compliance_score}/100")
+            st.metric("Safety Score", f"{compliance_score}/100")
         with col4:
-            st.metric("ACGME Status", "COMPLIANT" if dashboard["all_compliant"] else "AT RISK")
+            st.metric("Penalty Exposure", f"${penalty_high:,}/wk",
+                      help=f"{selected_state} rates (×{state_rules['multiplier']})")
 
         st.divider()
 
@@ -1468,16 +1470,24 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 v_penalty = state_rules["critical_fine"] if v["severity"] == "CRITICAL" else state_rules["high_fine"] if v["severity"] == "HIGH" else state_rules["medium_fine"]
                 v_penalty_adjusted = int(v_penalty * state_rules["multiplier"])
 
+                safety_risks = {
+                    "CRITICAL": "Patient safety at risk — fatigued providers make 36% more medical errors",
+                    "HIGH": "Elevated clinical risk — impaired judgment from inadequate rest or overwork",
+                    "MEDIUM": "Operational risk — staffing gaps increase adverse event probability",
+                }
+                safety_msg = safety_risks.get(v["severity"], "")
+
                 st.markdown(
                     f'<div style="background:#1a1a2e;padding:12px;border-radius:8px;'
                     f'margin-bottom:8px;border-left:4px solid {color};">'
                     f'<div style="display:flex;justify-content:space-between;align-items:center;">'
                     f'<span><strong>{v["severity"]}</strong> — {v["affected_employees"]}</span>'
                     f'<span style="background:#dc3545;color:white;padding:3px 10px;border-radius:12px;'
-                    f'font-weight:bold;font-size:0.9em;">💰 ${v_penalty_adjusted:,}</span></div>'
+                    f'font-weight:bold;font-size:0.9em;">${v_penalty_adjusted:,}</span></div>'
+                    f'<span style="color:#ff6b6b;font-size:0.85em;font-weight:600;">⚠️ {safety_msg}</span><br>'
                     f'<span style="color:#ccc;font-size:0.9em;">{v["description"]}</span><br>'
                     f'<span style="color:#28a745;font-size:0.9em;">✅ Fix: {v["recommendation"]}</span><br>'
-                    f'<span style="color:#888;font-size:0.75em;">Penalty based on {selected_state} law (×{state_rules["multiplier"]} multiplier)</span>'
+                    f'<span style="color:#888;font-size:0.75em;">{selected_state} penalty: ${v_penalty_adjusted:,} (×{state_rules["multiplier"]})</span>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
