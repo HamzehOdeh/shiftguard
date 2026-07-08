@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head><title>Icon Generator</title></head>
+<body>
+<canvas id="c192" width="192" height="192"></canvas>
+<canvas id="c512" width="512" height="512"></canvas>
+<canvas id="cmask" width="512" height="512"></canvas>
+<script>
+function drawIcon(canvas, size, maskable) {
+  const ctx = canvas.getContext('2d');
+  const pad = maskable ? size * 0.2 : 0;
+  const inner = size - pad * 2;
+
+  // Background
+  ctx.fillStyle = '#030712';
+  ctx.fillRect(0, 0, size, size);
+
+  // Rounded square brand color
+  const x = pad + inner * 0.15;
+  const y = pad + inner * 0.15;
+  const w = inner * 0.7;
+  const r = w * 0.18;
+
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + w - r);
+  ctx.quadraticCurveTo(x + w, y + w, x + w - r, y + w);
+  ctx.lineTo(x + r, y + w);
+  ctx.quadraticCurveTo(x, y + w, x, y + w - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+
+  const grad = ctx.createLinearGradient(x, y, x + w, y + w);
+  grad.addColorStop(0, '#0ea5e9');
+  grad.addColorStop(1, '#0369a1');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // "SG" text
+  const fontSize = w * 0.4;
+  ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('SG', x + w/2, y + w/2 + fontSize * 0.03);
+}
+
+drawIcon(document.getElementById('c192'), 192, false);
+drawIcon(document.getElementById('c512'), 512, false);
+drawIcon(document.getElementById('cmask'), 512, true);
+
+// Download links
+['c192', 'c512', 'cmask'].forEach((id, i) => {
+  const names = ['icon-192.png', 'icon-512.png', 'icon-maskable.png'];
+  const link = document.createElement('a');
+  link.download = names[i];
+  link.href = document.getElementById(id).toDataURL();
+  link.textContent = 'Download ' + names[i];
+  link.style.display = 'block';
+  link.style.margin = '10px';
+  document.body.appendChild(link);
+});
+</script>
+</body>
+</html>

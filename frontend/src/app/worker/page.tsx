@@ -1,9 +1,16 @@
+'use client'
+
+import Link from 'next/link'
+import { useState } from 'react'
+
 export default function WorkerHome() {
+  const [vetStatus, setVetStatus] = useState<'pending' | 'accepted' | 'declined'>('pending')
+
   function handleVetAccept() {
-    alert('VET shift accepted! You\'ll receive confirmation shortly.')
+    setVetStatus('accepted')
   }
   function handleVetDecline() {
-    alert('VET declined. It will be offered to the next eligible worker.')
+    setVetStatus('declined')
   }
 
   return (
@@ -75,7 +82,7 @@ export default function WorkerHome() {
       </div>
 
       {/* VET Offer */}
-      <div className="bg-brand-950 border border-brand-800 rounded-xl p-4">
+      <div className="bg-brand-950 border border-brand-800 rounded-xl p-4 animate-slide-up">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-2 h-2 bg-brand-500 rounded-full animate-pulse"></div>
           <span className="text-xs text-brand-400 uppercase font-medium">VET Available</span>
@@ -83,38 +90,46 @@ export default function WorkerHome() {
         <p className="font-semibold">Thursday, Jul 10</p>
         <p className="text-gray-400 text-sm">07:00 - 19:00 | Covering for: Maria Rodriguez</p>
         <p className="text-gray-500 text-xs mt-1">Premium pay applies | Expires in 28 min</p>
-        <div className="flex gap-3 mt-4">
-          <button onClick={handleVetAccept} className="flex-1 bg-brand-600 hover:bg-brand-700 py-2.5 rounded-lg font-medium text-sm transition">
-            Accept
-          </button>
-          <button onClick={handleVetDecline} className="flex-1 border border-gray-700 hover:border-gray-500 py-2.5 rounded-lg text-sm text-gray-300 transition">
-            Decline
-          </button>
-        </div>
+        {vetStatus === 'pending' ? (
+          <div className="flex gap-3 mt-4">
+            <button onClick={handleVetAccept} className="flex-1 bg-brand-600 active:bg-brand-800 py-3 rounded-lg font-medium text-sm transition min-h-[48px]">
+              Accept
+            </button>
+            <button onClick={handleVetDecline} className="flex-1 border border-gray-700 active:bg-gray-800 py-3 rounded-lg text-sm text-gray-300 transition min-h-[48px]">
+              Decline
+            </button>
+          </div>
+        ) : (
+          <div className={`mt-4 p-3 rounded-lg text-sm font-medium text-center animate-slide-up ${
+            vetStatus === 'accepted' ? 'bg-green-900/50 text-green-400' : 'bg-gray-800 text-gray-400'
+          }`}>
+            {vetStatus === 'accepted' ? 'Accepted! Confirmation sent.' : 'Declined. Offered to next worker.'}
+          </div>
+        )}
       </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3">
-        <a href="/worker/request" className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-600 transition block">
+        <Link href="/worker/request" className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left active:bg-gray-800 transition block min-h-[88px]">
           <span className="text-2xl mb-1 block">🤒</span>
           <span className="text-sm font-medium">Report Sick</span>
           <span className="text-xs text-gray-500 block">One-tap callout</span>
-        </a>
-        <a href="/worker/schedule" className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-600 transition block">
+        </Link>
+        <Link href="/worker/schedule" className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left active:bg-gray-800 transition block min-h-[88px]">
           <span className="text-2xl mb-1 block">🔄</span>
           <span className="text-sm font-medium">Swap Shift</span>
           <span className="text-xs text-gray-500 block">Propose a trade</span>
-        </a>
-        <a href="/worker/schedule" className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-600 transition block">
+        </Link>
+        <Link href="/worker/schedule" className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left active:bg-gray-800 transition block min-h-[88px]">
           <span className="text-2xl mb-1 block">👥</span>
           <span className="text-sm font-medium">On Floor Now</span>
           <span className="text-xs text-gray-500 block">Who's working</span>
-        </a>
-        <a href="/worker/balance" className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:border-gray-600 transition block">
+        </Link>
+        <Link href="/worker/balance" className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-left active:bg-gray-800 transition block min-h-[88px]">
           <span className="text-2xl mb-1 block">💬</span>
           <span className="text-sm font-medium">Ask AI</span>
           <span className="text-xs text-gray-500 block">Hours, balance, etc.</span>
-        </a>
+        </Link>
       </div>
 
       {/* Balance Summary */}
@@ -170,9 +185,9 @@ function NotificationCard({ icon, priority, title, message, actionLabel }: {
           <p className="text-sm font-medium leading-tight">{title}</p>
           <p className="text-xs text-gray-400 mt-1 leading-relaxed">{message}</p>
           {actionLabel && (
-            <a href={actionLabel === 'View Schedule' ? '/worker/schedule' : '/worker'} className="mt-2 inline-block text-xs bg-brand-600 hover:bg-brand-700 px-3 py-1 rounded-md font-medium transition">
+            <Link href={actionLabel === 'View Schedule' ? '/worker/schedule' : '/worker'} className="mt-2 inline-block text-xs bg-brand-600 active:bg-brand-800 px-4 py-2 rounded-md font-medium transition min-h-[36px] leading-relaxed">
               {actionLabel}
-            </a>
+            </Link>
           )}
         </div>
       </div>
