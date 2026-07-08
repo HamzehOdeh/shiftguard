@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shiftguard-v1';
+const CACHE_NAME = 'shiftguard-v2';
 const PRECACHE_URLS = [
   '/worker',
   '/worker/schedule',

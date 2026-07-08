@@ -64,10 +64,18 @@ input, textarea, select {
 
 /* Button primary */
 .btn-primary {
-  @apply bg-gradient-to-br from-brand-500 to-brand-700 text-white font-semibold rounded-2xl py-4 px-6 shadow-brand-glow transition-all duration-150;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
+  color: white;
+  font-weight: 600;
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 4px 20px rgba(14,165,233,0.25), 0 2px 8px rgba(14,165,233,0.15);
+  transition: all 0.15s ease-out;
 }
 .btn-primary:active {
-  @apply shadow-none brightness-90 scale-[0.98];
+  box-shadow: none;
+  filter: brightness(0.9);
+  transform: scale(0.98);
 }
 
 /* Progress bar shimmer */
@@ -90,7 +98,3 @@ input, textarea, select {
   border-radius: 1rem;
 }
 
-/* View Transitions (progressive enhancement) */
-@view-transition {
-  navigation: auto;
-}
