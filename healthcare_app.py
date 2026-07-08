@@ -18,7 +18,7 @@ from residency_scheduler import (
 )
 from jeopardy_system import JeopardySystem, create_demo_jeopardy_system, PATTERN_SIGNALS
 from hours_tracker import calculate_fatigue_score, calculate_employee_hours
-from leave_management import create_demo_leave_tracker
+from leave_management import create_demo_leave_tracker, create_healthcare_leave_tracker
 from notifications import SmartNotificationGenerator
 from compliance_checker import check_compliance
 from coverage_engine import find_coverage, calculate_team_fairness_report
@@ -131,7 +131,7 @@ def main():
         jeopardy_sys.assign_week_jeopardy(week_dates, "Night")
         st.session_state["jeopardy"] = jeopardy_sys
     if "leave_tracker" not in st.session_state:
-        st.session_state["leave_tracker"] = create_demo_leave_tracker()
+        st.session_state["leave_tracker"] = create_healthcare_leave_tracker(state=hospital_state)
     if "audit_log" not in st.session_state:
         now = datetime.now()
         st.session_state["audit_log"] = [
@@ -741,30 +741,44 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         tracker = st.session_state.get("leave_tracker")
         bal = tracker.get_balance_summary(nurse_id) if tracker else None
 
-        state_sick_hours = {
-            "California": "80h/yr (1h per 30h worked)",
-            "Illinois": "40h/yr (1h per 40h worked)",
-            "New York": "56h/yr (safe & sick leave)",
-            "Oregon": "40h/yr (1h per 30h worked)",
-            "Washington": "40h/yr (1h per 40h worked)",
-            "Colorado": "48h/yr (1h per 30h worked)",
-            "Michigan": "40h/yr (1h per 35h worked)",
-        }
-        state_sick_default = "40h/yr"
-        sick_rule = state_sick_hours.get(hospital_state, state_sick_default)
-        pto_display = f"{bal['pto_days']}d" if bal else "96h"
-        sick_display = f"{bal['sick_days']}d" if bal else sick_rule.split("/")[0]
+        if bal:
+            pto_display = f"{bal['pto_days']}d"
+            sick_display = f"{bal['sick_days']}d"
+            at_risk = bal.get("at_risk", {})
+            pto_help = f"{hospital_state}: {at_risk.get('state_rule', 'Check state law')}"
+            sick_help = f"Carryover cap: {at_risk.get('sick_carryover_cap', 'Per policy')}h"
+        else:
+            pto_display = "96h"
+            sick_display = "40h"
+            pto_help = f"{hospital_state} rules apply"
+            sick_help = f"{hospital_state} accrual rules"
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Hours This Week", f"{weekly_hours}h",
                       delta=f"{ot_remaining}h to OT" if ot_remaining > 0 else "IN OT")
         with col2:
-            st.metric("PTO Left", pto_display)
+            st.metric("PTO Left", pto_display, help=pto_help)
         with col3:
-            st.metric("Sick Left", sick_display, help=f"{hospital_state}: {sick_rule}")
+            st.metric("Sick Left", sick_display, help=sick_help)
         with col4:
             st.metric("Credentials", "All Current ✓")
+
+        # State-aware balance warning
+        if bal and bal.get("at_risk"):
+            at_risk = bal["at_risk"]
+            if at_risk.get("pto_at_risk", 0) > 0:
+                st.warning(
+                    f"⚠️ **{at_risk['pto_at_risk']}h PTO at risk** — {hospital_state} allows use-it-or-lose-it. "
+                    f"Carryover cap: {at_risk.get('pto_carryover_cap', '?')}h. "
+                    f"Use by year-end ({at_risk.get('days_until_year_end', '?')} days) or lose it."
+                )
+            if at_risk.get("sick_at_risk", 0) > 0:
+                st.warning(
+                    f"⚠️ **{at_risk['sick_at_risk']}h sick leave exceeds carryover cap** — "
+                    f"{hospital_state} cap: {at_risk.get('sick_carryover_cap', '?')}h. "
+                    f"Excess hours will not carry to next year."
+                )
 
         st.divider()
 

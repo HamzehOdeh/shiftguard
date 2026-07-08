@@ -1131,6 +1131,30 @@ def create_demo_leave_tracker():
     return tracker
 
 
+def create_healthcare_leave_tracker(state="Illinois"):
+    """Create a leave tracker with healthcare employee IDs pre-populated."""
+    tracker = LeaveBalanceTracker(state=state)
+
+    healthcare_staff = [
+        ("H001", "2023-06-15"), ("H002", "2022-01-10"), ("H003", "2024-03-01"),
+        ("H004", "2021-08-20"), ("H005", "2023-11-05"), ("H006", "2020-02-14"),
+        ("H007", "2024-07-01"), ("H008", "2022-09-12"), ("H009", "2023-04-18"),
+        ("H010", "2021-12-01"),
+    ]
+
+    for emp_id, hire_date in healthcare_staff:
+        tracker.initialize_employee(emp_id, hire_date, hours_worked_ytd=1200)
+
+    tracker.record_leave("H001", "PTO", "2026-03-15", "2026-03-19", reason="Spring break")
+    tracker.record_leave("H002", "SICK_UNPLANNED", "2026-05-12", "2026-05-12", hours=12, reason="Flu")
+    tracker.record_leave("H003", "PTO", "2026-06-28", "2026-06-30", reason="Family wedding")
+    tracker.record_leave("H004", "SICK_UNPLANNED", "2026-04-07", "2026-04-07", hours=12, reason="Migraine")
+    tracker.record_leave("H004", "SICK_UNPLANNED", "2026-05-19", "2026-05-19", hours=12, reason="Food poisoning")
+    tracker.record_leave("H006", "FMLA", "2026-02-01", "2026-02-14", reason="Surgery recovery")
+
+    return tracker
+
+
 if __name__ == "__main__":
     tracker = create_demo_leave_tracker()
 
