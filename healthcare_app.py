@@ -125,11 +125,31 @@ def main():
     if "residency_program" not in st.session_state:
         st.session_state["residency_program"] = create_demo_residency_program()
     if "jeopardy" not in st.session_state:
-        st.session_state["jeopardy"] = create_demo_jeopardy_system()
+        jeopardy_sys = create_demo_jeopardy_system()
+        today = datetime.now()
+        week_dates = [(today + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+        jeopardy_sys.assign_week_jeopardy(week_dates, "Night")
+        st.session_state["jeopardy"] = jeopardy_sys
     if "leave_tracker" not in st.session_state:
         st.session_state["leave_tracker"] = create_demo_leave_tracker()
     if "audit_log" not in st.session_state:
-        st.session_state["audit_log"] = []
+        now = datetime.now()
+        st.session_state["audit_log"] = [
+            {"timestamp": (now - timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S"), "action": "SCHEDULE_PUBLISHED", "actor": "Dr. Torres (PD)", "target": "July Week 2 Schedule", "details": "All ACGME rules passed. Confidence: 98%", "compliance_status": "COMPLIANT", "role": "Program Director"},
+            {"timestamp": (now - timedelta(hours=4)).strftime("%Y-%m-%d %H:%M:%S"), "action": "VIOLATION_FIXED", "actor": "System (Auto)", "target": "Dr. Patel", "details": "80h limit approaching — removed Friday night shift", "compliance_status": "FIXED", "role": "Program Director"},
+            {"timestamp": (now - timedelta(hours=3)).strftime("%Y-%m-%d %H:%M:%S"), "action": "SHIFT_SWAP_APPROVED", "actor": "Dr. Kim", "target": "Dr. Santos", "details": "Jul 12 night swap — both ACGME-safe after swap", "compliance_status": "COMPLIANT", "role": "Chief Resident"},
+            {"timestamp": (now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S"), "action": "PTO_AUTO_APPROVED", "actor": "System", "target": "RN Sarah Chen", "details": "Jul 15-17 PTO — coverage maintained (3 RNs on shift)", "compliance_status": "COMPLIANT", "role": "Nurse Manager"},
+            {"timestamp": (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"), "action": "JEOPARDY_ACTIVATED", "actor": "System (Auto)", "target": "Dr. Park", "details": "Dr. Reeves callout 5:12AM — backup activated, ACGME-safe", "compliance_status": "COMPLIANT", "role": "Chief Resident"},
+        ]
+    if "onboarding_dismissed" not in st.session_state:
+        st.session_state["onboarding_dismissed"] = True
+    if "procedure_log" not in st.session_state:
+        st.session_state["procedure_log"] = [
+            {"date": (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d"), "resident": "Dr. Patel (PGY-3)", "procedure": "Central Line Placement", "supervisor": "Dr. Torres", "outcome": "Successful", "notes": "Supervised, IJ approach"},
+            {"date": (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d"), "resident": "Dr. Kim (PGY-2)", "procedure": "Chest Tube Insertion", "supervisor": "Dr. Martinez", "outcome": "Successful", "notes": "First solo attempt"},
+            {"date": (datetime.now() - timedelta(days=8)).strftime("%Y-%m-%d"), "resident": "Dr. Santos (PGY-1)", "procedure": "Lumbar Puncture", "supervisor": "Dr. Torres", "outcome": "Successful", "notes": "Observed then performed"},
+            {"date": (datetime.now() - timedelta(days=12)).strftime("%Y-%m-%d"), "resident": "Dr. Patel (PGY-3)", "procedure": "Intubation", "supervisor": "Dr. Walsh", "outcome": "Successful", "notes": "RSI in trauma bay"},
+        ]
 
     def log_action(action, actor, target="", details="", compliance_status=""):
         """Log every schedule change, approval, and decision to the audit trail."""
@@ -509,10 +529,16 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     "start": "07:00",
                     "end": "19:00",
                 })
+                st.session_state["sick_call_result"] = result
+                st.session_state["sick_call_who"] = sick_resident
+                st.session_state["sick_call_date"] = sick_date
                 explanation = result.get("explanation", "Sick call processed. Finding coverage.")
                 log_action("SICK_CALL_PROCESSED", role, sick_resident,
                            f"Date: {sick_date}. {explanation}", "COMPLIANT")
 
+            if st.session_state.get("sick_call_result"):
+                result = st.session_state["sick_call_result"]
+                explanation = result.get("explanation", "Sick call processed. Finding coverage.")
                 st.markdown(
                     f'<div style="background:#1a2d1a;padding:12px;border-radius:8px;'
                     f'border-left:4px solid #28a745;">'
@@ -531,6 +557,8 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     )
                     if st.button(f"Assign {rec['resident']}", key="assign_cover"):
                         st.success(f"Assigned! {rec['resident']} notified.")
+                        log_action("COVERAGE_ASSIGNED", role, rec["resident"], "Jeopardy backup activated", "COMPLIANT")
+                        st.session_state["sick_call_result"] = None
 
         with adj_col2:
             st.markdown("**Swap Compliance Check**")
@@ -712,15 +740,17 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
         tracker = st.session_state.get("leave_tracker")
         bal = tracker.get_balance_summary(nurse_id) if tracker else None
+        pto_display = f"{bal['pto_days']}d" if bal else "12d"
+        sick_display = f"{bal['sick_days']}d" if bal else "5d"
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Hours This Week", f"{weekly_hours}h",
                       delta=f"{ot_remaining}h to OT" if ot_remaining > 0 else "IN OT")
         with col2:
-            st.metric("PTO Left", f"{bal['pto_days']}d" if bal else "—")
+            st.metric("PTO Left", pto_display)
         with col3:
-            st.metric("Sick Left", f"{bal['sick_days']}d" if bal else "—")
+            st.metric("Sick Left", sick_display)
         with col4:
             st.metric("Credentials", "All Current ✓")
 
@@ -830,13 +860,11 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 max_consec = st.slider("Max consecutive shifts per nurse:", 2, 5, 3, key="max_consec_nurse")
 
             if st.button("Generate Fair Schedule", type="primary", key="gen_nurse_sched"):
-                with st.spinner("Building fair schedule (checking ratios, credentials, consecutive limits)..."):
-                    import time
-                    time.sleep(0.8)
+                st.session_state["nurse_sched_generated"] = True
 
+            if st.session_state.get("nurse_sched_generated"):
                 st.success(f"Schedule generated for {unit_name}! {days_rn} day + {nights_rn} night RNs × {gen_weeks}.")
 
-                # Show generated schedule
                 import random
                 random.seed(42)
                 staff = st.session_state.get("nursing_staff", [
@@ -859,7 +887,6 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
                 st.dataframe(pd.DataFrame(gen_rows), use_container_width=True, hide_index=True)
 
-                # Fairness check
                 st.markdown(
                     '<div style="background:#1a2d1a;padding:10px;border-radius:8px;margin-top:8px;">'
                     '✅ <strong>Ratio check: PASS</strong> (4 RNs day / 3 RNs night meets 1:4 for 16 beds)<br>'
@@ -872,9 +899,11 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 with col1:
                     if st.button("Publish Schedule", type="primary", key="pub_nurse_sched"):
                         st.success("Published! All nurses notified via app + SMS.")
+                        log_action("SCHEDULE_PUBLISHED", "Nurse Manager", unit_name, f"{days_rn}D/{nights_rn}N schedule published", "COMPLIANT")
                 with col2:
                     if st.button("Adjust & Regenerate", key="regen_nurse_sched"):
-                        st.info("Change requirements above and regenerate.")
+                        st.session_state["nurse_sched_generated"] = False
+                        st.rerun()
 
         elif sched_mode == "Manual Assign":
             st.markdown("**Drag a nurse into a shift slot:**")
@@ -1191,6 +1220,9 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         )
         st.markdown("")
         if st.button("Find Available Attendings", type="primary", key="find_att"):
+            st.session_state["att_search_done"] = True
+
+        if st.session_state.get("att_search_done"):
             st.markdown(
                 '<div style="background:#1a2d1a;padding:12px;border-radius:8px;border-left:4px solid #28a745;">'
                 '✅ <strong>2 attendings available:</strong><br>'
@@ -1202,6 +1234,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             if st.button("Assign Dr. Park to Jul 18 Night", type="primary", key="assign_att_gap"):
                 st.success("Assigned! Dr. Park notified for Jul 18 Night coverage (19:00-07:00).")
                 log_action("ATTENDING_ASSIGNED", role, "Dr. Park", "Assigned to Jul 18 Night coverage gap", "COMPLIANT")
+                st.session_state["att_search_done"] = False
 
         # Moonlighting tracker
         st.divider()
@@ -2038,13 +2071,11 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     end_date = st.date_input("Academic year end:", value=datetime(2027, 6, 30), key="gen_end")
 
                 if st.button("Generate Year Schedule", type="primary", key="generate_year", use_container_width=True):
-                    with st.spinner("Generating fair schedule... (checking ACGME, balancing nights/weekends/holidays)"):
-                        import time
-                        time.sleep(1)  # Simulate generation time
+                    st.session_state["year_sched_generated"] = True
 
+                if st.session_state.get("year_sched_generated"):
                     st.success("Schedule generated! Fairness-optimized across all residents.")
 
-                    # Show generated schedule (demo output)
                     st.markdown("#### Generated Schedule — Fairness Scorecard")
                     st.markdown("*Lower variance = fairer distribution*")
 
@@ -2068,7 +2099,6 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     score_df = pd.DataFrame(score_rows)
                     st.dataframe(score_df, use_container_width=True, hide_index=True)
 
-                    # Fairness assessment
                     night_vals = [r["Night Shifts"] for r in score_rows]
                     night_range = max(night_vals) - min(night_vals)
                     weekend_vals = [r["Weekend Shifts"] for r in score_rows]
@@ -2079,7 +2109,6 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     else:
                         st.warning(f"Fairness could be better — Night range: {night_range} | Weekend range: {weekend_range}")
 
-                    # Block view (sample first 3 months)
                     st.markdown("#### Block Schedule (First Quarter)")
                     block_data = []
                     blocks_list = ["ED Clinical", "ICU", "Night Float", "Elective", "ED Clinical", "Research"]
@@ -2092,19 +2121,19 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
                     st.dataframe(pd.DataFrame(block_data), use_container_width=True, hide_index=True)
 
-                    # Actions
                     st.divider()
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         if st.button("Publish Schedule", type="primary", key="publish_sched", use_container_width=True):
                             st.success("Published! All residents notified. Daily adjustment tracking is now active.")
+                            log_action("SCHEDULE_PUBLISHED", role, "Residency Year Schedule", "All ACGME rules passed", "COMPLIANT")
                     with col2:
                         if st.button("Adjust & Regenerate", key="regen", use_container_width=True):
-                            st.info("Make changes in Steps 1-3, then regenerate.")
+                            st.session_state["year_sched_generated"] = False
+                            st.rerun()
                     with col3:
-                        if st.button("Export (CSV)", key="export_sched", use_container_width=True):
-                            csv = score_df.to_csv(index=False)
-                            st.download_button("Download", csv, file_name="residency_schedule_2026-27.csv", mime="text/csv")
+                        csv = score_df.to_csv(index=False)
+                        st.download_button("Export (CSV)", csv, file_name="residency_schedule_2026-27.csv", mime="text/csv", use_container_width=True)
 
     # ================================================================
     # TAB: MY SCHEDULE (Resident's personal view)

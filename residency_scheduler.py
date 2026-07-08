@@ -652,9 +652,9 @@ def create_demo_residency_program():
     program.add_resident("R004", "Dr. Michael Kim", "PGY-3")
     program.add_resident("R005", "Dr. Aisha Johnson", "PGY-1")
 
-    # Log some shifts to create realistic hours
+    # Log some shifts to create realistic hours (past 14 days + next 10 days)
     base_date = datetime.now() - timedelta(days=14)
-    for day_offset in range(14):
+    for day_offset in range(24):
         date = (base_date + timedelta(days=day_offset)).strftime("%Y-%m-%d")
 
         # R001 (PGY-3): Heavy week
@@ -668,15 +668,15 @@ def create_demo_residency_program():
             program.log_shift("R002", date, "07:00", "17:00", "clinical")
 
         # R003 (PGY-1): Standard
-        if day_offset < 10 and day_offset % 7 != 6:
+        if day_offset % 7 != 6:
             program.log_shift("R003", date, "06:00", "18:00", "clinical")
 
         # R004: Night float block
-        if 3 <= day_offset <= 8:
+        if 3 <= day_offset <= 8 or 16 <= day_offset <= 21:
             program.log_shift("R004", date, "19:00", "07:00", "night_float")
 
-        # R005: Light week (post-vacation)
-        if day_offset >= 10 and day_offset % 2 == 0:
+        # R005: Regular schedule
+        if day_offset % 3 != 2:
             program.log_shift("R005", date, "07:00", "17:00", "clinical")
 
     return program
