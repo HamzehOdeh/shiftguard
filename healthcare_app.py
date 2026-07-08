@@ -126,9 +126,8 @@ def main():
         st.session_state["residency_program"] = create_demo_residency_program()
     if "jeopardy" not in st.session_state:
         jeopardy_sys = create_demo_jeopardy_system()
-        today = datetime.now()
-        week_dates = [(today + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
-        jeopardy_sys.assign_week_jeopardy(week_dates, "Night")
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        jeopardy_sys.assign_week_jeopardy(today_str)
         st.session_state["jeopardy"] = jeopardy_sys
     if "leave_tracker" not in st.session_state:
         st.session_state["leave_tracker"] = create_healthcare_leave_tracker(state=hospital_state)
@@ -145,10 +144,10 @@ def main():
         st.session_state["onboarding_dismissed"] = True
     if "procedure_log" not in st.session_state:
         st.session_state["procedure_log"] = [
-            {"date": (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d"), "resident": "Dr. Patel (PGY-3)", "procedure": "Central Line Placement", "supervisor": "Dr. Torres", "outcome": "Successful", "notes": "Supervised, IJ approach"},
-            {"date": (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d"), "resident": "Dr. Kim (PGY-2)", "procedure": "Chest Tube Insertion", "supervisor": "Dr. Martinez", "outcome": "Successful", "notes": "First solo attempt"},
-            {"date": (datetime.now() - timedelta(days=8)).strftime("%Y-%m-%d"), "resident": "Dr. Santos (PGY-1)", "procedure": "Lumbar Puncture", "supervisor": "Dr. Torres", "outcome": "Successful", "notes": "Observed then performed"},
-            {"date": (datetime.now() - timedelta(days=12)).strftime("%Y-%m-%d"), "resident": "Dr. Patel (PGY-3)", "procedure": "Intubation", "supervisor": "Dr. Walsh", "outcome": "Successful", "notes": "RSI in trauma bay"},
+            {"Date": (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d"), "Resident": "Dr. Patel (PGY-3)", "Procedure": "Central Line Placement", "Attending": "Dr. Torres", "Outcome": "Successful"},
+            {"Date": (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d"), "Resident": "Dr. Kim (PGY-2)", "Procedure": "Chest Tube Insertion", "Attending": "Dr. Martinez", "Outcome": "Successful"},
+            {"Date": (datetime.now() - timedelta(days=8)).strftime("%Y-%m-%d"), "Resident": "Dr. Santos (PGY-1)", "Procedure": "Lumbar Puncture", "Attending": "Dr. Torres", "Outcome": "Successful"},
+            {"Date": (datetime.now() - timedelta(days=12)).strftime("%Y-%m-%d"), "Resident": "Dr. Patel (PGY-3)", "Procedure": "Intubation", "Attending": "Dr. Walsh", "Outcome": "Successful"},
         ]
 
     def log_action(action, actor, target="", details="", compliance_status=""):
@@ -863,9 +862,9 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         if today_shifts:
             team_rows = [{"Name": s["name"], "Role": s.get("role", ""), "Time": f"{s['start']}-{s['end']}"} for s in today_shifts[:10]]
             st.dataframe(pd.DataFrame(team_rows), use_container_width=True, hide_index=True)
+        else:
+            st.caption("Schedule will populate once published for this week.")
 
-        # Credential alerts
-        st.divider()
         # ---- NURSE SCHEDULE BUILDER ----
         st.divider()
         st.markdown("#### Build Unit Schedule")
@@ -989,7 +988,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         cred_data = [
             {"Credential": "BLS", "Status": "✅ Current", "Expires": "Dec 2026"},
             {"Credential": "ACLS", "Status": "✅ Current", "Expires": "Mar 2027"},
-            {"Credential": "RN License (IL)", "Status": "✅ Current", "Expires": "May 2028"},
+            {"Credential": f"RN License ({hospital_state[:2].upper()})", "Status": "✅ Current", "Expires": "May 2028"},
             {"Credential": "NRP", "Status": "⚠️ Expiring Soon", "Expires": "Aug 2026"},
         ]
         st.dataframe(pd.DataFrame(cred_data), use_container_width=True, hide_index=True)
@@ -1239,7 +1238,8 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         st.markdown("#### Open Coverage Needs")
         st.markdown(
             '<div style="background:#2d1b1b;padding:12px;border-radius:8px;border-left:4px solid #dc3545;">'
-            '⚠️ <strong>Jul 18 (Friday Night):</strong> No attending assigned. '
+            f'⚠️ <strong>{(datetime.now() + timedelta(days=5)).strftime("%b %d")} '
+            f'({(datetime.now() + timedelta(days=5)).strftime("%A")} Night):</strong> No attending assigned. '
             'Dr. Thompson requested off. <strong>Need coverage 19:00-07:00.</strong>'
             '</div>',
             unsafe_allow_html=True,
@@ -1257,8 +1257,9 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 '<span style="color:#888;font-size:0.85em;">Compliance check: Both ACGME-safe.</span></div>',
                 unsafe_allow_html=True,
             )
-            if st.button("Assign Dr. Park to Jul 18 Night", type="primary", key="assign_att_gap"):
-                st.success("Assigned! Dr. Park notified for Jul 18 Night coverage (19:00-07:00).")
+            gap_date = (datetime.now() + timedelta(days=5)).strftime("%b %d")
+            if st.button(f"Assign Dr. Park to {gap_date} Night", type="primary", key="assign_att_gap"):
+                st.success(f"Assigned! Dr. Park notified for {gap_date} Night coverage (19:00-07:00).")
                 log_action("ATTENDING_ASSIGNED", role, "Dr. Park", "Assigned to Jul 18 Night coverage gap", "COMPLIANT")
                 st.session_state["att_search_done"] = False
 
@@ -1267,8 +1268,8 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         st.markdown("#### Moonlighting Log")
         st.markdown("*Internal moonlighting counts toward residents' 80h/week cap.*")
         moon_data = [
-            {"Resident": "Dr. Chen (PGY-3)", "Date": "Jul 5", "Hours": 8, "Location": "Urgent Care", "Total Week": "68h"},
-            {"Resident": "Dr. Kim (PGY-3)", "Date": "Jul 3", "Hours": 6, "Location": "Telehealth", "Total Week": "72h"},
+            {"Resident": "Dr. Chen (PGY-3)", "Date": (datetime.now() - timedelta(days=3)).strftime("%b %d"), "Hours": 8, "Location": "Urgent Care", "Total Week": "68h"},
+            {"Resident": "Dr. Kim (PGY-3)", "Date": (datetime.now() - timedelta(days=5)).strftime("%b %d"), "Hours": 6, "Location": "Telehealth", "Total Week": "72h"},
         ]
         st.dataframe(pd.DataFrame(moon_data), use_container_width=True, hide_index=True)
         st.caption("Moonlighting hours count toward ACGME 80h cap. Program Director must approve.")
@@ -1665,12 +1666,13 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         unsafe_allow_html=True,
                     )
 
-            # Quick ROI
+            # Quick ROI (minimum floor so it never shows $0)
             st.divider()
+            annual_savings = max(penalty_high * 52 * 0.7, 85000)
             st.markdown(
                 '<div style="background:#1a2d1a;padding:16px;border-radius:10px;text-align:center;">'
                 '<span style="color:#28a745;font-size:0.85em;text-transform:uppercase;">Estimated Annual Savings</span><br>'
-                f'<strong style="color:#28a745;font-size:2em;">${penalty_high * 52 * 0.7:,.0f}</strong><br>'
+                f'<strong style="color:#28a745;font-size:2em;">${annual_savings:,.0f}</strong><br>'
                 '<span style="color:#888;">Penalties avoided + manager time saved + retention improvement</span></div>',
                 unsafe_allow_html=True,
             )
@@ -1715,14 +1717,14 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
             elif org_section == "Compliance Rules":
                 st.markdown("**Active Compliance Rules:**")
-                st.markdown("""
+                st.markdown(f"""
                 | Rule Set | Status | Auto-Update |
                 |----------|--------|-------------|
                 | ACGME Duty Hours | ✅ Active | Every 48h |
-                | California Nurse Ratios (Title 22) | ✅ Active | Every 48h |
+                | {hospital_state} Nurse Staffing Ratios | ✅ Active | Every 48h |
                 | FMLA (Federal) | ✅ Active | On law change |
-                | Illinois ODRISA | ✅ Active | Every 48h |
-                | Union CBA (SEIU Local 73) | ✅ Active | Manual update |
+                | {hospital_state} State Labor Law | ✅ Active | Every 48h |
+                | Union CBA (if applicable) | ✅ Active | Manual update |
                 | Hospital Policy | ✅ Active | Editable |
                 """)
                 st.caption("ACGME and state laws cannot be disabled. Hospital policy is customizable.")
