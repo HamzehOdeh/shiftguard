@@ -143,6 +143,7 @@ def main():
         page_title="ShiftGuard for Healthcare",
         page_icon="🏥",
         layout="wide",
+        initial_sidebar_state="expanded",
     )
 
     # Global styling — professional look
@@ -152,10 +153,11 @@ def main():
         div[data-testid="stRadio"] > label { font-weight: 600; }
         /* Tab styling */
         button[data-baseweb="tab"] { font-weight: 600; }
-        /* Remove Streamlit branding */
+        /* Remove Streamlit branding but keep sidebar toggle */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
+        [data-testid="collapsedControl"] {visibility: visible !important; z-index: 999;}
         /* Improve button styling */
         .stButton button[kind="primary"] {
             background: linear-gradient(135deg, #0ea5e9, #0369a1);
@@ -209,7 +211,14 @@ def main():
             index=US_STATES.index("Illinois"),
             key="hospital_state_global",
         )
+        _sr = STATE_PENALTY_RULES.get(hospital_state, STATE_PENALTY_RULES["_default"])
         st.caption(f"Penalties & leave rules set for {hospital_state}.")
+        st.markdown("---")
+        st.markdown(f"**{hospital_state} Rules:**")
+        st.markdown(f"- OT: {_sr.get('ot_rules', 'Federal FLSA')[:50]}...")
+        st.markdown(f"- PTO: {_sr.get('pto_carryover', 'Per employer')[:50]}...")
+        st.markdown(f"- Sick: {_sr.get('sick_accrual', 'Check state law')}")
+        st.markdown(f"- Penalty multiplier: **{_sr.get('multiplier', 1.0)}x**")
 
     # Demo mode banner
     st.markdown("")
