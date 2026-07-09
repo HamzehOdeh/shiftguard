@@ -105,7 +105,7 @@ export default function WorkerBalancePage() {
         <p className="text-body-sm text-gray-300">
           No hours at risk. Illinois state law protects accrued PTO from forfeiture.
         </p>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-400 mt-1">
           {getDaysUntilYearEnd()} days until year-end. All balances carry over per state regulation.
         </p>
       </div>
@@ -116,11 +116,11 @@ export default function WorkerBalancePage() {
         <div className="grid grid-cols-2 gap-4 text-center">
           <div>
             <p className="text-heading-sm font-bold text-white">0h</p>
-            <p className="text-xs text-gray-500 mt-1">Donated this year</p>
+            <p className="text-xs text-gray-400 mt-1">Donated this year</p>
           </div>
           <div>
             <p className="text-heading-sm font-bold text-white">0h</p>
-            <p className="text-xs text-gray-500 mt-1">Received this year</p>
+            <p className="text-xs text-gray-400 mt-1">Received this year</p>
           </div>
         </div>
         <button onClick={() => { const el = document.getElementById('donate-toast'); if(el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 3000) }}} className="w-full mt-4 border border-white/[0.1] active:bg-surface-highlight py-3.5 rounded-xl text-body-sm text-gray-300 transition press-scale">
@@ -173,7 +173,7 @@ function BalanceCard({ label, available, used, total, unit, color, details }: {
           <div className="absolute inset-0 progress-shimmer rounded-full"></div>
         </div>
       </div>
-      <div className="flex justify-between text-xs text-gray-500 mb-4">
+      <div className="flex justify-between text-xs text-gray-400 mb-4">
         <span>{used}{unit === 'hours' ? 'h' : 'd'} used</span>
         <span>{available}/{total}{unit === 'hours' ? 'h' : 'd'} remaining</span>
       </div>
@@ -182,7 +182,7 @@ function BalanceCard({ label, available, used, total, unit, color, details }: {
       <div className="space-y-2">
         {details.map((d, i) => (
           <div key={i} className="flex items-center justify-between text-xs">
-            <span className="text-gray-500">{d.label}</span>
+            <span className="text-gray-400">{d.label}</span>
             <span className="text-gray-300">{d.value}</span>
           </div>
         ))}
@@ -196,11 +196,11 @@ function UsageRow({ date, type, hours, desc }: { date: string; type: string; hou
     <div className="flex items-center justify-between bg-surface-raised border border-white/[0.06] rounded-xl px-4 py-3.5 shadow-elevation-1">
       <div className="flex items-center gap-4">
         <div className="text-center w-16 flex-shrink-0">
-          <p className="text-xs text-gray-400">{date}</p>
+          <p className="text-xs text-gray-300">{date}</p>
         </div>
         <div>
           <p className="text-body-sm font-medium">{desc}</p>
-          <p className="text-xs text-gray-500">{type}</p>
+          <p className="text-xs text-gray-400">{type}</p>
         </div>
       </div>
       <span className="text-body-sm text-red-400 font-semibold">-{hours}h</span>

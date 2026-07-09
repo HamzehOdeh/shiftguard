@@ -122,15 +122,15 @@ export default function WorkerSchedulePage() {
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-3.5 text-center shadow-elevation-1">
           <p className="text-heading-sm font-bold">6d</p>
-          <p className="text-xs text-gray-500 mt-0.5">PTO Left</p>
+          <p className="text-xs text-gray-400 mt-0.5">PTO Left</p>
         </div>
         <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-3.5 text-center shadow-elevation-1">
           <p className="text-heading-sm font-bold">2d</p>
-          <p className="text-xs text-gray-500 mt-0.5">Sick Left</p>
+          <p className="text-xs text-gray-400 mt-0.5">Sick Left</p>
         </div>
         <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-3.5 text-center shadow-elevation-1">
           <p className="text-heading-sm font-bold text-green-400">20h</p>
-          <p className="text-xs text-gray-500 mt-0.5">UPT Left</p>
+          <p className="text-xs text-gray-400 mt-0.5">UPT Left</p>
         </div>
       </div>
 
@@ -138,7 +138,7 @@ export default function WorkerSchedulePage() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => setMonthOffset(monthOffset - 1)}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-white active:scale-95 transition rounded-xl"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-300 hover:text-white active:scale-95 transition rounded-xl"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -147,7 +147,7 @@ export default function WorkerSchedulePage() {
         <h2 className="text-heading-sm font-bold">{MONTHS[viewMonth]} {viewYear}</h2>
         <button
           onClick={() => setMonthOffset(monthOffset + 1)}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-white active:scale-95 transition rounded-xl"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-300 hover:text-white active:scale-95 transition rounded-xl"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -156,7 +156,7 @@ export default function WorkerSchedulePage() {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-3 text-xs text-gray-400">
+      <div className="flex flex-wrap gap-3 text-xs text-gray-300">
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-md bg-purple-500/15 border border-purple-500/30"></span>Shift</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-md bg-surface-highlight/50 border border-white/[0.06]"></span>Off</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-md bg-cyan-500/15 border border-cyan-500/30"></span>PTO</span>
@@ -169,7 +169,7 @@ export default function WorkerSchedulePage() {
         {/* Day headers */}
         <div className="grid grid-cols-7 gap-1 mb-1">
           {DAYS_OF_WEEK.map(day => (
-            <div key={day} className="text-center text-[11px] text-gray-500 font-medium py-1">
+            <div key={day} className="text-center text-[11px] text-gray-400 font-medium py-1">
               {day}
             </div>
           ))}
@@ -195,7 +195,7 @@ export default function WorkerSchedulePage() {
                 `}
               >
                 <span className="text-sm font-bold">{day.date}</span>
-                <span className="text-[10px] text-gray-400">{getStatusLabel(day.status)}</span>
+                <span className="text-[10px] text-gray-300">{getStatusLabel(day.status)}</span>
                 {day.teammatesOff && day.teammatesOff > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500/20 border border-yellow-500/30 rounded-full text-[9px] flex items-center justify-center font-bold text-yellow-400">
                     {day.teammatesOff}
@@ -220,7 +220,7 @@ export default function WorkerSchedulePage() {
               selectedDay.status === 'blackout' ? 'bg-red-500/15 text-red-400' :
               selectedDay.status === 'limited' ? 'bg-yellow-500/15 text-yellow-400' :
               selectedDay.status === 'pto_pending' ? 'bg-yellow-500/15 text-yellow-400' :
-              'bg-surface-highlight text-gray-400'
+              'bg-surface-highlight text-gray-300'
             }`}>
               {selectedDay.status === 'shift' ? `Shift: ${selectedDay.shiftCode}` :
                selectedDay.status === 'pto_approved' ? 'PTO Approved' :
@@ -232,14 +232,14 @@ export default function WorkerSchedulePage() {
           </div>
 
           {selectedDay.status === 'shift' && (
-            <div className="text-body-sm text-gray-400 space-y-1">
+            <div className="text-body-sm text-gray-300 space-y-1">
               <p>Shift: Day 12h | 07:00 - 19:00</p>
               <p>Unit: ED | Role: Staff RN</p>
             </div>
           )}
 
           <div className="flex items-center justify-between text-body-sm">
-            <span className="text-gray-400">Team coverage:</span>
+            <span className="text-gray-300">Team coverage:</span>
             <span className={`font-semibold ${
               (selectedDay.spotsRemaining ?? 0) > 2 ? 'text-green-400' :
               (selectedDay.spotsRemaining ?? 0) > 0 ? 'text-yellow-400' :
@@ -250,7 +250,7 @@ export default function WorkerSchedulePage() {
           </div>
 
           {selectedDay.teammatesOff && selectedDay.teammatesOff > 0 && (
-            <div className="text-body-sm text-gray-400">
+            <div className="text-body-sm text-gray-300">
               <span className="text-yellow-400 font-medium">{selectedDay.teammatesOff} teammate(s)</span> off this day
             </div>
           )}
@@ -278,13 +278,13 @@ export default function WorkerSchedulePage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-500 block mb-1.5 font-medium">Start Date</label>
+              <label className="text-xs text-gray-400 block mb-1.5 font-medium">Start Date</label>
               <div className="bg-surface-overlay border border-white/[0.06] rounded-xl px-3.5 py-3 text-body-sm">
                 {MONTHS[viewMonth]} {selectedDay.date}
               </div>
             </div>
             <div>
-              <label className="text-xs text-gray-500 block mb-1.5 font-medium">End Date</label>
+              <label className="text-xs text-gray-400 block mb-1.5 font-medium">End Date</label>
               <div className="bg-surface-overlay border border-white/[0.06] rounded-xl px-3.5 py-3 text-body-sm">
                 {MONTHS[viewMonth]} {selectedDay.date}
               </div>
@@ -292,7 +292,7 @@ export default function WorkerSchedulePage() {
           </div>
 
           <div>
-            <label className="text-xs text-gray-500 block mb-1.5 font-medium">Priority</label>
+            <label className="text-xs text-gray-400 block mb-1.5 font-medium">Priority</label>
             <select className="w-full bg-surface-overlay border border-white/[0.06] rounded-xl px-3.5 py-3 text-body-sm text-white">
               <option value="1">Priority 1 (Most important)</option>
               <option value="2">Priority 2</option>
@@ -301,7 +301,7 @@ export default function WorkerSchedulePage() {
           </div>
 
           <div>
-            <label className="text-xs text-gray-500 block mb-1.5 font-medium">Reason (optional)</label>
+            <label className="text-xs text-gray-400 block mb-1.5 font-medium">Reason (optional)</label>
             <input
               type="text"
               placeholder="e.g., Family event, appointment"
@@ -320,7 +320,7 @@ export default function WorkerSchedulePage() {
                (selectedDay.spotsRemaining ?? 0) > 0 ? 'May need manager review' :
                'Low chance of approval'}
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-300">
               {selectedDay.spotsRemaining} coverage spot(s) remaining.
               {selectedDay.teammatesOff ? ` ${selectedDay.teammatesOff} teammate(s) already off.` : ''}
             </p>
@@ -352,19 +352,19 @@ export default function WorkerSchedulePage() {
         <h3 className="text-body-sm font-medium mb-4">Coverage This Month</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between text-body-sm">
-            <span className="text-gray-400">Best days to request off:</span>
+            <span className="text-gray-300">Best days to request off:</span>
             <span className="text-green-400 font-semibold">Tue, Wed, Thu</span>
           </div>
           <div className="flex items-center justify-between text-body-sm">
-            <span className="text-gray-400">Avoid requesting:</span>
+            <span className="text-gray-300">Avoid requesting:</span>
             <span className="text-red-400 font-semibold">Jul 4, Jul 25</span>
           </div>
           <div className="flex items-center justify-between text-body-sm">
-            <span className="text-gray-400">Team size (DA5):</span>
+            <span className="text-gray-300">Team size (DA5):</span>
             <span className="text-white font-medium">8 associates</span>
           </div>
           <div className="flex items-center justify-between text-body-sm">
-            <span className="text-gray-400">Min staffing:</span>
+            <span className="text-gray-300">Min staffing:</span>
             <span className="text-white font-medium">5 required</span>
           </div>
         </div>

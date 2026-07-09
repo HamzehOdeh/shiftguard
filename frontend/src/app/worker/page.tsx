@@ -18,7 +18,7 @@ export default function WorkerHome() {
       {/* Greeting */}
       <div>
         <h1 className="text-heading-md font-bold">{greeting}, Sarah</h1>
-        <p className="text-gray-400 text-body-sm mt-1">ED Nursing | Staff RN</p>
+        <p className="text-gray-300 text-body-sm mt-1">ED Nursing | Staff RN</p>
       </div>
 
       {/* Smart Notifications */}
@@ -47,17 +47,17 @@ export default function WorkerHome() {
       {/* Today's Shift — Hero Card */}
       <div className="bg-surface-raised border border-white/[0.06] border-t-2 border-t-green-500 rounded-2xl p-5 shadow-elevation-2">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-gray-500 uppercase font-medium tracking-wide">Today</span>
+          <span className="text-xs text-gray-400 uppercase font-medium tracking-wide">Today</span>
           <span className="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-full font-medium">On Shift</span>
         </div>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-heading-sm font-bold">Day Shift</p>
-            <p className="text-gray-400 text-body-sm">07:00 - 19:00</p>
+            <p className="text-gray-300 text-body-sm">07:00 - 19:00</p>
           </div>
           <div className="text-right">
-            <p className="text-body-sm text-gray-400">Unit: ED</p>
-            <p className="text-body-sm text-gray-400">Role: Staff RN</p>
+            <p className="text-body-sm text-gray-300">Unit: ED</p>
+            <p className="text-body-sm text-gray-300">Role: Staff RN</p>
           </div>
         </div>
       </div>
@@ -66,14 +66,14 @@ export default function WorkerHome() {
       <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-5 shadow-elevation-1">
         <div className="flex justify-between items-center mb-3">
           <span className="text-body-sm font-medium">Hours this week</span>
-          <span className="text-body-sm text-gray-400">36 / 40h</span>
+          <span className="text-body-sm text-gray-300">36 / 40h</span>
         </div>
         <div className="w-full h-2.5 bg-surface-highlight rounded-full overflow-hidden shadow-inner-soft">
           <div className="h-full bg-brand-500 rounded-full relative" style={{width: '90%'}}>
             <div className="absolute inset-0 progress-shimmer rounded-full"></div>
           </div>
         </div>
-        <p className="text-xs text-gray-500 mt-2">4h remaining before overtime</p>
+        <p className="text-xs text-gray-400 mt-2">4h remaining before overtime</p>
       </div>
 
       {/* VET Offer — Brand Card */}
@@ -83,8 +83,8 @@ export default function WorkerHome() {
           <span className="text-xs text-brand-400 uppercase font-medium tracking-wide">VET Available</span>
         </div>
         <p className="font-semibold text-body">{new Date(today.getTime() + 86400000).toLocaleDateString('en-US', {weekday: 'long', month: 'short', day: 'numeric'})}</p>
-        <p className="text-gray-400 text-body-sm">07:00 - 19:00 | Covering for: Maria Rodriguez</p>
-        <p className="text-gray-500 text-xs mt-1">Premium pay applies | Expires soon</p>
+        <p className="text-gray-300 text-body-sm">07:00 - 19:00 | Covering for: Maria Rodriguez</p>
+        <p className="text-gray-400 text-xs mt-1">Premium pay applies | Expires soon</p>
         {vetStatus === 'pending' ? (
           <div className="flex gap-3 mt-4">
             <button onClick={() => setVetStatus('accepted')} className="flex-1 btn-primary py-3.5 text-body-sm">
@@ -96,7 +96,7 @@ export default function WorkerHome() {
           </div>
         ) : (
           <div className={`mt-4 p-4 rounded-xl text-body-sm font-medium text-center ${
-            vetStatus === 'accepted' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-surface-highlight text-gray-400'
+            vetStatus === 'accepted' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-surface-highlight text-gray-300'
           }`}>
             {vetStatus === 'accepted' ? 'Accepted! Confirmation sent.' : 'Declined. Offered to next worker.'}
           </div>
@@ -108,22 +108,22 @@ export default function WorkerHome() {
         <Link href="/worker/request" className="bg-surface-raised border border-white/[0.06] rounded-2xl p-5 text-left shadow-elevation-1 press-card block">
           <span className="text-3xl mb-2 block">🤒</span>
           <span className="text-body-sm font-medium block">Report Sick</span>
-          <span className="text-xs text-gray-500 block mt-0.5">One-tap callout</span>
+          <span className="text-xs text-gray-400 block mt-0.5">One-tap callout</span>
         </Link>
         <Link href="/worker/schedule" className="bg-surface-raised border border-white/[0.06] rounded-2xl p-5 text-left shadow-elevation-1 press-card block">
           <span className="text-3xl mb-2 block">🔄</span>
           <span className="text-body-sm font-medium block">Swap Shift</span>
-          <span className="text-xs text-gray-500 block mt-0.5">Propose a trade</span>
+          <span className="text-xs text-gray-400 block mt-0.5">Propose a trade</span>
         </Link>
         <Link href="/worker/schedule" className="bg-surface-raised border border-white/[0.06] rounded-2xl p-5 text-left shadow-elevation-1 press-card block">
           <span className="text-3xl mb-2 block">👥</span>
           <span className="text-body-sm font-medium block">On Floor Now</span>
-          <span className="text-xs text-gray-500 block mt-0.5">Who's working</span>
+          <span className="text-xs text-gray-400 block mt-0.5">Who's working</span>
         </Link>
         <Link href="/worker/balance" className="bg-surface-raised border border-white/[0.06] rounded-2xl p-5 text-left shadow-elevation-1 press-card block">
           <span className="text-3xl mb-2 block">💬</span>
           <span className="text-body-sm font-medium block">Ask AI</span>
-          <span className="text-xs text-gray-500 block mt-0.5">Hours, balance, etc.</span>
+          <span className="text-xs text-gray-400 block mt-0.5">Hours, balance, etc.</span>
         </Link>
       </div>
 
@@ -133,15 +133,15 @@ export default function WorkerHome() {
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-heading-sm font-bold text-white">48h</p>
-            <p className="text-xs text-gray-500 mt-1">PTO</p>
+            <p className="text-xs text-gray-400 mt-1">PTO</p>
           </div>
           <div>
             <p className="text-heading-sm font-bold text-white">16h</p>
-            <p className="text-xs text-gray-500 mt-1">Sick</p>
+            <p className="text-xs text-gray-400 mt-1">Sick</p>
           </div>
           <div>
             <p className="text-heading-sm font-bold text-green-400">20h</p>
-            <p className="text-xs text-gray-500 mt-1">UPT</p>
+            <p className="text-xs text-gray-400 mt-1">UPT</p>
           </div>
         </div>
       </div>
@@ -191,7 +191,7 @@ function NotificationCard({ icon, priority, title, message, actionLabel }: {
         <span className="text-xl flex-shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
           <p className="text-body-sm font-medium leading-tight">{title}</p>
-          <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">{message}</p>
+          <p className="text-xs text-gray-300 mt-1.5 leading-relaxed">{message}</p>
           {actionLabel && (
             <Link href={actionLabel === 'View Schedule' ? '/worker/schedule' : '/worker'} className="mt-3 inline-block text-xs btn-primary py-2 px-4 rounded-xl shadow-none text-center">
               {actionLabel}
@@ -212,16 +212,16 @@ function ShiftRow({ day, date, time, type, active, off }: {
     }`}>
       <div className="flex items-center gap-4">
         <div className="text-center w-10">
-          <p className="text-xs text-gray-500">{day}</p>
+          <p className="text-xs text-gray-400">{day}</p>
           <p className="text-body-sm font-medium">{date.split(' ')[1]}</p>
         </div>
         <div>
-          <p className={`text-body-sm ${off ? 'text-gray-500' : 'font-medium'}`}>{time}</p>
+          <p className={`text-body-sm ${off ? 'text-gray-400' : 'font-medium'}`}>{time}</p>
         </div>
       </div>
       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
         type === 'Night' ? 'bg-purple-500/15 text-purple-400' :
-        type === 'Off' ? 'bg-surface-highlight text-gray-500' :
+        type === 'Off' ? 'bg-surface-highlight text-gray-400' :
         'bg-blue-500/15 text-blue-400'
       }`}>{type}</span>
     </div>
