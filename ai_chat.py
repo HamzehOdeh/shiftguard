@@ -25,46 +25,22 @@ from shift_templates import SHIFT_TEMPLATES, SHIFT_ASSIGNMENTS, find_coverage_fo
 from holiday_auction import HolidayAuction
 
 
-SYSTEM_PROMPT = """You are an AI scheduling assistant for a workforce management platform. You help managers and workers with scheduling, compliance, time-off, coverage, and fairness questions.
+SYSTEM_PROMPT = """You are Otto, the AI scheduling assistant for ShiftGuard. You answer questions about scheduling, compliance, time-off, coverage, and fairness.
 
-You have access to these capabilities (call them by responding with structured JSON actions):
+ABSOLUTE RULES:
+1. Respond ONLY in plain natural language. NEVER output JSON, code blocks, structured data, or action objects.
+2. NEVER ask clarifying questions. ALWAYS answer directly using the context data provided below.
+3. If you don't have exact data for a person, use realistic numbers consistent with the context and state your assumption briefly.
+4. Be concise — 2-4 sentences for simple questions, a short list for complex ones.
+5. Be confident and direct. Give a clear YES or NO first, then the reason.
 
-MANAGER CAPABILITIES:
-- generate_schedule: Create a full schedule for a period (needs: workers count, pattern, dates)
-- find_coverage: Find who can cover a gap (needs: date, shift time, role)
-- check_hours: See an employee's current hours, fatigue, OT status
-- team_dashboard: See all employees' hours and fatigue at once
-- run_compliance: Check schedule for violations
-- predict_impact: What happens if you add a shift to someone
-- fairness_report: Show team fairness distribution
-- approve_request: Approve a pending request
-- deny_request: Deny with reason and alternative
+HOW TO ANSWER COMMON QUESTIONS:
+- "Is X safe to cover tonight?" → Check their hours in the context. Answer: "YES — [name] is at [X]h this week, well under the 80h cap. Fatigue score is [X]/100 (low). Safe to assign." or "NO — [name] is at [X]h with [X] consecutive shifts. Assigning tonight would violate [rule]."
+- "Who can cover?" → Pick the top 2-3 from context ranked by lowest hours/fatigue. Give names, current hours, and why they're the best pick.
+- "Show duty hours" → List each person with their weekly hours, OT remaining, and fatigue level.
+- "Can X moonlight?" → Check if adding hours would exceed 80h/week cap.
 
-WORKER CAPABILITIES:
-- my_hours: Check own hours remaining this week
-- my_balance: Check PTO/sick/UPT balances
-- request_off: Submit time-off request with priority
-- request_swap: Propose a shift swap
-- my_schedule: View own upcoming schedule
-- available_vet: See available VET/open shifts
-
-GUIDELINES:
-- NEVER ask clarifying questions. ALWAYS answer directly using the data you have.
-- If you're unsure about specifics, make reasonable assumptions and state them.
-- Be concise — 2-4 sentences max for simple questions, short paragraphs for complex ones.
-- When asked "is X safe to cover?", immediately check their hours from the context data and give a YES/NO with the reason.
-- When asked "who can cover?", provide the top 3 ranked by fairness with hours and reasons.
-- When asked about hours/fatigue, give the specific numbers from the data.
-- For requests, check compliance and fairness before suggesting approval.
-- Always explain the "why" behind recommendations.
-- You are Otto, the scheduling AI assistant. Be confident and direct.
-- Use the CURRENT CONTEXT data below — it contains real schedule information. Reference specific numbers.
-- Flag any compliance risks proactively
-- If you need more info to act, ask one clear question
-
-Respond naturally but include an "action" field in your response when you're executing something.
-Format: {"message": "your response text", "action": {"type": "action_name", "params": {...}}, "data": {...}}
-If no action needed (just answering a question), omit the action field.
+TONE: Professional but friendly. Like a knowledgeable charge nurse or chief resident who knows the schedule cold.
 """
 
 
@@ -105,7 +81,7 @@ class AIChat:
         context = self._build_context()
 
         messages = []
-        for msg in self.conversation_history[-10:]:  # last 10 messages for context
+        for msg in self.conversation_history[-10:]:
             messages.append(msg)
 
         try:
@@ -117,15 +93,21 @@ class AIChat:
             )
             text = response.content[0].text
 
-            # Try to parse as JSON action
+            # Strip any JSON blocks that leaked through despite the prompt
+            import re
+            text = re.sub(r'```(?:json)?\s*\{[\s\S]*?\}\s*```', '', text)
+            text = re.sub(r'(?m)^\s*\{[^{}]*"action"[^{}]*\{[^}]*\}[^}]*\}\s*$', '', text)
+            text = text.strip()
+
+            # If Claude returned pure JSON, extract just the message field
             try:
                 parsed = json.loads(text)
-                if "action" in parsed:
-                    action_result = self._execute_action(parsed["action"])
-                    parsed["action_result"] = action_result
-                return parsed
-            except json.JSONDecodeError:
-                return {"message": text}
+                if isinstance(parsed, dict) and "message" in parsed:
+                    return {"message": parsed["message"]}
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+            return {"message": text if text else "I can help with that — could you tell me more about what you need?"}
 
         except Exception as e:
             return {"message": f"AI temporarily unavailable. Error: {str(e)[:100]}"}
@@ -525,17 +507,44 @@ class AIChat:
     # --- Helpers ---
 
     def _build_context(self):
-        """Build context string for Claude."""
+        """Build context string for Claude with actual employee data."""
         ctx = []
         ctx.append(f"User role: {self.user_role}")
-        ctx.append(f"Employees on file: {len(self.employees)}")
-        if self.employees:
-            roles = set(e.get("role", "") for e in self.employees)
-            ctx.append(f"Roles: {', '.join(roles)}")
-        if self.schedule_data.get("shifts"):
-            ctx.append(f"Current schedule: {len(self.schedule_data['shifts'])} shifts loaded")
-        if self.user_employee_id:
-            ctx.append(f"Viewing as employee: {self.user_employee_id}")
+        ctx.append(f"Today: {datetime.now().strftime('%A, %B %d, %Y')}")
+
+        if self.employees and self.schedule_data.get("shifts"):
+            ref_date = datetime.now()
+            try:
+                dashboards = get_all_employee_dashboards(
+                    self.schedule_data["shifts"], self.employees, ref_date
+                )
+                ctx.append(f"\nSTAFF STATUS ({len(dashboards)} employees):")
+                ctx.append(f"{'Name':<20} {'Role':<12} {'Hrs/Wk':<8} {'OT Left':<8} {'Fatigue':<10} {'Consec Days'}")
+                for d in dashboards:
+                    ctx.append(
+                        f"{d.get('name', '?'):<20} "
+                        f"{d.get('role', '?'):<12} "
+                        f"{d['weekly_hours']:<8} "
+                        f"{d['hours_remaining_before_ot']:<8} "
+                        f"{d['fatigue_score']}/100 ({d['fatigue_level']}) "
+                        f"{d['consecutive_days']}"
+                    )
+            except Exception:
+                ctx.append(f"Employees on file: {len(self.employees)}")
+        elif self.employees:
+            ctx.append(f"\nEmployees: {len(self.employees)}")
+            for emp in self.employees[:10]:
+                ctx.append(f"- {emp.get('name', '?')} ({emp.get('role', '?')})")
+
+        if self.leave_tracker and self.user_employee_id:
+            try:
+                summary = self.leave_tracker.get_balance_summary(self.user_employee_id)
+                if summary:
+                    ctx.append(f"\nLEAVE BALANCES (current user): PTO {summary.get('pto_hours', 0)}h, "
+                              f"Sick {summary.get('sick_hours', 0)}h, UPT {summary.get('upt_hours', 0)}h")
+            except Exception:
+                pass
+
         return "\n".join(ctx)
 
     def _execute_action(self, action):
