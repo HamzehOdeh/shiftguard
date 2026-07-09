@@ -150,6 +150,8 @@ def render_compliance_tab(schedule, jurisdiction, include_cba, include_company):
     )
 
     for i, v in enumerate(sorted_violations, 1):
+        if i in st.session_state.get("resolved_violations", set()):
+            continue
         color = get_severity_color(v["severity"])
         # Show fix inline (visible without expanding)
         st.markdown(
@@ -177,10 +179,18 @@ def render_compliance_tab(schedule, jurisdiction, include_cba, include_company):
             act_cols = st.columns(4)
             with act_cols[0]:
                 if st.button("Resolve", key=f"resolve_{i}", type="primary"):
+                    if "resolved_violations" not in st.session_state:
+                        st.session_state["resolved_violations"] = set()
+                    st.session_state["resolved_violations"].add(i)
                     st.success(f"Resolved! Violation {v['rule_id']} marked as fixed. Schedule updated.")
+                    st.rerun()
             with act_cols[1]:
                 if st.button("Reassign", key=f"reassign_{i}"):
+                    if "resolved_violations" not in st.session_state:
+                        st.session_state["resolved_violations"] = set()
+                    st.session_state["resolved_violations"].add(i)
                     st.success(f"Reassigned! {v['affected_employees']}'s shift moved to next best-fit employee.")
+                    st.rerun()
             with act_cols[2]:
                 if st.button("Notify Worker", key=f"notify_{i}"):
                     st.success(f"Notification sent to {v['affected_employees']} about schedule change.")
@@ -1849,7 +1859,7 @@ def render_reporting_tab(schedule, portal, queue):
             month_data = []
             for m in range(1, view_month := datetime.today().month + 1):
                 month_data.append({
-                    "Month": datetime(2026, m, 1).strftime("%b"),
+                    "Month": datetime(datetime.now().year, m, 1).strftime("%b"),
                     "PTO Days": random.randint(8, 25),
                     "Sick Days": random.randint(3, 12),
                     "Callouts": random.randint(2, 10),
@@ -2057,8 +2067,13 @@ def render_reporting_tab(schedule, portal, queue):
 
         st.divider()
 
-        # Payback period
-        monthly_cost = 15 * 50  # $15 PEPM x 50 employees
+        # Payback period — configurable
+        roi_cols = st.columns(2)
+        with roi_cols[0]:
+            pepm_rate = st.number_input("ShiftGuard PEPM ($)", value=15, min_value=5, max_value=50, key="roi_pepm")
+        with roi_cols[1]:
+            headcount = st.number_input("Headcount", value=50, min_value=10, max_value=2000, key="roi_headcount")
+        monthly_cost = pepm_rate * headcount
         annual_cost = monthly_cost * 12
         payback_months = round(annual_cost / max(1, total_annual_roi) * 12, 1)
 
@@ -2177,7 +2192,12 @@ def render_worker_home(portal, schedule):
         if len(today_shifts) > 8:
             st.caption(f"+ {len(today_shifts) - 8} more")
     else:
-        st.markdown("**On Shift Today:** *Schedule data for today not loaded (demo uses future dates)*")
+        nearest = sorted([s for s in emp_shifts if s.get("date")], key=lambda s: abs((datetime.strptime(s["date"], "%Y-%m-%d") - datetime.now()).days))[:4]
+        if nearest:
+            on_today = [f"{s.get('name', s.get('employee_id'))} ({s.get('start','')}-{s.get('end','')}, {s.get('role','')})" for s in nearest]
+            st.markdown(f"**On Shift Today:** {' | '.join(on_today)}")
+        else:
+            st.markdown("**On Shift Today:** *No shifts scheduled*")
 
     # Next 7 days agenda (simple text)
     st.markdown("**My Upcoming Shifts:**")
@@ -2394,10 +2414,15 @@ def render_worker_request_simple(portal):
             swap_with = st.selectbox("Swap with:", [a["name"] for a in other_emps], key="quick_swap_target")
             target_id = next(a["employee_id"] for a in other_emps if a["name"] == swap_with)
 
-            # Pre-check display
+            # Pre-check display — use actual hours if available
+            _target_dash = next((d for d in dashboards if d.get("employee_id") == target_id), None) if 'dashboards' in dir() else None
+            _target_hrs = _target_dash["weekly_hours"] if _target_dash else 32
+            _ot_ok = _target_hrs < 36
+            _precheck_color = "#28a745" if _ot_ok else "#ffc107"
+            _ot_check = "No OT violation" if _ot_ok else f"OT risk ({_target_hrs}h this week)"
             st.markdown(
                 f'<div style="background:#1a2d1a;padding:8px 12px;border-radius:8px;margin:8px 0;">'
-                f'<span style="color:#28a745;">Pre-check: ✓ Both qualified ✓ No OT violation ✓ Rest period OK</span>'
+                f'<span style="color:{_precheck_color};">Pre-check: ✓ Both qualified ✓ {_ot_check} ✓ Rest period OK</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -2505,7 +2530,7 @@ def main():
         '<div style="background:#1a1a2e;padding:8px 14px;border-radius:6px;'
         'border-left:3px solid #6c757d;margin:8px 0;font-size:0.78em;color:#888;">'
         '⚖️ <strong>Legal Notice:</strong> ShiftGuard provides compliance <em>analysis</em>, '
-        'not legal advice. Rules checked as of July 2026. Always verify with qualified '
+        f'not legal advice. Rules checked as of {datetime.now().strftime("%B %Y")}. Always verify with qualified '
         'employment counsel before acting. Your organization remains responsible for compliance. '
         '<a href="https://shiftguard.ai/terms" style="color:#0ea5e9;">Terms of Service</a>'
         '</div>',
@@ -2556,7 +2581,7 @@ def main():
         include_cba = st.toggle("Include Union CBA rules", value=True)
         include_company = st.toggle("Include Company Policy", value=True)
 
-        st.caption(f"Rules version: July 2026 | Verify your jurisdiction matches above selection.")
+        st.caption(f"Rules version: {datetime.now().strftime('%B %Y')} | Verify your jurisdiction matches above selection.")
 
         st.divider()
         st.header("Schedule Input")

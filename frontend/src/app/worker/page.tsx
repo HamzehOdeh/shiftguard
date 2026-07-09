@@ -6,11 +6,18 @@ import { useState } from 'react'
 export default function WorkerHome() {
   const [vetStatus, setVetStatus] = useState<'pending' | 'accepted' | 'declined'>('pending')
 
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+
+  const today = new Date()
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const formatShort = (d: Date) => `${d.toLocaleString('en-US', {month: 'short'})} ${d.getDate()}`
+
   return (
     <div className="px-5 py-6 space-y-6">
       {/* Greeting */}
       <div>
-        <h1 className="text-heading-md font-bold">Good morning, Sarah</h1>
+        <h1 className="text-heading-md font-bold">{greeting}, Sarah</h1>
         <p className="text-gray-400 text-body-sm mt-1">ED Nursing | Staff RN</p>
       </div>
 
@@ -32,7 +39,7 @@ export default function WorkerHome() {
         <NotificationCard
           icon="✅"
           priority="low"
-          title="PTO Approved: Jul 15-17"
+          title={`PTO Approved: ${formatShort(new Date(today.getTime() + 6*86400000))}-${new Date(today.getTime() + 8*86400000).getDate()}`}
           message="Auto-approved. Coverage maintained. Enjoy!"
         />
       </div>
@@ -75,9 +82,9 @@ export default function WorkerHome() {
           <div className="w-2 h-2 bg-brand-400 rounded-full animate-pulse"></div>
           <span className="text-xs text-brand-400 uppercase font-medium tracking-wide">VET Available</span>
         </div>
-        <p className="font-semibold text-body">Thursday, Jul 10</p>
+        <p className="font-semibold text-body">{new Date(today.getTime() + 86400000).toLocaleDateString('en-US', {weekday: 'long', month: 'short', day: 'numeric'})}</p>
         <p className="text-gray-400 text-body-sm">07:00 - 19:00 | Covering for: Maria Rodriguez</p>
-        <p className="text-gray-500 text-xs mt-1">Premium pay applies | Expires in 28 min</p>
+        <p className="text-gray-500 text-xs mt-1">Premium pay applies | Expires soon</p>
         {vetStatus === 'pending' ? (
           <div className="flex gap-3 mt-4">
             <button onClick={() => setVetStatus('accepted')} className="flex-1 btn-primary py-3.5 text-body-sm">
@@ -143,11 +150,24 @@ export default function WorkerHome() {
       <div>
         <h3 className="text-body-sm font-medium mb-3">This Week</h3>
         <div className="space-y-2">
-          <ShiftRow day="Mon" date="Jul 7" time="07:00-19:00" type="Day" active />
-          <ShiftRow day="Tue" date="Jul 8" time="07:00-19:00" type="Day" />
-          <ShiftRow day="Wed" date="Jul 9" time="07:00-19:00" type="Day" />
-          <ShiftRow day="Thu" date="Jul 10" time="Off" type="Off" off />
-          <ShiftRow day="Fri" date="Jul 11" time="19:00-07:00" type="Night" />
+          {Array.from({length: 5}, (_, i) => {
+            const d = new Date(today)
+            d.setDate(today.getDate() - today.getDay() + 1 + i)
+            const isToday = d.toDateString() === today.toDateString()
+            const isOff = i === 3
+            const isNight = i === 4
+            return (
+              <ShiftRow
+                key={i}
+                day={dayNames[d.getDay()]}
+                date={formatShort(d)}
+                time={isOff ? 'Off' : isNight ? '19:00-07:00' : '07:00-19:00'}
+                type={isOff ? 'Off' : isNight ? 'Night' : 'Day'}
+                active={isToday}
+                off={isOff}
+              />
+            )
+          })}
         </div>
       </div>
     </div>

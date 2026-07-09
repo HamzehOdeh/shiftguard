@@ -1,8 +1,37 @@
 'use client'
 
+function getNextPayDate() {
+  const now = new Date()
+  const d = new Date(now.getFullYear(), now.getMonth(), 15)
+  if (d <= now) d.setMonth(d.getMonth() + 1)
+  return d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'})
+}
+
+function getNextQuarterStart() {
+  const now = new Date()
+  const q = Math.floor(now.getMonth() / 3) + 1
+  const next = new Date(now.getFullYear(), q * 3, 1)
+  return next.toLocaleDateString('en-US', {month: 'short', day: 'numeric'})
+}
+
+function getDaysUntilYearEnd() {
+  const now = new Date()
+  const yearEnd = new Date(now.getFullYear(), 11, 31)
+  return Math.ceil((yearEnd.getTime() - now.getTime()) / 86400000)
+}
+
+function daysAgo(n: number) {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'})
+}
+
 export default function WorkerBalancePage() {
   return (
     <div className="px-5 py-6 space-y-6">
+      <div id="donate-toast" className="hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-green-500/10 border border-green-500/20 text-green-400 px-5 py-3.5 rounded-2xl shadow-elevation-2 text-body-sm font-medium backdrop-blur-sm">
+        Leave donation request submitted to HR for approval.
+      </div>
       <h1 className="text-heading-md font-bold">My Leave Balances</h1>
 
       {/* Primary balances */}
@@ -18,7 +47,7 @@ export default function WorkerBalancePage() {
             { label: 'Standard PTO', value: '36h available' },
             { label: 'Flex PTO', value: '12h available' },
             { label: 'Accrual rate', value: '3.08h / pay period' },
-            { label: 'Next accrual', value: 'Jul 15 (+3.08h)' },
+            { label: 'Next accrual', value: `${getNextPayDate()} (+3.08h)` },
           ]}
         />
 
@@ -45,7 +74,7 @@ export default function WorkerBalancePage() {
           color="green"
           details={[
             { label: 'Quarterly grant', value: '20h (last: Apr 1)' },
-            { label: 'Next grant', value: 'Jul 1 (+20h)' },
+            { label: 'Next grant', value: `${getNextQuarterStart()} (+20h)` },
             { label: 'Warning', value: '0h balance = termination review' },
           ]}
         />
@@ -60,7 +89,7 @@ export default function WorkerBalancePage() {
           details={[
             { label: 'Eligible', value: 'Yes (14mo tenure, 1,560h worked)' },
             { label: 'Entitlement', value: '12 weeks (480h) per year' },
-            { label: 'Year resets', value: 'Jan 1, 2027' },
+            { label: 'Year resets', value: `Jan 1, ${new Date().getFullYear() + 1}` },
           ]}
         />
       </div>
@@ -77,7 +106,7 @@ export default function WorkerBalancePage() {
           No hours at risk. Illinois state law protects accrued PTO from forfeiture.
         </p>
         <p className="text-xs text-gray-500 mt-1">
-          178 days until year-end. All balances carry over per state regulation.
+          {getDaysUntilYearEnd()} days until year-end. All balances carry over per state regulation.
         </p>
       </div>
 
@@ -94,7 +123,7 @@ export default function WorkerBalancePage() {
             <p className="text-xs text-gray-500 mt-1">Received this year</p>
           </div>
         </div>
-        <button onClick={() => alert('Leave donation request submitted to HR for approval.')} className="w-full mt-4 border border-white/[0.1] active:bg-surface-highlight py-3.5 rounded-xl text-body-sm text-gray-300 transition press-scale">
+        <button onClick={() => { const el = document.getElementById('donate-toast'); if(el) { el.classList.remove('hidden'); setTimeout(() => el.classList.add('hidden'), 3000) }}} className="w-full mt-4 border border-white/[0.1] active:bg-surface-highlight py-3.5 rounded-xl text-body-sm text-gray-300 transition press-scale">
           Donate Hours to a Colleague
         </button>
       </div>
@@ -103,10 +132,10 @@ export default function WorkerBalancePage() {
       <div>
         <h3 className="text-body-sm font-medium mb-3">Recent Usage</h3>
         <div className="space-y-2">
-          <UsageRow date="Jun 28" type="Sick" hours={8} desc="Unplanned callout" />
-          <UsageRow date="Jun 10-12" type="PTO" hours={24} desc="Family wedding" />
-          <UsageRow date="May 27" type="PTO" hours={8} desc="Memorial Day observed" />
-          <UsageRow date="May 15" type="Sick" hours={4} desc="Doctor appointment (half day)" />
+          <UsageRow date={daysAgo(11)} type="Sick" hours={8} desc="Unplanned callout" />
+          <UsageRow date={`${daysAgo(29)}-${new Date(Date.now() - 27*86400000).getDate()}`} type="PTO" hours={24} desc="Family wedding" />
+          <UsageRow date={daysAgo(43)} type="PTO" hours={8} desc="Holiday observed" />
+          <UsageRow date={daysAgo(55)} type="Sick" hours={4} desc="Doctor appointment (half day)" />
         </div>
       </div>
     </div>

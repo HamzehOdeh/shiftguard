@@ -233,8 +233,8 @@ export default function WorkerSchedulePage() {
 
           {selectedDay.status === 'shift' && (
             <div className="text-body-sm text-gray-400 space-y-1">
-              <p>Shift: DA5 | 06:00 - 16:30</p>
-              <p>Department: Inbound | Role: Picker</p>
+              <p>Shift: Day 12h | 07:00 - 19:00</p>
+              <p>Unit: ED | Role: Staff RN</p>
             </div>
           )}
 

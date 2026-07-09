@@ -12,11 +12,16 @@ interface RequestHistoryItem {
   reason?: string
 }
 
+function fmtShort(offset: number) {
+  const d = new Date(Date.now() + offset * 86400000)
+  return `${d.toLocaleString('en-US', {month:'short'})} ${d.getDate()}`
+}
+
 const DEMO_HISTORY: RequestHistoryItem[] = [
-  { id: 'REQ-001', type: 'pto', dates: 'Jul 15-17', status: 'approved', reason: 'Family trip' },
-  { id: 'REQ-002', type: 'pto', dates: 'Jul 22', status: 'pending', reason: 'Appointment' },
-  { id: 'REQ-003', type: 'sick', dates: 'Jun 28', status: 'approved' },
-  { id: 'REQ-004', type: 'pto', dates: 'Aug 4-8', status: 'denied', reason: 'Summer vacation' },
+  { id: 'REQ-001', type: 'pto', dates: `${fmtShort(6)}-${new Date(Date.now()+8*86400000).getDate()}`, status: 'approved', reason: 'Family trip' },
+  { id: 'REQ-002', type: 'pto', dates: fmtShort(13), status: 'pending', reason: 'Appointment' },
+  { id: 'REQ-003', type: 'sick', dates: fmtShort(-11), status: 'approved' },
+  { id: 'REQ-004', type: 'pto', dates: `${fmtShort(26)}-${new Date(Date.now()+30*86400000).getDate()}`, status: 'denied', reason: 'Summer vacation' },
 ]
 
 export default function WorkerRequestPage() {
@@ -82,7 +87,7 @@ export default function WorkerRequestPage() {
               <label className="text-xs text-gray-500 font-medium block mb-1.5">Start Date</label>
               <input
                 type="date"
-                defaultValue="2026-08-10"
+                defaultValue={new Date(Date.now() + 30*86400000).toISOString().split('T')[0]}
                 className="w-full bg-surface-overlay border border-white/[0.06] rounded-xl px-3.5 py-3 text-body-sm text-white"
               />
             </div>
@@ -90,7 +95,7 @@ export default function WorkerRequestPage() {
               <label className="text-xs text-gray-500 font-medium block mb-1.5">End Date</label>
               <input
                 type="date"
-                defaultValue="2026-08-14"
+                defaultValue={new Date(Date.now() + 34*86400000).toISOString().split('T')[0]}
                 className="w-full bg-surface-overlay border border-white/[0.06] rounded-xl px-3.5 py-3 text-body-sm text-white"
               />
             </div>
