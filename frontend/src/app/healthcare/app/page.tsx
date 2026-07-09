@@ -27,22 +27,22 @@ export default function HealthcareHomePage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-4 shadow-elevation-1">
+        <div className="bg-gray-800/80 border border-gray-700 rounded-2xl p-4 shadow-elevation-1">
           <p className="text-xs text-gray-400 uppercase tracking-wide">Violations</p>
           <p className="text-heading-md font-bold text-green-400 mt-1">{totalViolations}</p>
           <p className="text-xs text-gray-400 mt-1">This week</p>
         </div>
-        <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-4 shadow-elevation-1">
+        <div className="bg-gray-800/80 border border-gray-700 rounded-2xl p-4 shadow-elevation-1">
           <p className="text-xs text-gray-400 uppercase tracking-wide">Avg Hours</p>
           <p className="text-heading-md font-bold mt-1">{avgHours}h</p>
           <p className="text-xs text-gray-400 mt-1">/ 80h ACGME cap</p>
         </div>
-        <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-4 shadow-elevation-1">
+        <div className="bg-gray-800/80 border border-gray-700 rounded-2xl p-4 shadow-elevation-1">
           <p className="text-xs text-gray-400 uppercase tracking-wide">Jeopardy</p>
           <p className="text-heading-md font-bold text-brand-400 mt-1">Ready</p>
           <p className="text-xs text-gray-400 mt-1">Backup assigned</p>
         </div>
-        <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-4 shadow-elevation-1">
+        <div className="bg-gray-800/80 border border-gray-700 rounded-2xl p-4 shadow-elevation-1">
           <p className="text-xs text-gray-400 uppercase tracking-wide">Coverage</p>
           <p className="text-heading-md font-bold mt-1">100%</p>
           <p className="text-xs text-gray-400 mt-1">All shifts filled</p>
@@ -57,7 +57,7 @@ export default function HealthcareHomePage() {
         </div>
         <div className="space-y-2">
           {RESIDENTS.map(r => (
-            <div key={r.name} className="bg-surface-raised border border-white/[0.06] rounded-xl px-4 py-3 shadow-elevation-1">
+            <div key={r.name} className="bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 shadow-elevation-1">
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <span className="text-body-sm font-medium">{r.name}</span>
@@ -70,7 +70,7 @@ export default function HealthcareHomePage() {
                 }`}>{r.risk}</span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex-1 h-2 bg-surface-highlight rounded-full overflow-hidden">
+                <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full ${
                       r.risk === 'SAFE' ? 'bg-green-500' :
@@ -89,11 +89,11 @@ export default function HealthcareHomePage() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3">
-        <Link href="/healthcare/app/otto" className="bg-surface-raised border border-white/[0.06] rounded-2xl p-4 text-center shadow-elevation-1 press-card">
+        <Link href="/healthcare/app/otto" className="bg-gray-800/80 border border-gray-700 rounded-2xl p-4 text-center shadow-elevation-1 press-card">
           <span className="text-2xl block mb-1">🤖</span>
           <span className="text-body-sm font-medium">Ask Otto</span>
         </Link>
-        <Link href="/healthcare/app/residency" className="bg-surface-raised border border-white/[0.06] rounded-2xl p-4 text-center shadow-elevation-1 press-card">
+        <Link href="/healthcare/app/residency" className="bg-gray-800/80 border border-gray-700 rounded-2xl p-4 text-center shadow-elevation-1 press-card">
           <span className="text-2xl block mb-1">📊</span>
           <span className="text-body-sm font-medium">Full Dashboard</span>
         </Link>

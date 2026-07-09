@@ -15,9 +15,9 @@ export default function HealthcareAppLayout({ children }: { children: React.Reac
   const pathname = usePathname()
 
   return (
-    <div className="min-h-screen bg-surface-base text-white flex flex-col">
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       {/* Top header */}
-      <header className="safe-top border-b border-white/[0.06] bg-surface-raised px-4 py-3 flex items-center justify-between">
+      <header className="safe-top border-b border-gray-700 bg-gray-900 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex items-center justify-center text-sm font-bold">SG</div>
           <div>
@@ -36,7 +36,7 @@ export default function HealthcareAppLayout({ children }: { children: React.Reac
       </main>
 
       {/* Bottom navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-surface-raised border-t border-white/[0.06] pb-safe z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 pb-safe z-50">
         <div className="flex items-center justify-around h-16">
           {TABS.map(tab => {
             const isActive = pathname === tab.href || (tab.href !== '/healthcare/app' && pathname?.startsWith(tab.href))

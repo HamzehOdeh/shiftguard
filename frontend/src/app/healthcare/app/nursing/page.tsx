@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 
@@ -28,22 +28,22 @@ export default function NursingPage() {
 
       {/* Quick stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-3.5 text-center shadow-elevation-1">
+        <div className="bg-gray-800/80 border border-gray-700 rounded-2xl p-3.5 text-center shadow-elevation-1">
           <p className="text-heading-sm font-bold text-green-400">{onShift.length}</p>
           <p className="text-xs text-gray-400">On Shift</p>
         </div>
-        <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-3.5 text-center shadow-elevation-1">
+        <div className="bg-gray-800/80 border border-gray-700 rounded-2xl p-3.5 text-center shadow-elevation-1">
           <p className="text-heading-sm font-bold">1:4</p>
           <p className="text-xs text-gray-400">RN Ratio</p>
         </div>
-        <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-3.5 text-center shadow-elevation-1">
+        <div className="bg-gray-800/80 border border-gray-700 rounded-2xl p-3.5 text-center shadow-elevation-1">
           <p className="text-heading-sm font-bold text-yellow-400">1</p>
           <p className="text-xs text-gray-400">Cred Expiring</p>
         </div>
       </div>
 
       {/* Tab toggle */}
-      <div className="flex bg-surface-raised border border-white/[0.06] rounded-2xl p-1.5">
+      <div className="flex bg-gray-800/80 border border-gray-700 rounded-2xl p-1.5">
         <button
           onClick={() => setTab('team')}
           className={`flex-1 py-2.5 rounded-xl text-body-sm font-medium transition ${
@@ -61,7 +61,7 @@ export default function NursingPage() {
       {tab === 'team' && (
         <div className="space-y-2">
           {NURSES.map(n => (
-            <div key={n.name} className="bg-surface-raised border border-white/[0.06] rounded-xl px-4 py-3 shadow-elevation-1">
+            <div key={n.name} className="bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 shadow-elevation-1">
               <div className="flex items-center justify-between mb-1">
                 <div>
                   <span className="text-body-sm font-medium">{n.name}</span>
@@ -70,7 +70,7 @@ export default function NursingPage() {
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                   n.status === 'On Shift' ? 'bg-green-500/15 text-green-400' :
                   n.status === 'Night' ? 'bg-purple-500/15 text-purple-400' :
-                  'bg-surface-highlight text-gray-400'
+                  'bg-gray-700 text-gray-400'
                 }`}>{n.status}</span>
               </div>
               <div className="flex items-center gap-4 text-xs text-gray-400">
@@ -87,11 +87,11 @@ export default function NursingPage() {
       {tab === 'creds' && (
         <div className="space-y-2">
           {CREDENTIALS.map((c, i) => (
-            <div key={i} className="bg-surface-raised border border-white/[0.06] rounded-xl px-4 py-3 shadow-elevation-1">
+            <div key={i} className="bg-gray-800/80 border border-gray-700 rounded-xl px-4 py-3 shadow-elevation-1">
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-body-sm font-medium">{c.name}</span>
-                  <span className="text-xs text-gray-400 ml-2">— {c.cred}</span>
+                  <span className="text-xs text-gray-400 ml-2">â€” {c.cred}</span>
                 </div>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                   c.status === 'Current' ? 'bg-green-500/15 text-green-400' :
@@ -107,3 +107,4 @@ export default function NursingPage() {
     </div>
   )
 }
+

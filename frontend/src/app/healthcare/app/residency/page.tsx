@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 
@@ -29,7 +29,7 @@ export default function ResidencyPage() {
       <h2 className="text-heading-sm font-bold">Residency Program</h2>
 
       {/* ACGME Rules Status */}
-      <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-4 shadow-elevation-1">
+      <div className="bg-gray-800/80 border border-gray-700 rounded-2xl p-4 shadow-elevation-1">
         <h3 className="text-body-sm font-semibold mb-3">ACGME Compliance Rules</h3>
         <div className="space-y-2">
           {ACGME_RULES.map(r => (
@@ -54,7 +54,7 @@ export default function ResidencyPage() {
             <button
               key={r.id}
               onClick={() => setSelectedResident(selectedResident === r.id ? null : r.id)}
-              className="w-full text-left bg-surface-raised border border-white/[0.06] rounded-2xl p-4 shadow-elevation-1 press-card"
+              className="w-full text-left bg-gray-800/80 border border-gray-700 rounded-2xl p-4 shadow-elevation-1 press-card"
             >
               <div className="flex items-center justify-between mb-2">
                 <div>
@@ -70,7 +70,7 @@ export default function ResidencyPage() {
 
               {/* Hours bar */}
               <div className="flex items-center gap-3 mb-2">
-                <div className="flex-1 h-2.5 bg-surface-highlight rounded-full overflow-hidden">
+                <div className="flex-1 h-2.5 bg-gray-700 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full ${
                       r.risk === 'SAFE' ? 'bg-green-500' :
@@ -91,7 +91,7 @@ export default function ResidencyPage() {
 
               {/* Expanded detail */}
               {selectedResident === r.id && (
-                <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-2">
+                <div className="mt-3 pt-3 border-t border-gray-700 space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-400">4-week average</span>
                     <span className="text-gray-200 font-medium">{r.fourWeekAvg}h/week</span>
@@ -117,3 +117,4 @@ export default function ResidencyPage() {
     </div>
   )
 }
+
