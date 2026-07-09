@@ -245,11 +245,15 @@ def main():
         st.session_state["leave_tracker"] = create_healthcare_leave_tracker(state=hospital_state)
     if "audit_log" not in st.session_state:
         now = datetime.now()
+        _week_num = (now.day - 1) // 7 + 1
+        _swap_date = (now - timedelta(days=3)).strftime("%b %d")
+        _pto_start = (now + timedelta(days=6)).strftime("%b %d")
+        _pto_end = (now + timedelta(days=8)).strftime("%b %d")
         st.session_state["audit_log"] = [
-            {"timestamp": (now - timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S"), "action": "SCHEDULE_PUBLISHED", "actor": "Dr. Torres (PD)", "target": "July Week 2 Schedule", "details": "All ACGME rules passed. Confidence: 98%", "compliance_status": "COMPLIANT", "role": "Program Director"},
+            {"timestamp": (now - timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S"), "action": "SCHEDULE_PUBLISHED", "actor": "Dr. Torres (PD)", "target": f"{now.strftime('%B')} Week {_week_num} Schedule", "details": "All ACGME rules passed. Confidence: 98%", "compliance_status": "COMPLIANT", "role": "Program Director"},
             {"timestamp": (now - timedelta(hours=4)).strftime("%Y-%m-%d %H:%M:%S"), "action": "VIOLATION_FIXED", "actor": "System (Auto)", "target": "Dr. Patel", "details": "80h limit approaching — removed Friday night shift", "compliance_status": "FIXED", "role": "Program Director"},
-            {"timestamp": (now - timedelta(hours=3)).strftime("%Y-%m-%d %H:%M:%S"), "action": "SHIFT_SWAP_APPROVED", "actor": "Dr. Kim", "target": "Dr. Santos", "details": "Jul 12 night swap — both ACGME-safe after swap", "compliance_status": "COMPLIANT", "role": "Chief Resident"},
-            {"timestamp": (now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S"), "action": "PTO_AUTO_APPROVED", "actor": "System", "target": "RN Sarah Chen", "details": "Jul 15-17 PTO — coverage maintained (3 RNs on shift)", "compliance_status": "COMPLIANT", "role": "Nurse Manager"},
+            {"timestamp": (now - timedelta(hours=3)).strftime("%Y-%m-%d %H:%M:%S"), "action": "SHIFT_SWAP_APPROVED", "actor": "Dr. Kim", "target": "Dr. Santos", "details": f"{_swap_date} night swap — both ACGME-safe after swap", "compliance_status": "COMPLIANT", "role": "Chief Resident"},
+            {"timestamp": (now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S"), "action": "PTO_AUTO_APPROVED", "actor": "System", "target": "RN Sarah Chen", "details": f"{_pto_start}-{_pto_end} PTO — coverage maintained (3 RNs on shift)", "compliance_status": "COMPLIANT", "role": "Nurse Manager"},
             {"timestamp": (now - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"), "action": "JEOPARDY_ACTIVATED", "actor": "System (Auto)", "target": "Dr. Park", "details": "Dr. Reeves callout 5:12AM — backup activated, ACGME-safe", "compliance_status": "COMPLIANT", "role": "Chief Resident"},
         ]
     if "onboarding_dismissed" not in st.session_state:
@@ -925,7 +929,27 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 st.session_state["show_nurse_swap"] = True
         with col4:
             if st.button("Pick Up OT", key="nurse_ot", use_container_width=True):
-                st.success("No open OT shifts right now. You'll be notified when one becomes available.")
+                st.session_state["show_nurse_ot"] = True
+
+        # OT pickup offers
+        if st.session_state.get("show_nurse_ot"):
+            st.markdown("---")
+            st.markdown("#### Available OT Shifts")
+            tomorrow = (datetime.now() + timedelta(days=1)).strftime("%b %d")
+            day_after = (datetime.now() + timedelta(days=2)).strftime("%b %d")
+            ot_shifts = [
+                {"date": tomorrow, "time": "19:00-07:00", "unit": "ED", "rate": "1.5x ($52.50/hr)", "reason": "Callout coverage"},
+                {"date": day_after, "time": "07:00-19:00", "unit": "ICU", "rate": "1.5x ($52.50/hr)", "reason": "Census surge"},
+            ]
+            for i, shift in enumerate(ot_shifts):
+                col_a, col_b = st.columns([3, 1])
+                with col_a:
+                    st.markdown(f"**{shift['date']}** | {shift['time']} | {shift['unit']} | {shift['rate']}")
+                    st.caption(shift['reason'])
+                with col_b:
+                    if st.button("Claim", key=f"claim_ot_{i}", type="primary"):
+                        st.success(f"Claimed! {shift['date']} {shift['time']} added to your schedule. Manager notified.")
+                        st.session_state["show_nurse_ot"] = False
 
         # PTO request form
         if st.session_state.get("show_nurse_pto"):
@@ -970,12 +994,21 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         # Team on today
         st.divider()
         st.markdown("#### Team On Shift Today")
-        today_shifts = [s for s in schedule["shifts"] if s.get("date") == schedule.get("week_start", "")]
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        today_shifts = [s for s in schedule["shifts"] if s.get("date") == today_str]
+        if not today_shifts:
+            today_shifts = [s for s in schedule["shifts"] if s.get("date") == schedule.get("week_start", "")]
         if today_shifts:
             team_rows = [{"Name": s["name"], "Role": s.get("role", ""), "Time": f"{s['start']}-{s['end']}"} for s in today_shifts[:10]]
             st.dataframe(pd.DataFrame(team_rows), use_container_width=True, hide_index=True)
         else:
-            st.caption("Schedule will populate once published for this week.")
+            nurse_names = [e["name"] for e in employees if "nurse" in e.get("role", "").lower() or "RN" in e.get("role", "")][:6]
+            if nurse_names:
+                team_rows = [{"Name": n, "Role": "Staff RN", "Time": "07:00-19:00"} for n in nurse_names[:4]]
+                team_rows.append({"Name": nurse_names[4] if len(nurse_names) > 4 else "Kim Park, RN", "Role": "Charge RN", "Time": "07:00-19:00"})
+                st.dataframe(pd.DataFrame(team_rows), use_container_width=True, hide_index=True)
+            else:
+                st.caption("Schedule will populate once published for this week.")
 
         # ---- NURSE SCHEDULE BUILDER ----
         st.divider()
@@ -1097,11 +1130,15 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
         st.divider()
         st.markdown("#### Credential Status")
+        _cred_soon = (datetime.now() + timedelta(days=45)).strftime("%b %Y")
+        _cred_mid = (datetime.now() + timedelta(days=180)).strftime("%b %Y")
+        _cred_far = (datetime.now() + timedelta(days=365)).strftime("%b %Y")
+        _cred_long = (datetime.now() + timedelta(days=700)).strftime("%b %Y")
         cred_data = [
-            {"Credential": "BLS", "Status": "✅ Current", "Expires": "Dec 2026"},
-            {"Credential": "ACLS", "Status": "✅ Current", "Expires": "Mar 2027"},
-            {"Credential": f"RN License ({hospital_state[:2].upper()})", "Status": "✅ Current", "Expires": "May 2028"},
-            {"Credential": "NRP", "Status": "⚠️ Expiring Soon", "Expires": "Aug 2026"},
+            {"Credential": "BLS", "Status": "✅ Current", "Expires": _cred_mid},
+            {"Credential": "ACLS", "Status": "✅ Current", "Expires": _cred_far},
+            {"Credential": f"RN License ({hospital_state[:2].upper()})", "Status": "✅ Current", "Expires": _cred_long},
+            {"Credential": "NRP", "Status": "⚠️ Expiring Soon", "Expires": _cred_soon},
         ]
         st.dataframe(pd.DataFrame(cred_data), use_container_width=True, hide_index=True)
 
@@ -1119,7 +1156,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     {"Name": "Maria Rodriguez", "Role": "Charge RN", "Unit": "ED", "Shift": "12h Days", "FTE": 1.0, "Creds": "BLS, ACLS, TNCC", "Status": "Active"},
                     {"Name": "James Wilson", "Role": "Staff RN", "Unit": "ED", "Shift": "12h Nights", "FTE": 1.0, "Creds": "BLS, ACLS", "Status": "Active"},
                     {"Name": "Aisha Johnson", "Role": "CNA", "Unit": "ED", "Shift": "8h Days", "FTE": 0.8, "Creds": "BLS, CNA Cert", "Status": "Active"},
-                    {"Name": "Lisa Park", "Role": "Travel RN", "Unit": "ED", "Shift": "12h Nights", "FTE": 1.0, "Creds": "BLS, ACLS, PALS", "Status": "Active (Contract: Sep 2026)"},
+                    {"Name": "Lisa Park", "Role": "Travel RN", "Unit": "ED", "Shift": "12h Nights", "FTE": 1.0, "Creds": "BLS, ACLS, PALS", "Status": f"Active (Contract: {(datetime.now() + timedelta(days=75)).strftime('%b %Y')})"},
                 ]
             st.dataframe(pd.DataFrame(st.session_state["nursing_staff"]), use_container_width=True, hide_index=True)
             st.caption(f"{len(st.session_state['nursing_staff'])} staff members")
@@ -1226,15 +1263,21 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
             if locum_action == "Active Locums":
                 if "locum_nurses" not in st.session_state:
+                    _lc_start1 = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+                    _lc_end1 = (datetime.now() + timedelta(days=90)).strftime("%Y-%m-%d")
+                    _lc_start2 = (datetime.now() - timedelta(days=40)).strftime("%Y-%m-%d")
+                    _lc_end2 = (datetime.now() + timedelta(days=50)).strftime("%Y-%m-%d")
+                    _lc_start3 = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
+                    _lc_end3 = (datetime.now() + timedelta(days=80)).strftime("%Y-%m-%d")
                     st.session_state["locum_nurses"] = [
                         {"Name": "Lisa Park, RN", "Agency": "Aya Healthcare", "Unit": "ED", "Shift": "12h Nights",
-                         "Contract Start": "2026-04-01", "Contract End": "2026-09-30", "Rate": "$85/hr",
+                         "Contract Start": _lc_start1, "Contract End": _lc_end1, "Rate": "$85/hr",
                          "Creds Verified": "✅ Yes", "Orientation": "Complete", "Status": "Active"},
                         {"Name": "Michael Torres, RN", "Agency": "Cross Country", "Unit": "ICU", "Shift": "12h Days",
-                         "Contract Start": "2026-06-01", "Contract End": "2026-08-31", "Rate": "$92/hr",
+                         "Contract Start": _lc_start2, "Contract End": _lc_end2, "Rate": "$92/hr",
                          "Creds Verified": "✅ Yes", "Orientation": "Complete", "Status": "Active"},
                         {"Name": "Jennifer Adams, RN", "Agency": "TravelNurse.com", "Unit": "ED", "Shift": "12h Days",
-                         "Contract Start": "2026-07-01", "Contract End": "2026-10-01", "Rate": "$78/hr",
+                         "Contract Start": _lc_start3, "Contract End": _lc_end3, "Rate": "$78/hr",
                          "Creds Verified": "⚠️ Pending (ACLS)", "Orientation": "In Progress", "Status": "Restricted"},
                     ]
                 st.dataframe(pd.DataFrame(st.session_state["locum_nurses"]), use_container_width=True, hide_index=True)
@@ -1372,7 +1415,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             gap_date = (datetime.now() + timedelta(days=5)).strftime("%b %d")
             if st.button(f"Assign Dr. Park to {gap_date} Night", type="primary", key="assign_att_gap"):
                 st.success(f"Assigned! Dr. Park notified for {gap_date} Night coverage (19:00-07:00).")
-                log_action("ATTENDING_ASSIGNED", role, "Dr. Park", "Assigned to Jul 18 Night coverage gap", "COMPLIANT")
+                log_action("ATTENDING_ASSIGNED", role, "Dr. Park", f"Assigned to {gap_date} Night coverage gap", "COMPLIANT")
                 st.session_state["att_search_done"] = False
 
         # Moonlighting tracker
@@ -1577,11 +1620,13 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 with col2:
                     if st.button(f"🤖 Ask Otto why", key=f"ask_otto_v_{i}"):
                         if "hc_ai_chat" not in st.session_state:
+                            _sr = STATE_PENALTY_RULES.get(selected_state, STATE_PENALTY_RULES.get("_default", {}))
                             st.session_state["hc_ai_chat"] = AIChat(
                                 employees=employees, schedule_data=schedule,
                                 leave_tracker=st.session_state.get("leave_tracker"),
                                 user_role="ADMIN",
                                 user_employee_id=employees[0]["id"] if employees else "R001",
+                                state_rules=_sr, state_name=selected_state,
                             )
                         question = (f"Explain this violation in plain English and tell me exactly how to fix it: "
                                    f"{v['severity']} - {v['description']} affecting {v['affected_employees']}. "
@@ -1601,7 +1646,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 '<div style="background:#1b1b2d;padding:12px;border-radius:8px;'
                 'border-left:4px solid #6f42c1;margin-bottom:12px;">'
                 '🛡️ <strong>Active FMLA Cases:</strong> 1 (RN Martinez — intermittent, 120h used of 480h)<br>'
-                '<span style="color:#888;">Next documentation due: Jul 15 (medical recertification)</span></div>',
+                f'<span style="color:#888;">Next documentation due: {(datetime.now() + timedelta(days=6)).strftime("%b %d")} (medical recertification)</span></div>',
                 unsafe_allow_html=True,
             )
             st.markdown("**Leave Summary (All Staff):**")
@@ -1617,7 +1662,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         with admin_tab3:
             st.markdown("#### Bias Audit (NYC LL144 / EEOC)")
             st.markdown("*Automated scheduling decisions checked for disparate impact.*")
-            st.success("Last audit: Jun 30, 2026 — PASS (no adverse impact detected)")
+            st.success(f"Last audit: {(datetime.now() - timedelta(days=9)).strftime('%b %d, %Y')} — PASS (no adverse impact detected)")
             st.markdown("""
             **Categories Tested:** Race, Gender, Age, Religion, National Origin, Disability, Veteran Status
 
@@ -2367,12 +2412,15 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                   placeholder="e.g., Can Dr. Kim cover tonight?")
         if ai_quick and st.button("Ask", key="floating_ai_send", type="primary"):
             if "hc_ai_chat" not in st.session_state:
+                _float_state = st.session_state.get("hospital_state_global", "Illinois")
+                _float_rules = STATE_PENALTY_RULES.get(_float_state, STATE_PENALTY_RULES.get("_default", {}))
                 st.session_state["hc_ai_chat"] = AIChat(
                     employees=employees,
                     schedule_data=schedule,
                     leave_tracker=st.session_state.get("leave_tracker"),
                     user_role="MANAGER",
                     user_employee_id=employees[0]["id"] if employees else "R001",
+                    state_rules=_float_rules, state_name=_float_state,
                 )
             response = st.session_state["hc_ai_chat"].chat(ai_quick)
             st.markdown(
