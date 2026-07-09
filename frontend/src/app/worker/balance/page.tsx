@@ -195,7 +195,7 @@ function UsageRow({ date, type, hours, desc }: { date: string; type: string; hou
   return (
     <div className="flex items-center justify-between bg-surface-raised border border-white/[0.06] rounded-xl px-4 py-3.5 shadow-elevation-1">
       <div className="flex items-center gap-4">
-        <div className="text-center w-14">
+        <div className="text-center w-16 flex-shrink-0">
           <p className="text-xs text-gray-400">{date}</p>
         </div>
         <div>

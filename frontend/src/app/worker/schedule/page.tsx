@@ -138,7 +138,7 @@ export default function WorkerSchedulePage() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => setMonthOffset(monthOffset - 1)}
-          className="p-2.5 text-gray-400 hover:text-white active:scale-95 transition rounded-xl"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-white active:scale-95 transition rounded-xl"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -147,7 +147,7 @@ export default function WorkerSchedulePage() {
         <h2 className="text-heading-sm font-bold">{MONTHS[viewMonth]} {viewYear}</h2>
         <button
           onClick={() => setMonthOffset(monthOffset + 1)}
-          className="p-2.5 text-gray-400 hover:text-white active:scale-95 transition rounded-xl"
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-white active:scale-95 transition rounded-xl"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -165,20 +165,20 @@ export default function WorkerSchedulePage() {
       </div>
 
       {/* Calendar grid */}
-      <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-4 shadow-elevation-1">
+      <div className="bg-surface-raised border border-white/[0.06] rounded-2xl p-3 shadow-elevation-1">
         {/* Day headers */}
-        <div className="grid grid-cols-7 gap-1.5 mb-2">
+        <div className="grid grid-cols-7 gap-1 mb-1">
           {DAYS_OF_WEEK.map(day => (
-            <div key={day} className="text-center text-xs text-gray-500 font-medium py-1">
+            <div key={day} className="text-center text-[11px] text-gray-500 font-medium py-1">
               {day}
             </div>
           ))}
         </div>
 
         {/* Day cells */}
-        <div className="grid grid-cols-7 gap-1.5">
+        <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: firstDayOffset }).map((_, i) => (
-            <div key={`empty-${i}`} className="aspect-square" />
+            <div key={`empty-${i}`} className="min-h-[44px]" />
           ))}
 
           {days.map((day) => {
@@ -188,16 +188,16 @@ export default function WorkerSchedulePage() {
               <button
                 key={day.date}
                 onClick={() => { setSelectedDay(day); setShowRequestForm(false) }}
-                className={`aspect-square rounded-xl border flex flex-col items-center justify-center relative transition press-scale
+                className={`min-h-[44px] rounded-lg border flex flex-col items-center justify-center relative transition press-scale
                   ${getStatusColor(day.status)}
                   ${isToday ? 'ring-2 ring-white ring-offset-1 ring-offset-surface-base' : ''}
                   ${selectedDay?.date === day.date ? 'ring-2 ring-brand-500 ring-offset-1 ring-offset-surface-base' : ''}
                 `}
               >
-                <span className="text-body-sm font-bold">{day.date}</span>
-                <span className="text-[8px] text-gray-400">{getStatusLabel(day.status)}</span>
+                <span className="text-sm font-bold">{day.date}</span>
+                <span className="text-[10px] text-gray-400">{getStatusLabel(day.status)}</span>
                 {day.teammatesOff && day.teammatesOff > 0 && (
-                  <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-yellow-500/20 border border-yellow-500/30 rounded-full text-[7px] flex items-center justify-center font-bold text-yellow-400">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500/20 border border-yellow-500/30 rounded-full text-[9px] flex items-center justify-center font-bold text-yellow-400">
                     {day.teammatesOff}
                   </span>
                 )}

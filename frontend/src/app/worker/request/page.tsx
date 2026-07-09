@@ -75,7 +75,7 @@ export default function WorkerRequestPage() {
                   }`}
                 >
                   <p className="text-body-sm font-medium">{opt.label}</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">{opt.desc}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
                 </button>
               ))}
             </div>
@@ -115,7 +115,7 @@ export default function WorkerRequestPage() {
               <option value="2">Priority 2 - Would prefer this</option>
               <option value="3">Priority 3 - Flexible on dates</option>
             </select>
-            <p className="text-[10px] text-gray-600 mt-1.5">Higher priority = considered first in holiday auction</p>
+            <p className="text-xs text-gray-600 mt-1.5">Higher priority = considered first in holiday auction</p>
           </div>
 
           {/* Reason */}
@@ -132,7 +132,7 @@ export default function WorkerRequestPage() {
           <div onClick={() => setFlexible(!flexible)} className="flex items-center justify-between bg-surface-raised border border-white/[0.06] rounded-2xl p-4 cursor-pointer press-scale shadow-elevation-1">
             <div>
               <p className="text-body-sm font-medium">Flexible on dates?</p>
-              <p className="text-[10px] text-gray-500 mt-0.5">We'll suggest alternatives if denied</p>
+              <p className="text-xs text-gray-500 mt-0.5">We'll suggest alternatives if denied</p>
             </div>
             <div className={`w-11 h-6 rounded-full relative transition-colors ${flexible ? 'bg-brand-500' : 'bg-surface-highlight'}`}>
               <div className={`w-5 h-5 rounded-full absolute top-0.5 transition-all shadow-elevation-1 ${flexible ? 'bg-white left-[22px]' : 'bg-gray-400 left-0.5'}`}></div>
@@ -203,15 +203,15 @@ export default function WorkerRequestPage() {
             <div className="grid grid-cols-3 gap-3 text-center">
               <div>
                 <p className="text-heading-sm font-bold text-red-400">-40h</p>
-                <p className="text-[10px] text-gray-500 mt-0.5">Deducted</p>
+                <p className="text-xs text-gray-500 mt-0.5">Deducted</p>
               </div>
               <div>
                 <p className="text-heading-sm font-bold text-white">8h</p>
-                <p className="text-[10px] text-gray-500 mt-0.5">PTO Remaining</p>
+                <p className="text-xs text-gray-500 mt-0.5">PTO Remaining</p>
               </div>
               <div>
                 <p className="text-heading-sm font-bold text-green-400">1 day</p>
-                <p className="text-[10px] text-gray-500 mt-0.5">PTO Left</p>
+                <p className="text-xs text-gray-500 mt-0.5">PTO Left</p>
               </div>
             </div>
           </div>
@@ -280,7 +280,7 @@ export default function WorkerRequestPage() {
               {req.reason && (
                 <p className="text-xs text-gray-500">{req.reason}</p>
               )}
-              <p className="text-[10px] text-gray-600 mt-1.5">{req.id}</p>
+              <p className="text-xs text-gray-600 mt-1.5">{req.id}</p>
             </div>
           ))}
         </div>
