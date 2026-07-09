@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function Home() {
   return (
     <div className="min-h-screen">
@@ -8,10 +10,10 @@ export default function Home() {
             <img src="/logo.png" alt="ShiftGuard" className="h-8" />
           </div>
           <div className="flex items-center gap-6">
-            <a href="/calculator" className="text-gray-400 hover:text-white transition">Free Calculator</a>
-            <a href="/demo" className="text-gray-400 hover:text-white transition">Live Demo</a>
-            <a href="/reporting" className="text-gray-400 hover:text-white transition">ROI Dashboard</a>
-            <a href="/login" className="bg-brand-600 hover:bg-brand-700 px-4 py-2 rounded-lg transition font-medium">Sign In</a>
+            <Link href="/calculator" className="text-gray-400 hover:text-white transition">Free Calculator</Link>
+            <Link href="/demo" className="text-gray-400 hover:text-white transition">Live Demo</Link>
+            <Link href="/reporting" className="text-gray-400 hover:text-white transition">ROI Dashboard</Link>
+            <Link href="/login" className="bg-brand-600 hover:bg-brand-700 px-4 py-2 rounded-lg transition font-medium">Sign In</Link>
           </div>
         </nav>
       </header>
@@ -29,18 +31,18 @@ export default function Home() {
             Works in 60 seconds. No 6-month implementation.
           </p>
           <div className="flex gap-4 justify-center">
-            <a href="/demo" className="bg-brand-600 hover:bg-brand-700 px-8 py-4 rounded-lg text-lg font-semibold transition">
+            <Link href="/demo" className="bg-brand-600 hover:bg-brand-700 px-8 py-4 rounded-lg text-lg font-semibold transition">
               Try the Demo (Free)
-            </a>
-            <a href="/calculator" className="border border-gray-600 hover:border-brand-500 px-8 py-4 rounded-lg text-lg transition">
+            </Link>
+            <Link href="/calculator" className="border border-gray-600 hover:border-brand-500 px-8 py-4 rounded-lg text-lg transition">
               Calculate My Risk
-            </a>
+            </Link>
           </div>
         </section>
 
         {/* Social Proof Numbers */}
         <section className="py-12 border-t border-gray-800">
-          <div className="grid grid-cols-4 gap-8 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
               <div className="text-3xl font-bold text-brand-500">88+</div>
               <div className="text-gray-400 text-sm">Compliance Rules</div>
@@ -139,9 +141,9 @@ export default function Home() {
         <section className="py-20 text-center border-t border-gray-800">
           <h2 className="text-4xl font-bold mb-4">See your compliance risk in 60 seconds</h2>
           <p className="text-gray-400 text-lg mb-8">No signup. No sales call. Just answers.</p>
-          <a href="/calculator" className="bg-brand-600 hover:bg-brand-700 px-10 py-5 rounded-lg text-xl font-semibold transition inline-block">
+          <Link href="/calculator" className="bg-brand-600 hover:bg-brand-700 px-10 py-5 rounded-lg text-xl font-semibold transition inline-block">
             Calculate My Risk (Free)
-          </a>
+          </Link>
         </section>
       </main>
 
@@ -167,9 +169,9 @@ function FeatureCard({ title, description, badge }: { title: string, description
 
 function IndustryLink({ href, name, detail }: { href: string, name: string, detail: string }) {
   return (
-    <a href={href} className="p-5 bg-gray-900 border border-gray-800 rounded-xl hover:border-brand-500 transition text-center group">
+    <Link href={href} className="p-5 bg-gray-900 border border-gray-800 rounded-xl hover:border-brand-500 transition text-center group">
       <h3 className="font-bold group-hover:text-brand-500 transition">{name}</h3>
       <p className="text-gray-500 text-xs mt-1">{detail}</p>
-    </a>
+    </Link>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 interface RiskResult {
   grade: string
@@ -83,14 +84,14 @@ export default function CalculatorPage() {
       <header className="border-b border-gray-800 px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <a href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2">
               <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-sm font-bold">SG</div>
               <span className="font-semibold">ShiftGuard</span>
-            </a>
+            </Link>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/demo" className="text-sm text-gray-400 hover:text-white transition">Demo</a>
-            <a href="/login" className="text-sm bg-brand-600 hover:bg-brand-700 px-4 py-2 rounded-lg transition">Sign In</a>
+            <Link href="/demo" className="text-sm text-gray-400 hover:text-white transition">Demo</Link>
+            <Link href="/login" className="text-sm bg-brand-600 hover:bg-brand-700 px-4 py-2 rounded-lg transition">Sign In</Link>
           </div>
         </div>
       </header>
@@ -220,9 +221,9 @@ export default function CalculatorPage() {
                 <div className="bg-brand-950 border border-brand-800 rounded-xl p-5 text-center">
                   <p className="font-medium mb-2">ShiftGuard catches these violations before you publish the schedule.</p>
                   <p className="text-sm text-gray-400 mb-4">60-second setup. No implementation project.</p>
-                  <a href="/demo" className="inline-block bg-brand-600 hover:bg-brand-700 px-6 py-3 rounded-lg font-medium transition">
+                  <Link href="/demo" className="inline-block bg-brand-600 hover:bg-brand-700 px-6 py-3 rounded-lg font-medium transition">
                     See It In Action
-                  </a>
+                  </Link>
                 </div>
               </div>
             )}

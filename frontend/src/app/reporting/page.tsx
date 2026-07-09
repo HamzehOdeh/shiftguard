@@ -4,6 +4,8 @@ import { useState } from 'react'
 
 export default function ReportingPage() {
   const [timeRange, setTimeRange] = useState('30')
+  const scale = timeRange === '30' ? 1 : timeRange === '90' ? 2.8 : timeRange === 'ytd' ? 6 : 12
+  const fmt = (n: number) => Math.round(n * scale).toLocaleString()
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Header */}
@@ -28,8 +30,8 @@ export default function ReportingPage() {
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* ROI Hero */}
         <div className="bg-gradient-to-r from-green-950 to-gray-900 border border-green-800 rounded-2xl p-8 text-center">
-          <p className="text-green-400 text-sm font-medium uppercase tracking-wide mb-2">Estimated Annual Savings</p>
-          <h2 className="text-5xl font-bold text-green-400 mb-2">$127,400</h2>
+          <p className="text-green-400 text-sm font-medium uppercase tracking-wide mb-2">{timeRange === 'all' ? 'Total Savings (All Time)' : timeRange === 'ytd' ? 'Year-to-Date Savings' : `Savings (Last ${timeRange} Days)`}</p>
+          <h2 className="text-5xl font-bold text-green-400 mb-2">${fmt(10617)}</h2>
           <p className="text-gray-400">Based on current violation rates and operational metrics</p>
           <div className="grid grid-cols-3 gap-6 mt-6 max-w-2xl mx-auto">
             <div>

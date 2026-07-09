@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [tenant, setTenant] = useState('')
@@ -26,7 +28,7 @@ export default function LoginPage() {
     if (demoUser && password === 'demo123') {
       localStorage.setItem('token', 'demo_token_' + demoUser.role)
       localStorage.setItem('user', JSON.stringify({ email, role: demoUser.role, name: demoUser.name, tenant }))
-      window.location.href = demoUser.redirect
+      router.push(demoUser.redirect)
     } else {
       setError('Invalid credentials. Use demo credentials shown below.')
     }
