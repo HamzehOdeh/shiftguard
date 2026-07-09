@@ -156,7 +156,9 @@ def main():
         /* Remove Streamlit branding but keep sidebar toggle */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
-        header {visibility: hidden;}
+        [data-testid="stHeader"] {background: transparent !important; backdrop-filter: none !important;}
+        [data-testid="stHeader"] > div:first-child > div:last-child {visibility: hidden;}
+        [data-testid="stDecoration"] {display: none;}
         [data-testid="collapsedControl"] {visibility: visible !important; z-index: 999;}
         /* Improve button styling */
         .stButton button[kind="primary"] {
@@ -173,6 +175,7 @@ def main():
     import os as _os
     st.markdown(
         '<div style="padding:20px 0 10px 0;">'
+        '<div style="display:flex;align-items:center;justify-content:space-between;">'
         '<div style="display:flex;align-items:center;gap:14px;">'
         '<div style="width:48px;height:48px;background:linear-gradient(135deg,#0ea5e9,#0369a1);'
         'border-radius:12px;display:flex;align-items:center;justify-content:center;'
@@ -182,7 +185,14 @@ def main():
         '<h1 style="margin:0;font-size:1.6em;font-weight:800;color:white;letter-spacing:-0.5px;">'
         'ShiftGuard<span style="color:#0ea5e9;"> for Healthcare</span></h1>'
         '<p style="margin:0;color:#94a3b8;font-size:0.85em;">Protecting patients by preventing fatigued providers · ACGME compliance · Safe staffing ratios · Fair scheduling</p>'
-        '</div></div></div>',
+        '</div></div>'
+        f'<div style="display:flex;align-items:center;gap:12px;">'
+        f'<span style="background:#1e293b;padding:6px 12px;border-radius:8px;font-size:0.8em;color:#94a3b8;border:1px solid #334155;">'
+        f'📍 {hospital_state}</span>'
+        f'<span style="background:#1e293b;padding:6px 10px;border-radius:8px;font-size:0.9em;cursor:pointer;border:1px solid #334155;" title="Settings in sidebar">⚙️</span>'
+        f'<span style="background:#1e293b;padding:6px 10px;border-radius:8px;font-size:0.9em;cursor:pointer;border:1px solid #334155;" title="Notifications">🔔</span>'
+        f'</div>'
+        '</div></div>',
         unsafe_allow_html=True,
     )
 
