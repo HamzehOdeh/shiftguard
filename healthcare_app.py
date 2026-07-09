@@ -171,8 +171,9 @@ def main():
         }
     </style>""", unsafe_allow_html=True)
 
-    # Professional branded header
+    # Professional branded header (uses session state for hospital_state since sidebar renders later)
     import os as _os
+    _header_state = st.session_state.get("hospital_state_global", "Illinois")
     st.markdown(
         '<div style="padding:20px 0 10px 0;">'
         '<div style="display:flex;align-items:center;justify-content:space-between;">'
@@ -188,7 +189,7 @@ def main():
         '</div></div>'
         f'<div style="display:flex;align-items:center;gap:12px;">'
         f'<span style="background:#1e293b;padding:6px 12px;border-radius:8px;font-size:0.8em;color:#94a3b8;border:1px solid #334155;">'
-        f'📍 {hospital_state}</span>'
+        f'📍 {_header_state}</span>'
         f'<span style="background:#1e293b;padding:6px 10px;border-radius:8px;font-size:0.9em;cursor:pointer;border:1px solid #334155;" title="Settings in sidebar">⚙️</span>'
         f'<span style="background:#1e293b;padding:6px 10px;border-radius:8px;font-size:0.9em;cursor:pointer;border:1px solid #334155;" title="Notifications">🔔</span>'
         f'</div>'
