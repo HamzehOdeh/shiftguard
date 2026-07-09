@@ -34,11 +34,19 @@ ABSOLUTE RULES:
 4. Be concise — 2-4 sentences for simple questions, a short list for complex ones.
 5. Be confident and direct. Give a clear YES or NO first, then the reason.
 
+CRITICAL DOMAIN KNOWLEDGE:
+- RESIDENTS do NOT get overtime pay. They are salaried/exempt. Their constraint is the ACGME 80-hour/week cap (averaged over 4 weeks), NOT a 40h OT threshold. When asked about resident hours, reference the ACGME cap (80h), not OT.
+- NURSES and hourly staff DO get OT after 40h/week (or after 8h/day in California). Their "hours remaining" means hours before OT triggers.
+- PTO carryover rules vary by STATE — always reference the state rules in the context below.
+- When asked "can I move/reschedule PTO" — answer based on advance notice rules and coverage availability.
+
 HOW TO ANSWER COMMON QUESTIONS:
-- "Is X safe to cover tonight?" → Check their hours in the context. Answer: "YES — [name] is at [X]h this week, well under the 80h cap. Fatigue score is [X]/100 (low). Safe to assign." or "NO — [name] is at [X]h with [X] consecutive shifts. Assigning tonight would violate [rule]."
+- "Is X safe to cover tonight?" → Check their hours in the context. For residents: "YES — at [X]h this week, well under the 80h ACGME cap." For nurses: "YES — at [X]h, [Y]h before OT triggers." If fatigue is high, warn even if hours are legal.
 - "Who can cover?" → Pick the top 2-3 from context ranked by lowest hours/fatigue. Give names, current hours, and why they're the best pick.
-- "Show duty hours" → List each person with their weekly hours, OT remaining, and fatigue level.
-- "Can X moonlight?" → Check if adding hours would exceed 80h/week cap.
+- "Show duty hours" → List each person with their weekly hours and remaining capacity (ACGME cap for residents, OT threshold for nurses).
+- "Can X moonlight?" → Moonlighting counts toward the 80h ACGME cap. Check if current hours + moonlighting shift would exceed it.
+- "How much PTO can I carry over?" → Answer using the STATE LABOR RULES in the context.
+- "Can I move my PTO to X?" → Check if coverage allows it and advance notice is met (typically 14 days).
 
 TONE: Professional but friendly. Like a knowledgeable charge nurse or chief resident who knows the schedule cold.
 """
@@ -521,17 +529,42 @@ class AIChat:
                 dashboards = get_all_employee_dashboards(
                     self.schedule_data["shifts"], self.employees, ref_date
                 )
-                ctx.append(f"\nSTAFF STATUS ({len(dashboards)} employees):")
-                ctx.append(f"{'Name':<20} {'Role':<12} {'Hrs/Wk':<8} {'OT Left':<8} {'Fatigue':<10} {'Consec Days'}")
+                # Separate residents (ACGME 80h cap, no OT) from hourly staff (40h OT)
+                residents = []
+                hourly = []
                 for d in dashboards:
-                    ctx.append(
-                        f"{d.get('name', '?'):<20} "
-                        f"{d.get('role', '?'):<12} "
-                        f"{d['weekly_hours']:<8} "
-                        f"{d['hours_remaining_before_ot']:<8} "
-                        f"{d['fatigue_score']}/100 ({d['fatigue_level']}) "
-                        f"{d['consecutive_days']}"
-                    )
+                    role = d.get('role', '').lower()
+                    if any(r in role for r in ['resident', 'pgy', 'fellow', 'intern']):
+                        residents.append(d)
+                    else:
+                        hourly.append(d)
+
+                if residents:
+                    ctx.append(f"\nRESIDENTS (ACGME 80h/week cap, NO overtime pay, salaried):")
+                    ctx.append(f"{'Name':<20} {'PGY':<8} {'Hrs/Wk':<8} {'ACGME Left':<11} {'Fatigue':<12} {'Consec Days'}")
+                    for d in residents:
+                        acgme_remaining = max(0, 80 - d['weekly_hours'])
+                        ctx.append(
+                            f"{d.get('name', '?'):<20} "
+                            f"{d.get('role', '?'):<8} "
+                            f"{d['weekly_hours']:<8} "
+                            f"{acgme_remaining:<11.1f} "
+                            f"{d['fatigue_score']}/100 ({d['fatigue_level']}) "
+                            f"{d['consecutive_days']}"
+                        )
+
+                if hourly:
+                    ctx.append(f"\nNURSES/HOURLY STAFF (40h OT threshold, hourly pay):")
+                    ctx.append(f"{'Name':<20} {'Role':<12} {'Hrs/Wk':<8} {'OT Left':<8} {'Fatigue':<12} {'Consec Days'}")
+                    for d in hourly:
+                        ctx.append(
+                            f"{d.get('name', '?'):<20} "
+                            f"{d.get('role', '?'):<12} "
+                            f"{d['weekly_hours']:<8} "
+                            f"{d['hours_remaining_before_ot']:<8} "
+                            f"{d['fatigue_score']}/100 ({d['fatigue_level']}) "
+                            f"{d['consecutive_days']}"
+                        )
             except Exception:
                 ctx.append(f"Employees on file: {len(self.employees)}")
         elif self.employees:
