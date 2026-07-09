@@ -171,31 +171,41 @@ def main():
         }
     </style>""", unsafe_allow_html=True)
 
-    # Professional branded header (uses session state for hospital_state since sidebar renders later)
+    # Professional branded header with functional top-right buttons
     import os as _os
     _header_state = st.session_state.get("hospital_state_global", "Illinois")
-    st.markdown(
-        '<div style="padding:20px 0 10px 0;">'
-        '<div style="display:flex;align-items:center;justify-content:space-between;">'
-        '<div style="display:flex;align-items:center;gap:14px;">'
-        '<div style="width:48px;height:48px;background:linear-gradient(135deg,#0ea5e9,#0369a1);'
-        'border-radius:12px;display:flex;align-items:center;justify-content:center;'
-        'font-size:22px;font-weight:900;color:white;letter-spacing:-1px;'
-        'box-shadow:0 4px 12px rgba(14,165,233,0.3);">SG</div>'
-        '<div>'
-        '<h1 style="margin:0;font-size:1.6em;font-weight:800;color:white;letter-spacing:-0.5px;">'
-        'ShiftGuard<span style="color:#0ea5e9;"> for Healthcare</span></h1>'
-        '<p style="margin:0;color:#94a3b8;font-size:0.85em;">Protecting patients by preventing fatigued providers · ACGME compliance · Safe staffing ratios · Fair scheduling</p>'
-        '</div></div>'
-        f'<div style="display:flex;align-items:center;gap:12px;">'
-        f'<span style="background:#1e293b;padding:6px 12px;border-radius:8px;font-size:0.8em;color:#94a3b8;border:1px solid #334155;">'
-        f'📍 {_header_state}</span>'
-        f'<span style="background:#1e293b;padding:6px 10px;border-radius:8px;font-size:0.9em;cursor:pointer;border:1px solid #334155;" title="Settings in sidebar">⚙️</span>'
-        f'<span style="background:#1e293b;padding:6px 10px;border-radius:8px;font-size:0.9em;cursor:pointer;border:1px solid #334155;" title="Notifications">🔔</span>'
-        f'</div>'
-        '</div></div>',
-        unsafe_allow_html=True,
-    )
+
+    hdr_left, hdr_right = st.columns([4, 1])
+    with hdr_left:
+        st.markdown(
+            '<div style="display:flex;align-items:center;gap:14px;padding:10px 0;">'
+            '<div style="width:48px;height:48px;background:linear-gradient(135deg,#0ea5e9,#0369a1);'
+            'border-radius:12px;display:flex;align-items:center;justify-content:center;'
+            'font-size:22px;font-weight:900;color:white;letter-spacing:-1px;'
+            'box-shadow:0 4px 12px rgba(14,165,233,0.3);">SG</div>'
+            '<div>'
+            '<h1 style="margin:0;font-size:1.6em;font-weight:800;color:white;letter-spacing:-0.5px;">'
+            'ShiftGuard<span style="color:#0ea5e9;"> for Healthcare</span></h1>'
+            '<p style="margin:0;color:#94a3b8;font-size:0.85em;">Protecting patients by preventing fatigued providers · ACGME compliance · Safe staffing ratios · Fair scheduling</p>'
+            '</div></div>',
+            unsafe_allow_html=True,
+        )
+    with hdr_right:
+        st.markdown(f'<div style="text-align:right;padding-top:18px;">'
+                    f'<span style="background:#1e293b;padding:5px 10px;border-radius:8px;font-size:0.8em;color:#94a3b8;border:1px solid #334155;">'
+                    f'📍 {_header_state}</span></div>', unsafe_allow_html=True)
+        btn_cols = st.columns(2)
+        with btn_cols[0]:
+            if st.button("⚙️", key="hdr_settings", help="Open sidebar for settings"):
+                st.session_state["show_settings_hint"] = True
+        with btn_cols[1]:
+            if st.button("🔔", key="hdr_notif", help="View notifications"):
+                st.session_state["show_notifications"] = not st.session_state.get("show_notifications", False)
+
+    if st.session_state.get("show_notifications"):
+        st.info("🔔 **Notifications:** No new alerts. All residents ACGME-compliant. Next credential expiry in 45 days.")
+        if st.button("Dismiss", key="dismiss_notif"):
+            st.session_state["show_notifications"] = False
 
     # Subtle legal note (not a big ugly banner)
     st.markdown(
