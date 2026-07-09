@@ -26,6 +26,118 @@ from demo_scenarios import generate_demo_for_industry
 from ai_chat import AIChat
 
 
+STATE_PENALTY_RULES = {
+    "California": {
+        "multiplier": 1.8,
+        "laws": ["Labor Code 226.7 (meal/rest)", "Predictive Scheduling (SF/LA)", "Paid Sick Leave (min 40h/yr)", "No PTO forfeiture"],
+        "critical_fine": 10000, "high_fine": 2500, "medium_fine": 500,
+        "pto_rule": "No use-it-or-lose-it. Accrued PTO cannot be forfeited.",
+        "pto_carryover": "Unlimited carryover required. Can cap accrual at 1.5x annual grant.",
+        "sick_accrual": "1h per 30h worked, cap 80h",
+        "ot_rules": "Daily OT after 8h (1.5x). Double time after 12h. 7th consecutive day = 1.5x all hours.",
+        "holiday_pay": "No state mandate. Employer policy. 1.5x common practice.",
+        "rest_periods": "10-min paid rest per 4h. 30-min unpaid meal by 5th hour. Premium pay if missed.",
+        "schedule_notice": "SF/LA: 14 days advance notice. $100/day penalty for changes within window.",
+    },
+    "Illinois": {
+        "multiplier": 1.3,
+        "laws": ["Chicago Fair Workweek", "ODRISA", "Paid Leave for All Workers Act (40h/yr)"],
+        "critical_fine": 7500, "high_fine": 1500, "medium_fine": 300,
+        "pto_rule": "No forfeiture (IL law protects accrued vacation). Must pay out on termination.",
+        "pto_carryover": "Unlimited carryover. Cannot forfeit accrued time.",
+        "sick_accrual": "1h per 40h worked, cap 40h",
+        "ot_rules": "Federal FLSA: 1.5x after 40h/week. No daily OT.",
+        "holiday_pay": "No state mandate. CBA-dependent in healthcare.",
+        "rest_periods": "Chicago: 10h rest between shifts. $300-500 penalty per violation.",
+        "schedule_notice": "Chicago Fair Workweek: 14 days. Premium pay for changes within 14 days.",
+    },
+    "New York": {
+        "multiplier": 1.5,
+        "laws": ["NYC Fair Workweek", "Wage Theft Prevention Act", "Paid Safe & Sick Leave (56h/yr)"],
+        "critical_fine": 8000, "high_fine": 2000, "medium_fine": 500,
+        "pto_rule": "NYC: 56h paid safe/sick leave required. Carryover required.",
+        "pto_carryover": "Must carry over up to 56h. Can cap usage at 56h/yr.",
+        "sick_accrual": "1h per 30h worked, 56h/yr for 100+ employees",
+        "ot_rules": "1.5x after 40h/week. Residential healthcare: OT after 40h (not 44h like other sectors).",
+        "holiday_pay": "No state mandate. 1.5x on 11 recognized holidays is common in hospital CBAs.",
+        "rest_periods": "NYC: 11h rest between shifts (hospitality/food service). Healthcare: CBA-dependent.",
+        "schedule_notice": "NYC Fast Food/Retail: 14 days. Healthcare: CBA-dependent.",
+    },
+    "Oregon": {
+        "multiplier": 1.4,
+        "laws": ["Predictive Scheduling", "Paid Sick Leave (40h/yr)", "Equal Pay Act"],
+        "critical_fine": 7000, "high_fine": 1800, "medium_fine": 400,
+        "pto_rule": "Carryover required up to 40h. Cannot require use-it-or-lose-it.",
+        "pto_carryover": "40h minimum carryover. Can cap total accrual at 80h.",
+        "sick_accrual": "1h per 30h worked, cap 40h",
+        "ot_rules": "1.5x after 40h/week. Manufacturing: daily OT after 10h.",
+        "holiday_pay": "No state mandate. 1.5x on holidays per employer policy.",
+        "rest_periods": "Predictive: 10h rest required. Half-time pay if <10h gap accepted.",
+        "schedule_notice": "14 days advance notice. Penalty: time-and-a-half for short-notice changes.",
+    },
+    "Texas": {
+        "multiplier": 0.8,
+        "laws": ["TX Payday Law", "Workers Comp", "No state sick leave mandate"],
+        "critical_fine": 4000, "high_fine": 800, "medium_fine": 200,
+        "pto_rule": "No state law. Employer policy governs. Use-it-or-lose-it allowed.",
+        "pto_carryover": "No state requirement. Employer sets carryover policy.",
+        "sick_accrual": "No state requirement. Federal FMLA only.",
+        "ot_rules": "Federal FLSA only: 1.5x after 40h/week.",
+        "holiday_pay": "No state mandate. At-will state.",
+        "rest_periods": "No state-mandated rest or meal breaks for adults.",
+        "schedule_notice": "No predictive scheduling law. At-will scheduling.",
+    },
+    "Florida": {
+        "multiplier": 0.7,
+        "laws": ["FL Min Wage Amendment", "Workers Comp", "No state sick leave mandate"],
+        "critical_fine": 3500, "high_fine": 700, "medium_fine": 150,
+        "pto_rule": "No state law. Employer policy governs.",
+        "pto_carryover": "No state requirement.",
+        "sick_accrual": "No state requirement.",
+        "ot_rules": "Federal FLSA only: 1.5x after 40h/week.",
+        "holiday_pay": "No state mandate.",
+        "rest_periods": "No state-mandated breaks for adults.",
+        "schedule_notice": "No predictive scheduling law.",
+    },
+    "Washington": {
+        "multiplier": 1.3,
+        "laws": ["Secure Scheduling (Seattle)", "Paid Sick Leave", "Rest Breaks"],
+        "critical_fine": 7000, "high_fine": 1500, "medium_fine": 350,
+        "pto_rule": "Paid sick leave carries over. No cap on carryover.",
+        "pto_carryover": "Unlimited carryover on sick leave. PTO per employer policy.",
+        "sick_accrual": "1h per 40h worked, no cap on accrual",
+        "ot_rules": "1.5x after 40h/week. Healthcare workers may waive daily OT via agreement.",
+        "holiday_pay": "No state mandate. Seattle: premium for schedule changes on holidays.",
+        "rest_periods": "10-min paid rest per 4h. 30-min meal for 5+ hour shifts.",
+        "schedule_notice": "Seattle Secure Scheduling: 14 days. $40-$120 per violation.",
+    },
+    "Massachusetts": {
+        "multiplier": 1.4,
+        "laws": ["Earned Sick Time (40h/yr)", "Sunday Premium Pay", "Predictive Scheduling (proposed)"],
+        "critical_fine": 7500, "high_fine": 1800, "medium_fine": 400,
+        "pto_rule": "Earned sick time carries over (up to 40h). PTO per employer policy.",
+        "pto_carryover": "Sick leave: up to 40h carries over. PTO: employer policy.",
+        "sick_accrual": "1h per 30h worked, 40h/yr",
+        "ot_rules": "1.5x after 40h/week. Sunday premium: 1.1x (phasing out by 2027).",
+        "holiday_pay": "Premium pay on 8 designated holidays (1.5x, phasing out by 2027).",
+        "rest_periods": "30-min meal break for 6+ hour shifts. No paid rest mandate.",
+        "schedule_notice": "Proposed fair scheduling. Not yet enacted.",
+    },
+    "_default": {
+        "multiplier": 1.0,
+        "laws": ["Federal FLSA", "FMLA", "State-specific (check your state DOL)"],
+        "critical_fine": 5000, "high_fine": 1200, "medium_fine": 300,
+        "pto_rule": "Varies by state. Check your state Department of Labor.",
+        "pto_carryover": "Per employer policy unless state law requires otherwise.",
+        "sick_accrual": "No federal requirement. Check state law.",
+        "ot_rules": "Federal FLSA: 1.5x after 40h/week.",
+        "holiday_pay": "No federal mandate for premium holiday pay.",
+        "rest_periods": "No federal mandate for rest/meal breaks.",
+        "schedule_notice": "No federal predictive scheduling law.",
+    },
+}
+
+
 def main():
     st.set_page_config(
         page_title="ShiftGuard for Healthcare",
@@ -1361,114 +1473,6 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         st.markdown("## Admin & HR Dashboard")
         st.markdown("*Compliance overview, reporting, FMLA management, bias audit.*")
 
-        # State-specific penalty & leave rules
-        STATE_PENALTY_RULES = {
-            "California": {
-                "multiplier": 1.8,
-                "laws": ["Labor Code §226.7 (meal/rest)", "Predictive Scheduling (SF/LA)", "Paid Sick Leave (min 40h/yr)", "No PTO forfeiture"],
-                "critical_fine": 10000, "high_fine": 2500, "medium_fine": 500,
-                "pto_rule": "No use-it-or-lose-it. Accrued PTO cannot be forfeited.",
-                "pto_carryover": "Unlimited carryover required. Can cap accrual at 1.5x annual grant.",
-                "sick_accrual": "1h per 30h worked, cap 80h",
-                "ot_rules": "Daily OT after 8h (1.5x). Double time after 12h. 7th consecutive day = 1.5x all hours.",
-                "holiday_pay": "No state mandate. Employer policy. 1.5x common practice.",
-                "rest_periods": "10-min paid rest per 4h. 30-min unpaid meal by 5th hour. Premium pay if missed.",
-                "schedule_notice": "SF/LA: 14 days advance notice. $100/day penalty for changes within window.",
-            },
-            "Illinois": {
-                "multiplier": 1.3,
-                "laws": ["Chicago Fair Workweek", "ODRISA", "Paid Leave for All Workers Act (40h/yr)"],
-                "critical_fine": 7500, "high_fine": 1500, "medium_fine": 300,
-                "pto_rule": "No forfeiture (IL law protects accrued vacation). Must pay out on termination.",
-                "pto_carryover": "Unlimited carryover. Cannot forfeit accrued time.",
-                "sick_accrual": "1h per 40h worked, cap 40h",
-                "ot_rules": "Federal FLSA: 1.5x after 40h/week. No daily OT.",
-                "holiday_pay": "No state mandate. CBA-dependent in healthcare.",
-                "rest_periods": "Chicago: 10h rest between shifts. $300-500 penalty per violation.",
-                "schedule_notice": "Chicago Fair Workweek: 14 days. Premium pay for changes within 14 days.",
-            },
-            "New York": {
-                "multiplier": 1.5,
-                "laws": ["NYC Fair Workweek", "Wage Theft Prevention Act", "Paid Safe & Sick Leave (56h/yr)"],
-                "critical_fine": 8000, "high_fine": 2000, "medium_fine": 500,
-                "pto_rule": "NYC: 56h paid safe/sick leave required. Carryover required.",
-                "pto_carryover": "Must carry over up to 56h. Can cap usage at 56h/yr.",
-                "sick_accrual": "1h per 30h worked, 56h/yr for 100+ employees",
-                "ot_rules": "1.5x after 40h/week. Residential healthcare: OT after 40h (not 44h like other sectors).",
-                "holiday_pay": "No state mandate. 1.5x on 11 recognized holidays is common in hospital CBAs.",
-                "rest_periods": "NYC: 11h rest between shifts (hospitality/food service). Healthcare: CBA-dependent.",
-                "schedule_notice": "NYC Fast Food/Retail: 14 days. Healthcare: CBA-dependent.",
-            },
-            "Oregon": {
-                "multiplier": 1.4,
-                "laws": ["Predictive Scheduling", "Paid Sick Leave (40h/yr)", "Equal Pay Act"],
-                "critical_fine": 7000, "high_fine": 1800, "medium_fine": 400,
-                "pto_rule": "Carryover required up to 40h. Cannot require use-it-or-lose-it.",
-                "pto_carryover": "40h minimum carryover. Can cap total accrual at 80h.",
-                "sick_accrual": "1h per 30h worked, cap 40h",
-                "ot_rules": "1.5x after 40h/week. Manufacturing: daily OT after 10h.",
-                "holiday_pay": "No state mandate. 1.5x on holidays per employer policy.",
-                "rest_periods": "Predictive: 10h rest required. Half-time pay if <10h gap accepted.",
-                "schedule_notice": "14 days advance notice. Penalty: time-and-a-half for short-notice changes.",
-            },
-            "Texas": {
-                "multiplier": 0.8,
-                "laws": ["TX Payday Law", "Workers Comp", "No state sick leave mandate"],
-                "critical_fine": 4000, "high_fine": 800, "medium_fine": 200,
-                "pto_rule": "No state law. Employer policy governs. Use-it-or-lose-it allowed.",
-                "pto_carryover": "No state requirement. Employer sets carryover policy.",
-                "sick_accrual": "No state requirement. Federal FMLA only.",
-                "ot_rules": "Federal FLSA only: 1.5x after 40h/week.",
-                "holiday_pay": "No state mandate. At-will state.",
-                "rest_periods": "No state-mandated rest or meal breaks for adults.",
-                "schedule_notice": "No predictive scheduling law. At-will scheduling.",
-            },
-            "Florida": {
-                "multiplier": 0.7,
-                "laws": ["FL Min Wage Amendment", "Workers Comp", "No state sick leave mandate"],
-                "critical_fine": 3500, "high_fine": 700, "medium_fine": 150,
-                "pto_rule": "No state law. Employer policy governs.",
-                "pto_carryover": "No state requirement.",
-                "sick_accrual": "No state requirement.",
-                "ot_rules": "Federal FLSA only: 1.5x after 40h/week.",
-                "holiday_pay": "No state mandate.",
-                "rest_periods": "No state-mandated breaks for adults.",
-                "schedule_notice": "No predictive scheduling law.",
-            },
-            "Washington": {
-                "multiplier": 1.3,
-                "laws": ["Secure Scheduling (Seattle)", "Paid Sick Leave", "Rest Breaks"],
-                "critical_fine": 7000, "high_fine": 1500, "medium_fine": 350,
-                "pto_rule": "Paid sick leave carries over. No cap on carryover.",
-                "pto_carryover": "Unlimited carryover on sick leave. PTO per employer policy.",
-                "sick_accrual": "1h per 40h worked, no cap on accrual",
-                "ot_rules": "1.5x after 40h/week. Healthcare workers may waive daily OT via agreement.",
-                "holiday_pay": "No state mandate. Seattle: premium for schedule changes on holidays.",
-                "rest_periods": "10-min paid rest per 4h. 30-min meal for 5+ hour shifts.",
-                "schedule_notice": "Seattle Secure Scheduling: 14 days. $40-$120 per violation.",
-            },
-            "Massachusetts": {
-                "multiplier": 1.4,
-                "laws": ["Earned Sick Time (40h/yr)", "Sunday Premium Pay", "Predictive Scheduling (proposed)"],
-                "critical_fine": 7500, "high_fine": 1800, "medium_fine": 400,
-                "pto_rule": "Earned sick time carries over (up to 40h). PTO per employer policy.",
-                "pto_carryover": "Sick leave: up to 40h carries over. PTO: employer policy.",
-                "sick_accrual": "1h per 30h worked, 40h/yr",
-                "ot_rules": "1.5x after 40h/week. Sunday premium: 1.1x (phasing out by 2027).",
-                "holiday_pay": "Premium pay on 8 designated holidays (1.5x, phasing out by 2027).",
-                "rest_periods": "30-min meal break for 6+ hour shifts. No paid rest mandate.",
-                "schedule_notice": "Proposed fair scheduling. Not yet enacted.",
-            },
-        }
-
-        # Use the global state from sidebar
-        STATE_PENALTY_RULES["_default"] = {
-            "multiplier": 1.0,
-            "laws": ["Federal FLSA", "FMLA", "State-specific (check your state DOL)"],
-            "critical_fine": 5000, "high_fine": 1200, "medium_fine": 300,
-            "pto_rule": "Varies by state. Check your state Department of Labor.",
-            "sick_accrual": "No federal mandate. Check state law.",
-        }
         # Get state from sidebar selector
         selected_state = st.session_state.get("hospital_state_global", "Illinois")
         state_rules = STATE_PENALTY_RULES.get(selected_state, STATE_PENALTY_RULES["_default"])
@@ -1876,15 +1880,19 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 st.markdown(msg["content"])
 
         # Handle suggestion button clicks
+        selected_state = st.session_state.get("hospital_state_global", "Illinois")
         if "hc_chat_input" in st.session_state:
             suggestion_text = st.session_state.pop("hc_chat_input")
             st.session_state["hc_chat_messages"].append({"role": "user", "content": suggestion_text})
             if "hc_ai_chat" not in st.session_state:
+                _state_rules = STATE_PENALTY_RULES.get(selected_state, STATE_PENALTY_RULES.get("_default", {}))
                 st.session_state["hc_ai_chat"] = AIChat(
                     employees=employees, schedule_data=schedule,
                     leave_tracker=st.session_state.get("leave_tracker"),
                     user_role="MANAGER",
                     user_employee_id=employees[0]["id"] if employees else "R001",
+                    state_rules=_state_rules,
+                    state_name=selected_state,
                 )
             response = st.session_state["hc_ai_chat"].chat(suggestion_text)
             st.session_state["hc_chat_messages"].append({"role": "assistant", "content": response["message"]})
@@ -1902,12 +1910,15 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
             # Initialize AI chat
             if "hc_ai_chat" not in st.session_state:
+                _state_rules = STATE_PENALTY_RULES.get(selected_state, STATE_PENALTY_RULES.get("_default", {}))
                 st.session_state["hc_ai_chat"] = AIChat(
                     employees=employees,
                     schedule_data=schedule,
                     leave_tracker=st.session_state.get("leave_tracker"),
                     user_role="MANAGER",
                     user_employee_id=employees[0]["id"] if employees else "R001",
+                    state_rules=_state_rules,
+                    state_name=selected_state,
                 )
 
             chat = st.session_state["hc_ai_chat"]

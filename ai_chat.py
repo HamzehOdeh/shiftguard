@@ -48,13 +48,16 @@ class AIChat:
     """Conversational AI interface powered by Claude."""
 
     def __init__(self, employees=None, schedule_data=None, leave_tracker=None,
-                 employee_history=None, user_role="MANAGER", user_employee_id=None):
+                 employee_history=None, user_role="MANAGER", user_employee_id=None,
+                 state_rules=None, state_name=None):
         self.employees = employees or []
         self.schedule_data = schedule_data or {"shifts": []}
         self.leave_tracker = leave_tracker
         self.employee_history = employee_history or {}
         self.user_role = user_role
         self.user_employee_id = user_employee_id
+        self.state_rules = state_rules or {}
+        self.state_name = state_name or "Unknown"
         self.conversation_history = []
         self.client = None
 
@@ -544,6 +547,17 @@ class AIChat:
                               f"Sick {summary.get('sick_hours', 0)}h, UPT {summary.get('upt_hours', 0)}h")
             except Exception:
                 pass
+
+        if self.state_rules:
+            ctx.append(f"\nSTATE LABOR RULES ({self.state_name}):")
+            ctx.append(f"- Active laws: {', '.join(self.state_rules.get('laws', []))}")
+            ctx.append(f"- Overtime: {self.state_rules.get('ot_rules', 'Federal FLSA')}")
+            ctx.append(f"- PTO policy: {self.state_rules.get('pto_rule', 'Per employer')}")
+            ctx.append(f"- PTO carryover: {self.state_rules.get('pto_carryover', 'Per employer policy')}")
+            ctx.append(f"- Sick leave accrual: {self.state_rules.get('sick_accrual', 'Per employer')}")
+            ctx.append(f"- Holiday pay: {self.state_rules.get('holiday_pay', 'No state mandate')}")
+            ctx.append(f"- Rest periods: {self.state_rules.get('rest_periods', 'Federal standards')}")
+            ctx.append(f"- Schedule notice: {self.state_rules.get('schedule_notice', 'No requirement')}")
 
         return "\n".join(ctx)
 
