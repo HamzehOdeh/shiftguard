@@ -3037,12 +3037,50 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                                         r.block_schedule[_view_block_idx]["rotation"] = first["rot"]
                                                 log_action("ROTATION_SWAP", role, f"{first['name']} ↔ {res.name}",
                                                            f"{_view_month}: {first['rot']} ↔ {rot}. Click-to-swap.", "COMPLIANT")
+                                                # Track swap for session summary
+                                                if "session_swaps" not in st.session_state:
+                                                    st.session_state["session_swaps"] = []
+                                                st.session_state["session_swaps"].append({
+                                                    "time": datetime.now().strftime("%H:%M"),
+                                                    "month": _view_month,
+                                                    "res_a": first["name"],
+                                                    "rot_a": first["rot"],
+                                                    "res_b": res.name,
+                                                    "rot_b": rot,
+                                                })
                                                 st.session_state["month_swap_first"] = None
-                                                st.success(f"✅ Swapped! {first['name']} ({first['rot']}) ↔ {res.name} ({rot})")
                                                 st.rerun()
                                             else:
                                                 st.session_state["month_swap_first"] = None
                                                 st.rerun()
+
+                    # Session swap summary
+                    if st.session_state.get("session_swaps"):
+                        swaps = st.session_state["session_swaps"]
+                        st.divider()
+                        st.markdown(f"#### 🔄 Swap Summary ({len(swaps)} change{'s' if len(swaps) != 1 else ''} this session)")
+                        summary_html = '<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-top:8px;">'
+                        for i, s in enumerate(swaps):
+                            summary_html += (
+                                f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                                f'padding:8px 0;{"border-top:1px solid #334155;" if i > 0 else ""}">'
+                                f'<div>'
+                                f'<strong style="color:white;">{s["res_a"]}</strong> '
+                                f'<span style="color:#94a3b8;">({s["rot_a"]})</span>'
+                                f' ↔ '
+                                f'<strong style="color:white;">{s["res_b"]}</strong> '
+                                f'<span style="color:#94a3b8;">({s["rot_b"]})</span>'
+                                f'<span style="color:#64748b;font-size:0.8em;margin-left:8px;">{s["month"]} block</span>'
+                                f'</div>'
+                                f'<div style="display:flex;align-items:center;gap:8px;">'
+                                f'<span style="color:#4ade80;font-size:0.8em;">🔔 Both notified</span>'
+                                f'<span style="color:#64748b;font-size:0.75em;">{s["time"]}</span>'
+                                f'</div>'
+                                f'</div>'
+                            )
+                        summary_html += '</div>'
+                        st.markdown(summary_html, unsafe_allow_html=True)
+                        st.caption("Residents receive an in-app notification and email when their schedule changes.")
 
     # ================================================================
     # TAB: MY SCHEDULE (Resident's personal view)
