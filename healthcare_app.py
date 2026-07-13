@@ -2196,14 +2196,34 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             st.caption("💡 Otto is in quick-response mode. Connect API key for full Claude conversations.")
 
         # Suggestion chips — styled pills
-        suggestions = [
-            "Is Dr. Chen safe to cover tonight?",
-            "Who has the most night shifts this month?",
-            "Can Dr. Kim moonlight this weekend?",
-            "Show me duty hours for all PGY-1s",
-            "Who's jeopardy backup tomorrow?",
-            "Generate next month's call schedule",
-        ]
+        # Role-appropriate suggestions
+        if role in ("Staff Nurse",):
+            suggestions = [
+                "How many hours am I working this week?",
+                "When is my next shift?",
+                "How much PTO do I have left?",
+                "Can I pick up an OT shift this weekend?",
+                "What's the holiday schedule?",
+                "Who's on shift with me tomorrow?",
+            ]
+        elif role in ("Resident",):
+            suggestions = [
+                "How many hours am I at this week?",
+                "When is my next shift?",
+                "How much PTO do I have to use?",
+                "Am I safe to moonlight this weekend?",
+                "What's my fatigue score?",
+                "When is my next day off?",
+            ]
+        else:
+            suggestions = [
+                "Is Dr. Chen safe to cover tonight?",
+                "Who has the most night shifts this month?",
+                "Can Dr. Kim moonlight this weekend?",
+                "Show me duty hours for all PGY-1s",
+                "Who's jeopardy backup tomorrow?",
+                "Generate next month's call schedule",
+            ]
         cols = st.columns(3)
         for i, s in enumerate(suggestions):
             with cols[i % 3]:
