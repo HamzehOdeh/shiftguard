@@ -2397,19 +2397,11 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     '</div>',
                     unsafe_allow_html=True,
                 )
-                col_next1, col_next2, col_next3 = st.columns(3)
-                with col_next1:
-                    if st.button("➡️ Go to Step 2: Rotations", type="primary", key="goto_step2", use_container_width=True):
-                        st.session_state["_setup_nav_index"] = 1
-                        st.rerun()
-                with col_next2:
-                    if st.button("➡️ Go to Step 3: Constraints", key="goto_step3", use_container_width=True):
-                        st.session_state["_setup_nav_index"] = 2
-                        st.rerun()
-                with col_next3:
-                    if st.button("➡️ Go to Step 4: Generate", key="goto_step4", use_container_width=True):
-                        st.session_state["_setup_nav_index"] = 3
-                        st.rerun()
+                st.markdown("")
+                if st.button("➡️  Next: Define Rotations (Step 2)", type="primary", key="goto_step2", use_container_width=True):
+                    st.session_state["_setup_nav_index"] = 1
+                    del st.session_state["setup_step"]
+                    st.rerun()
 
         elif setup_step == "2. Define Rotations":
             st.markdown("### Step 2: Define Rotation Blocks")
@@ -2499,6 +2491,13 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             })
                             st.rerun()
 
+            # Next step button
+            st.markdown("")
+            if st.button("➡️  Next: Set Constraints (Step 3)", type="primary", key="goto_step3", use_container_width=True):
+                st.session_state["_setup_nav_index"] = 2
+                del st.session_state["setup_step"]
+                st.rerun()
+
         elif setup_step == "3. Set Constraints":
             st.markdown("### Step 3: Set Scheduling Constraints")
             st.markdown("*ACGME + state rules are auto-applied. Customize your program-specific preferences below.*")
@@ -2549,7 +2548,14 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     "conference_day": conference_day,
                     "blackout_dates": [d.strip() for d in blackout.split(",") if d.strip()],
                 }
-                st.success("Constraints saved! Go to Step 4 to generate the schedule.")
+                st.success("Constraints saved!")
+
+            # Next step button
+            st.markdown("")
+            if st.button("➡️  Next: Generate Schedule (Step 4)", type="primary", key="goto_step4", use_container_width=True):
+                st.session_state["_setup_nav_index"] = 3
+                del st.session_state["setup_step"]
+                st.rerun()
 
         elif setup_step == "4. Generate Schedule":
             st.markdown("### Step 4: Generate Fair Year Schedule")
