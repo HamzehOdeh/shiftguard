@@ -2569,10 +2569,12 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             day = today + timedelta(days=d)
                             if day.weekday() < 5 or _rng.random() < 0.3:  # weekdays + some weekends
                                 is_night = _rng.random() < 0.2
+                                shift_hours = 12 if is_night else 10
                                 res.daily_shifts.append({
                                     "date": day.strftime("%Y-%m-%d"),
                                     "start": "19:00" if is_night else "07:00",
                                     "end": "07:00" if is_night else "17:00",
+                                    "hours": shift_hours,
                                     "type": "night_float" if is_night else "clinical",
                                     "is_call": _rng.random() < 0.1,
                                 })
