@@ -769,7 +769,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 })
                 st.session_state["sick_call_result"] = result
                 st.session_state["sick_call_who"] = sick_resident
-                st.session_state["sick_call_date"] = sick_date
+                st.session_state["sick_call_date"] = sick_date.strftime("%Y-%m-%d") if hasattr(sick_date, 'strftime') else str(sick_date)
                 explanation = result.get("explanation", "Sick call processed. Finding coverage.")
                 log_action("SICK_CALL_PROCESSED", role, sick_resident,
                            f"Date: {sick_date}. {explanation}", "COMPLIANT")
@@ -2385,6 +2385,17 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 roster_df = pd.DataFrame(st.session_state["setup_residents"])
                 st.dataframe(roster_df, use_container_width=True, hide_index=True)
 
+                # Guide user to next step
+                st.markdown(
+                    '<div style="background:linear-gradient(135deg,#0c4a6e,#1a1a2e);padding:14px 18px;'
+                    'border-radius:10px;border:1px solid #0ea5e9;margin-top:12px;">'
+                    '✅ <strong style="color:#38bdf8;">Roster ready!</strong> '
+                    '<span style="color:#ccc;">Next: select <strong>Step 2. Define Rotations</strong> above '
+                    'to set up rotation blocks, then <strong>Step 4. Generate Schedule</strong> to create the year plan.</span>'
+                    '</div>',
+                    unsafe_allow_html=True,
+                )
+
         elif setup_step == "2. Define Rotations":
             st.markdown("### Step 2: Define Rotation Blocks")
             st.markdown("*Add all rotations your program uses. Name them anything — custom names welcome.*")
@@ -2814,8 +2825,11 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         res.daily_shifts = [s for s in res.daily_shifts if s.get("date") != today_str]
                         break
                 # Activate jeopardy backup
-                jeopardy_result = jeopardy.process_callout(today_str, my_resident.split(" (")[0])
-                backup_name = jeopardy_result.get("backup_assigned", "Dr. Park") if isinstance(jeopardy_result, dict) else "Dr. Park"
+                jeopardy_result = jeopardy.activate_jeopardy(today_str, shift_key="day", reason="sick call")
+                if jeopardy_result.get("activated"):
+                    backup_name = jeopardy_result.get("name", "Backup resident")
+                else:
+                    backup_name = "Dr. Park (auto-assigned)"
                 st.success(f"Sick call recorded. Jeopardy backup ({backup_name}) activated. Program director notified.")
                 log_action("RESIDENT_SICK_CALL", role, my_resident,
                            f"Sick {today_str}. Shift removed. Backup: {backup_name}.", "COMPLIANT")
