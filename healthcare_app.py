@@ -2856,7 +2856,16 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
                     # Live calendar view — next 2 months (8 weeks)
                     st.divider()
-                    st.markdown("#### 📅 Schedule — Next 8 Weeks")
+                    _print_col1, _print_col2 = st.columns([4, 1])
+                    with _print_col1:
+                        st.markdown("#### 📅 Schedule — Next 8 Weeks")
+                    with _print_col2:
+                        st.markdown(
+                            '<button onclick="window.print()" style="background:#1e293b;border:1px solid #334155;'
+                            'color:#94a3b8;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:0.8em;">'
+                            '🖨️ Print</button>',
+                            unsafe_allow_html=True,
+                        )
                     st.caption("Shows upcoming 2 months. Updates in real-time as you make adjustments.")
 
                     rot_colors = {
@@ -2918,44 +2927,99 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     st.markdown(legend_html, unsafe_allow_html=True)
 
                     # Expandable full year view
-                    with st.expander("View schedule by month"):
+                    with st.expander("📅 View & Edit by Month (click-to-swap)"):
                         all_months = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"]
-                        _view_month = st.selectbox("Select month:", all_months, index=datetime.now().month - 7 if datetime.now().month >= 7 else datetime.now().month + 5, key="view_month_select")
+                        _vm_col1, _vm_col2 = st.columns([2, 1])
+                        with _vm_col1:
+                            _view_month = st.selectbox("Select month:", all_months, index=datetime.now().month - 7 if datetime.now().month >= 7 else datetime.now().month + 5, key="view_month_select")
+                        with _vm_col2:
+                            st.markdown(
+                                '<button onclick="window.print()" style="background:#1e293b;border:1px solid #334155;'
+                                'color:#94a3b8;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:0.8em;margin-top:28px;">'
+                                '🖨️ Print Month</button>',
+                                unsafe_allow_html=True,
+                            )
                         _view_block_idx = all_months.index(_view_month)
 
                         # Calculate the actual dates for this block's 4 weeks
                         _vm_start = _acad_start + timedelta(weeks=4 * _view_block_idx)
-                        _vm_weeks = []
+                        _vm_week_dates = []
                         for w in range(4):
                             ws = _vm_start + timedelta(weeks=w)
                             we = ws + timedelta(days=6)
-                            _vm_weeks.append(f"Week {w+1}<br><span style='font-size:0.8em;color:#64748b;'>{ws.strftime('%b %d')}–{we.strftime('%b %d')}</span>")
+                            _vm_week_dates.append(f"{ws.strftime('%b %d')}–{we.strftime('%b %d')}")
 
-                        month_html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85em;">'
-                        month_html += '<tr><th style="padding:8px;text-align:left;color:#94a3b8;border-bottom:1px solid #334155;">Resident</th>'
-                        for wh in _vm_weeks:
-                            month_html += f'<th style="padding:8px;text-align:center;color:#94a3b8;border-bottom:1px solid #334155;">{wh}</th>'
-                        month_html += '</tr>'
+                        # Show month header with week dates
+                        st.markdown(f"**{_view_month} Block** — Weeks: " + " | ".join(_vm_week_dates))
 
-                        for res in program.residents.values():
-                            month_html += '<tr>'
-                            month_html += f'<td style="padding:8px;white-space:nowrap;border-bottom:1px solid #1e293b;">{res.name}<br><span style="color:#64748b;font-size:0.85em;">{res.pgy_level}</span></td>'
-                            if _view_block_idx < len(res.block_schedule):
-                                rot = res.block_schedule[_view_block_idx].get("rotation", "—")
-                            else:
-                                rot = "—"
-                            bg = rot_colors.get(rot, "#334155")
-                            for w in range(4):
-                                month_html += (
-                                    f'<td style="padding:6px;text-align:center;border-bottom:1px solid #1e293b;">'
-                                    f'<div style="background:{bg}22;border:1px solid {bg};border-radius:8px;'
-                                    f'padding:8px 4px;color:{bg};font-weight:600;">'
-                                    f'{rot}</div></td>'
-                                )
-                            month_html += '</tr>'
-                        month_html += '</table></div>'
-                        st.markdown(month_html, unsafe_allow_html=True)
-                        st.caption("If a resident swaps partial weeks, their individual weeks may differ from the block assignment shown here. Check the 8-week view above for the latest.")
+                        # Click-to-swap instructions
+                        if "month_swap_first" not in st.session_state:
+                            st.session_state["month_swap_first"] = None
+
+                        if st.session_state["month_swap_first"]:
+                            first = st.session_state["month_swap_first"]
+                            st.markdown(
+                                f'<div style="background:#0c4a6e;padding:8px 14px;border-radius:8px;'
+                                f'border:1px solid #0ea5e9;font-size:0.85em;margin-bottom:8px;">'
+                                f'🔄 Selected: <strong>{first["name"]}</strong> ({first["rot"]}) — '
+                                f'now click another resident to swap with</div>',
+                                unsafe_allow_html=True,
+                            )
+                            if st.button("Cancel swap", key="cancel_month_swap"):
+                                st.session_state["month_swap_first"] = None
+                                st.rerun()
+                        else:
+                            st.caption("💡 Click a resident's rotation to select them, then click another to swap.")
+
+                        # Render interactive grid
+                        _res_list_month = list(program.residents.values())
+                        _cols_per_row = 5
+                        for row_start in range(0, len(_res_list_month), _cols_per_row):
+                            row_residents = _res_list_month[row_start:row_start + _cols_per_row]
+                            cols = st.columns(len(row_residents))
+                            for ci, res in enumerate(row_residents):
+                                with cols[ci]:
+                                    if _view_block_idx < len(res.block_schedule):
+                                        rot = res.block_schedule[_view_block_idx].get("rotation", "—")
+                                    else:
+                                        rot = "—"
+                                    bg = rot_colors.get(rot, "#334155")
+
+                                    # Show as clickable card
+                                    is_selected = (st.session_state.get("month_swap_first") or {}).get("id") == res.id
+                                    border_style = f"3px solid #0ea5e9" if is_selected else f"1px solid {bg}"
+
+                                    st.markdown(
+                                        f'<div style="background:{bg}15;border:{border_style};border-radius:10px;'
+                                        f'padding:10px;text-align:center;margin-bottom:4px;">'
+                                        f'<div style="font-weight:700;font-size:0.85em;color:white;">{res.name}</div>'
+                                        f'<div style="font-size:0.75em;color:#64748b;">{res.pgy_level}</div>'
+                                        f'<div style="margin-top:6px;background:{bg}33;border-radius:6px;padding:4px;'
+                                        f'color:{bg};font-weight:700;font-size:0.85em;">{rot}</div>'
+                                        f'</div>',
+                                        unsafe_allow_html=True,
+                                    )
+                                    if st.button("Select", key=f"mswap_{res.id}_{_view_block_idx}", use_container_width=True):
+                                        if st.session_state["month_swap_first"] is None:
+                                            st.session_state["month_swap_first"] = {"id": res.id, "name": res.name, "rot": rot}
+                                            st.rerun()
+                                        else:
+                                            # Execute the swap
+                                            first = st.session_state["month_swap_first"]
+                                            if first["id"] != res.id:
+                                                for r in program.residents.values():
+                                                    if r.id == first["id"] and _view_block_idx < len(r.block_schedule):
+                                                        r.block_schedule[_view_block_idx]["rotation"] = rot
+                                                    elif r.id == res.id and _view_block_idx < len(r.block_schedule):
+                                                        r.block_schedule[_view_block_idx]["rotation"] = first["rot"]
+                                                log_action("ROTATION_SWAP", role, f"{first['name']} ↔ {res.name}",
+                                                           f"{_view_month}: {first['rot']} ↔ {rot}. Click-to-swap.", "COMPLIANT")
+                                                st.session_state["month_swap_first"] = None
+                                                st.success(f"✅ Swapped! {first['name']} ({first['rot']}) ↔ {res.name} ({rot})")
+                                                st.rerun()
+                                            else:
+                                                st.session_state["month_swap_first"] = None
+                                                st.rerun()
 
     # ================================================================
     # TAB: MY SCHEDULE (Resident's personal view)
