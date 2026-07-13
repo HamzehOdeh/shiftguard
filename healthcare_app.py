@@ -2843,6 +2843,55 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             unsafe_allow_html=True,
                         )
 
+                    # Live calendar view of block schedule
+                    st.divider()
+                    st.markdown("#### 📅 Block Schedule — Live View")
+                    st.caption("This updates in real-time as you make adjustments above.")
+
+                    months = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"]
+                    rot_colors = {
+                        "ED Clinical": "#0ea5e9", "ICU": "#dc3545", "Night Float": "#6366f1",
+                        "Elective": "#28a745", "Research": "#fbbf24", "Vacation": "#94a3b8",
+                        "Trauma": "#f97316", "Pediatric ED": "#ec4899", "Toxicology": "#8b5cf6",
+                        "Ultrasound": "#14b8a6", "Admin / QI": "#6b7280", "Simulation": "#a78bfa",
+                    }
+
+                    # Build calendar HTML
+                    cal_html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.8em;">'
+                    cal_html += '<tr><th style="padding:8px;text-align:left;color:#94a3b8;border-bottom:1px solid #334155;">Resident</th>'
+                    for m in months:
+                        cal_html += f'<th style="padding:8px;text-align:center;color:#94a3b8;border-bottom:1px solid #334155;">{m}</th>'
+                    cal_html += '</tr>'
+
+                    for res in program.residents.values():
+                        cal_html += '<tr>'
+                        cal_html += f'<td style="padding:6px 8px;white-space:nowrap;border-bottom:1px solid #1e293b;">{res.name}<br><span style="color:#64748b;font-size:0.85em;">{res.pgy_level}</span></td>'
+                        for block_idx in range(12):
+                            if block_idx < len(res.block_schedule):
+                                rot = res.block_schedule[block_idx].get("rotation", "—")
+                            else:
+                                rot = "—"
+                            bg = rot_colors.get(rot, "#334155")
+                            cal_html += (
+                                f'<td style="padding:4px;text-align:center;border-bottom:1px solid #1e293b;">'
+                                f'<div style="background:{bg}22;border:1px solid {bg};border-radius:6px;'
+                                f'padding:4px 2px;font-size:0.85em;color:{bg};font-weight:600;">'
+                                f'{rot[:12]}</div></td>'
+                            )
+                        cal_html += '</tr>'
+                    cal_html += '</table></div>'
+                    st.markdown(cal_html, unsafe_allow_html=True)
+
+                    # Color legend
+                    legend_html = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">'
+                    for rot_name, color in rot_colors.items():
+                        legend_html += (
+                            f'<span style="background:{color}22;border:1px solid {color};color:{color};'
+                            f'border-radius:4px;padding:2px 8px;font-size:0.75em;">{rot_name}</span>'
+                        )
+                    legend_html += '</div>'
+                    st.markdown(legend_html, unsafe_allow_html=True)
+
     # ================================================================
     # TAB: MY SCHEDULE (Resident's personal view)
     # ================================================================
