@@ -149,6 +149,13 @@ def main():
     # Global styling — polished demo-ready look
     st.markdown("""<style>
         [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th { text-align: center !important; }
+        [data-testid="stDataFrame"] [data-testid="StyledLinkCell"],
+        [data-testid="stDataFrame"] [role="gridcell"],
+        [data-testid="stDataFrame"] [role="columnheader"] {
+            text-align: center !important;
+            justify-content: center !important;
+        }
+        .dvn-scroller [role="gridcell"] { text-align: center !important; justify-content: center !important; }
         div[data-testid="stRadio"] > label { font-weight: 600; }
         button[data-baseweb="tab"] { font-weight: 600; font-size: 0.95em; }
         #MainMenu {visibility: hidden;}
