@@ -2300,9 +2300,12 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         st.markdown("## Program Setup")
         st.markdown("*Add your residents, define rotations, and generate a fair year schedule.*")
 
+        _setup_options = ["1. Add Residents", "2. Define Rotations", "3. Set Constraints", "4. Generate Schedule"]
+        _setup_default = st.session_state.get("_setup_nav_index", 0)
         setup_step = st.radio(
-            "Step:", ["1. Add Residents", "2. Define Rotations", "3. Set Constraints", "4. Generate Schedule"],
+            "Step:", _setup_options,
             horizontal=True, key="setup_step",
+            index=_setup_default,
         )
 
         if setup_step == "1. Add Residents":
@@ -2397,15 +2400,15 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 col_next1, col_next2, col_next3 = st.columns(3)
                 with col_next1:
                     if st.button("➡️ Go to Step 2: Rotations", type="primary", key="goto_step2", use_container_width=True):
-                        st.session_state["setup_step"] = "2. Define Rotations"
+                        st.session_state["_setup_nav_index"] = 1
                         st.rerun()
                 with col_next2:
                     if st.button("➡️ Go to Step 3: Constraints", key="goto_step3", use_container_width=True):
-                        st.session_state["setup_step"] = "3. Set Constraints"
+                        st.session_state["_setup_nav_index"] = 2
                         st.rerun()
                 with col_next3:
                     if st.button("➡️ Go to Step 4: Generate", key="goto_step4", use_container_width=True):
-                        st.session_state["setup_step"] = "4. Generate Schedule"
+                        st.session_state["_setup_nav_index"] = 3
                         st.rerun()
 
         elif setup_step == "2. Define Rotations":
