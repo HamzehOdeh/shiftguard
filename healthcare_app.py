@@ -256,6 +256,20 @@ def main():
         .badge-safe { background: #166534; color: #4ade80; }
         .badge-warn { background: #713f12; color: #fbbf24; }
         .badge-danger { background: #7f1d1d; color: #f87171; }
+        /* Print-friendly overrides */
+        @media print {
+            [data-testid="stSidebar"], [data-testid="stHeader"], header, footer,
+            button, .stButton, [data-testid="stDecoration"] { display: none !important; }
+            [data-testid="stAppViewContainer"], section.main, .block-container {
+                background: white !important; color: black !important;
+                padding: 0 !important; max-width: 100% !important;
+            }
+            .kpi-card { border: 1px solid #ccc !important; background: white !important; }
+            .kpi-value { color: #333 !important; }
+            .kpi-label { color: #666 !important; }
+            table { border: 1px solid #ccc; }
+            td, th { border: 1px solid #eee; color: black !important; }
+        }
     </style>""", unsafe_allow_html=True)
 
     # Professional branded header — single row with icons inline
@@ -2949,8 +2963,17 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             we = ws + timedelta(days=6)
                             _vm_week_dates.append(f"{ws.strftime('%b %d')}–{we.strftime('%b %d')}")
 
-                        # Show month header with week dates
-                        st.markdown(f"**{_view_month} Block** — Weeks: " + " | ".join(_vm_week_dates))
+                        # Week date headers as columns
+                        st.markdown(f"**{_view_month} Block**")
+                        _wk_header_cols = st.columns(4)
+                        for wi, wh in enumerate(_vm_week_dates):
+                            with _wk_header_cols[wi]:
+                                st.markdown(
+                                    f'<div style="text-align:center;background:#1e293b;border:1px solid #334155;'
+                                    f'border-radius:8px;padding:6px;font-size:0.8em;color:#94a3b8;">'
+                                    f'<strong>Week {wi+1}</strong><br>{wh}</div>',
+                                    unsafe_allow_html=True,
+                                )
 
                         # Click-to-swap instructions
                         if "month_swap_first" not in st.session_state:
