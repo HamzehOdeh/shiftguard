@@ -2963,11 +2963,13 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             we = ws + timedelta(days=6)
                             _vm_week_dates.append(f"{ws.strftime('%b %d')}–{we.strftime('%b %d')}")
 
-                        # Week date headers as columns
+                        # Week date headers — aligned with data rows [3, 2, 2, 2, 2]
                         st.markdown(f"**{_view_month} Block**")
-                        _wk_header_cols = st.columns(4)
+                        _wk_header_cols = st.columns([3, 2, 2, 2, 2])
+                        with _wk_header_cols[0]:
+                            st.markdown("")
                         for wi, wh in enumerate(_vm_week_dates):
-                            with _wk_header_cols[wi]:
+                            with _wk_header_cols[wi + 1]:
                                 st.markdown(
                                     f'<div style="text-align:center;background:#1e293b;border:1px solid #334155;'
                                     f'border-radius:8px;padding:6px;font-size:0.8em;color:#94a3b8;">'
@@ -3019,7 +3021,9 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                 with row_cols[wk + 1]:
                                     wk_rot = _get_week_rot(res.id, _view_block_idx, wk)
                                     bg = rot_colors.get(wk_rot, "#334155")
-                                    if st.button(wk_rot, key=f"wcell_{res.id}_{_view_block_idx}_{wk}", use_container_width=True):
+                                    _clicked = st.button(wk_rot, key=f"wcell_{res.id}_{_view_block_idx}_{wk}", use_container_width=True)
+                                    st.markdown(f'<div style="text-align:center;color:#64748b;font-size:0.65em;margin-top:-10px;">{_vm_week_dates[wk]}</div>', unsafe_allow_html=True)
+                                    if _clicked:
                                         if st.session_state["week_swap_first"] is None:
                                             st.session_state["week_swap_first"] = {"id": res.id, "name": res.name, "rot": wk_rot, "week": wk}
                                             st.rerun()
@@ -3068,14 +3072,21 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                 f'<span style="color:#64748b;font-size:0.8em;margin-left:8px;">{s["month"]} block</span>'
                                 f'</div>'
                                 f'<div style="display:flex;align-items:center;gap:8px;">'
-                                f'<span style="color:#4ade80;font-size:0.8em;">🔔 Both notified</span>'
+                                f'<span style="color:#fbbf24;font-size:0.8em;">⏳ Pending confirmation</span>'
                                 f'<span style="color:#64748b;font-size:0.75em;">{s["time"]}</span>'
                                 f'</div>'
                                 f'</div>'
                             )
                         summary_html += '</div>'
                         st.markdown(summary_html, unsafe_allow_html=True)
-                        st.caption("Residents receive an in-app notification and email when their schedule changes.")
+                        st.caption("Swaps are pending until confirmed. Residents will be notified to accept/decline.")
+                        if st.button("✅ Confirm & Notify All", type="primary", key="confirm_all_swaps"):
+                            for s in st.session_state["session_swaps"]:
+                                s["status"] = "confirmed"
+                            st.success(f"All {len(swaps)} swap(s) confirmed! Notifications sent to affected residents.")
+                            log_action("SWAPS_CONFIRMED", role, f"{len(swaps)} swaps",
+                                       "All pending swaps confirmed and residents notified.", "COMPLIANT")
+                            st.rerun()
 
     # ================================================================
     # TAB: MY SCHEDULE (Resident's personal view)
