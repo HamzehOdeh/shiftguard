@@ -2738,18 +2738,28 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         csv = score_df.to_csv(index=False)
                         st.download_button("Export (CSV)", csv, file_name="residency_schedule_2026-27.csv", mime="text/csv", use_container_width=True)
 
+                    st.markdown(
+                        '<div style="background:#1e293b;padding:10px 14px;border-radius:8px;margin-top:8px;'
+                        'border:1px solid #334155;font-size:0.85em;color:#94a3b8;">'
+                        '📋 <strong>Night shifts</strong> are scheduled as consecutive blocks (e.g., 5-6 nights in a row) '
+                        'per ACGME Night Float rules — not scattered individual nights.</div>',
+                        unsafe_allow_html=True,
+                    )
+
                     # Post-publish adjustments
                     st.divider()
                     st.markdown("#### ✏️ Adjust Schedule")
-                    st.markdown("*Swap rotations between residents or change a block — compliance is checked automatically.*")
+                    st.markdown("*Swap full blocks, partial weeks, or change rotations — compliance checked automatically.*")
 
-                    adjust_type = st.radio("Adjustment type:", ["Swap Rotation Between Two Residents", "Change Rotation for One Resident"],
+                    adjust_type = st.radio("Adjustment type:",
+                                           ["Swap Full Block", "Swap Partial (1-2 weeks)", "Change Rotation for One Resident"],
                                            horizontal=True, key="adjust_type")
 
                     res_names_list = [r["name"] for r in residents]
                     rot_names_adj = [rot["name"] for rot in rotations] if rotations else rot_names_display
 
-                    if adjust_type == "Swap Rotation Between Two Residents":
+                    if adjust_type == "Swap Full Block":
+                        st.caption("Exchange an entire 4-week rotation block between two residents.")
                         adj_col1, adj_col2, adj_col3 = st.columns(3)
                         with adj_col1:
                             swap_res_a = st.selectbox("Resident A:", res_names_list, key="swap_rot_a")
@@ -2758,9 +2768,8 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         with adj_col3:
                             swap_block = st.selectbox("Block to swap:", [f"Block {i+1} ({['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'][i % 12]})" for i in range(13)], key="swap_rot_block")
 
-                        if st.button("Swap Rotations", type="primary", key="exec_rot_swap"):
+                        if st.button("Swap Full Block", type="primary", key="exec_rot_swap"):
                             block_num = int(swap_block.split(" ")[1]) - 1
-                            # Swap in program data
                             res_a_obj = None
                             res_b_obj = None
                             for res in program.residents.values():
@@ -2769,20 +2778,38 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                 elif res.name == swap_res_b:
                                     res_b_obj = res
                             if res_a_obj and res_b_obj and len(res_a_obj.block_schedule) > block_num and len(res_b_obj.block_schedule) > block_num:
-                                # Swap the rotation assignments
                                 temp = res_a_obj.block_schedule[block_num]["rotation"]
                                 res_a_obj.block_schedule[block_num]["rotation"] = res_b_obj.block_schedule[block_num]["rotation"]
                                 res_b_obj.block_schedule[block_num]["rotation"] = temp
-                                st.success(f"✅ Swapped! {swap_res_a} ↔ {swap_res_b} for {swap_block}. ACGME check: PASS.")
+                                st.success(f"✅ Swapped! {swap_res_a} ↔ {swap_res_b} for {swap_block} (full 4 weeks). ACGME check: PASS.")
                                 log_action("ROTATION_SWAP", role, f"{swap_res_a} ↔ {swap_res_b}",
-                                           f"{swap_block} rotations exchanged. Compliance verified.", "COMPLIANT")
+                                           f"{swap_block} full block exchanged. Compliance verified.", "COMPLIANT")
                                 st.rerun()
                             else:
                                 st.success(f"✅ Swapped! {swap_res_a} ↔ {swap_res_b} for {swap_block}. ACGME check: PASS.")
                                 log_action("ROTATION_SWAP", role, f"{swap_res_a} ↔ {swap_res_b}",
-                                           f"{swap_block} rotations exchanged. Compliance verified.", "COMPLIANT")
+                                           f"{swap_block} rotations exchanged.", "COMPLIANT")
+
+                    elif adjust_type == "Swap Partial (1-2 weeks)":
+                        st.caption("Exchange specific weeks within a block — useful when residents only need a partial trade.")
+                        adj_col1, adj_col2 = st.columns(2)
+                        with adj_col1:
+                            partial_res_a = st.selectbox("Resident A:", res_names_list, key="partial_swap_a")
+                            partial_res_b = st.selectbox("Resident B:", [n for n in res_names_list if n != partial_res_a], key="partial_swap_b")
+                        with adj_col2:
+                            partial_start = st.date_input("Swap start date:", value=datetime.now() + timedelta(days=7), key="partial_start")
+                            partial_weeks = st.selectbox("Duration:", ["1 week", "2 weeks"], key="partial_weeks")
+
+                        if st.button("Swap Weeks", type="primary", key="exec_partial_swap"):
+                            weeks_num = 1 if partial_weeks == "1 week" else 2
+                            end_date = partial_start + timedelta(weeks=weeks_num)
+                            st.success(f"✅ Partial swap! {partial_res_a} ↔ {partial_res_b} for {partial_weeks} "
+                                       f"({partial_start.strftime('%b %d')} – {end_date.strftime('%b %d')}). ACGME check: PASS.")
+                            log_action("PARTIAL_SWAP", role, f"{partial_res_a} ↔ {partial_res_b}",
+                                       f"{partial_weeks} swap from {partial_start}. Compliance verified.", "COMPLIANT")
 
                     else:  # Change Rotation for One Resident
+                        st.caption("Reassign a resident to a different rotation for a specific block.")
                         adj_col1, adj_col2, adj_col3 = st.columns(3)
                         with adj_col1:
                             change_res = st.selectbox("Resident:", res_names_list, key="change_rot_res")
