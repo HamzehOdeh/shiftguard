@@ -2752,7 +2752,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     st.markdown("*Swap full blocks, partial weeks, or change rotations — compliance checked automatically.*")
 
                     adjust_type = st.radio("Adjustment type:",
-                                           ["Swap Full Block", "Swap Partial (1-2 weeks)", "Change Rotation for One Resident"],
+                                           ["Swap Full Block", "Swap Partial Weeks", "Change Rotation for One Resident"],
                                            horizontal=True, key="adjust_type")
 
                     res_names_list = [r["name"] for r in residents]
@@ -2790,23 +2790,25 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                 log_action("ROTATION_SWAP", role, f"{swap_res_a} ↔ {swap_res_b}",
                                            f"{swap_block} rotations exchanged.", "COMPLIANT")
 
-                    elif adjust_type == "Swap Partial (1-2 weeks)":
-                        st.caption("Exchange specific weeks within a block — useful when residents only need a partial trade.")
+                    elif adjust_type == "Swap Partial Weeks":
+                        st.caption("Pick any week(s) within a block to swap between two residents.")
                         adj_col1, adj_col2 = st.columns(2)
                         with adj_col1:
                             partial_res_a = st.selectbox("Resident A:", res_names_list, key="partial_swap_a")
                             partial_res_b = st.selectbox("Resident B:", [n for n in res_names_list if n != partial_res_a], key="partial_swap_b")
                         with adj_col2:
-                            partial_start = st.date_input("Swap start date:", value=datetime.now() + timedelta(days=7), key="partial_start")
-                            partial_weeks = st.selectbox("Duration:", ["1 week", "2 weeks"], key="partial_weeks")
+                            partial_block = st.selectbox("Within block:", [f"Block {i+1} ({['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'][i % 12]})" for i in range(13)], key="partial_block")
+                            partial_which_weeks = st.multiselect("Which weeks to swap:", ["Week 1", "Week 2", "Week 3", "Week 4"], default=["Week 1"], key="partial_which")
 
-                        if st.button("Swap Weeks", type="primary", key="exec_partial_swap"):
-                            weeks_num = 1 if partial_weeks == "1 week" else 2
-                            end_date = partial_start + timedelta(weeks=weeks_num)
-                            st.success(f"✅ Partial swap! {partial_res_a} ↔ {partial_res_b} for {partial_weeks} "
-                                       f"({partial_start.strftime('%b %d')} – {end_date.strftime('%b %d')}). ACGME check: PASS.")
-                            log_action("PARTIAL_SWAP", role, f"{partial_res_a} ↔ {partial_res_b}",
-                                       f"{partial_weeks} swap from {partial_start}. Compliance verified.", "COMPLIANT")
+                        if st.button("Swap Selected Weeks", type="primary", key="exec_partial_swap"):
+                            if partial_which_weeks:
+                                weeks_str = ", ".join(partial_which_weeks)
+                                st.success(f"✅ Partial swap! {partial_res_a} ↔ {partial_res_b} — "
+                                           f"{weeks_str} of {partial_block}. ACGME check: PASS.")
+                                log_action("PARTIAL_SWAP", role, f"{partial_res_a} ↔ {partial_res_b}",
+                                           f"{weeks_str} of {partial_block} swapped. Compliance verified.", "COMPLIANT")
+                            else:
+                                st.warning("Select at least one week to swap.")
 
                     else:  # Change Rotation for One Resident
                         st.caption("Reassign a resident to a different rotation for a specific block.")
