@@ -2918,22 +2918,44 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     st.markdown(legend_html, unsafe_allow_html=True)
 
                     # Expandable full year view
-                    with st.expander("View full year schedule"):
+                    with st.expander("View schedule by month"):
                         all_months = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"]
-                        full_html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.75em;">'
-                        full_html += '<tr><th style="padding:6px;text-align:left;color:#94a3b8;">Resident</th>'
-                        for m in all_months:
-                            full_html += f'<th style="padding:6px;text-align:center;color:#94a3b8;">{m}</th>'
-                        full_html += '</tr>'
+                        _view_month = st.selectbox("Select month:", all_months, index=datetime.now().month - 7 if datetime.now().month >= 7 else datetime.now().month + 5, key="view_month_select")
+                        _view_block_idx = all_months.index(_view_month)
+
+                        # Calculate the actual dates for this block's 4 weeks
+                        _vm_start = _acad_start + timedelta(weeks=4 * _view_block_idx)
+                        _vm_weeks = []
+                        for w in range(4):
+                            ws = _vm_start + timedelta(weeks=w)
+                            we = ws + timedelta(days=6)
+                            _vm_weeks.append(f"Week {w+1}<br><span style='font-size:0.8em;color:#64748b;'>{ws.strftime('%b %d')}–{we.strftime('%b %d')}</span>")
+
+                        month_html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85em;">'
+                        month_html += '<tr><th style="padding:8px;text-align:left;color:#94a3b8;border-bottom:1px solid #334155;">Resident</th>'
+                        for wh in _vm_weeks:
+                            month_html += f'<th style="padding:8px;text-align:center;color:#94a3b8;border-bottom:1px solid #334155;">{wh}</th>'
+                        month_html += '</tr>'
+
                         for res in program.residents.values():
-                            full_html += f'<tr><td style="padding:4px 6px;white-space:nowrap;">{res.name}</td>'
-                            for bi in range(12):
-                                rot = res.block_schedule[bi].get("rotation", "—") if bi < len(res.block_schedule) else "—"
-                                bg = rot_colors.get(rot, "#334155")
-                                full_html += f'<td style="padding:3px;text-align:center;"><div style="background:{bg}22;border:1px solid {bg};border-radius:4px;padding:2px;color:{bg};font-size:0.85em;">{rot[:8]}</div></td>'
-                            full_html += '</tr>'
-                        full_html += '</table></div>'
-                        st.markdown(full_html, unsafe_allow_html=True)
+                            month_html += '<tr>'
+                            month_html += f'<td style="padding:8px;white-space:nowrap;border-bottom:1px solid #1e293b;">{res.name}<br><span style="color:#64748b;font-size:0.85em;">{res.pgy_level}</span></td>'
+                            if _view_block_idx < len(res.block_schedule):
+                                rot = res.block_schedule[_view_block_idx].get("rotation", "—")
+                            else:
+                                rot = "—"
+                            bg = rot_colors.get(rot, "#334155")
+                            for w in range(4):
+                                month_html += (
+                                    f'<td style="padding:6px;text-align:center;border-bottom:1px solid #1e293b;">'
+                                    f'<div style="background:{bg}22;border:1px solid {bg};border-radius:8px;'
+                                    f'padding:8px 4px;color:{bg};font-weight:600;">'
+                                    f'{rot}</div></td>'
+                                )
+                            month_html += '</tr>'
+                        month_html += '</table></div>'
+                        st.markdown(month_html, unsafe_allow_html=True)
+                        st.caption("If a resident swaps partial weeks, their individual weeks may differ from the block assignment shown here. Check the 8-week view above for the latest.")
 
     # ================================================================
     # TAB: MY SCHEDULE (Resident's personal view)
