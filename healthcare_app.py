@@ -146,11 +146,11 @@ def main():
         initial_sidebar_state="expanded",
     )
 
-    # Global styling — professional look, sidebar toggle kept visible
+    # Global styling — polished demo-ready look
     st.markdown("""<style>
         [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th { text-align: center !important; }
         div[data-testid="stRadio"] > label { font-weight: 600; }
-        button[data-baseweb="tab"] { font-weight: 600; }
+        button[data-baseweb="tab"] { font-weight: 600; font-size: 0.95em; }
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         [data-testid="stDecoration"] {display: none;}
@@ -158,10 +158,91 @@ def main():
             background: linear-gradient(135deg, #0ea5e9, #0369a1);
             border: none;
             font-weight: 600;
+            box-shadow: 0 4px 14px rgba(14,165,233,0.3);
         }
         .stButton button[kind="primary"]:hover {
             background: linear-gradient(135deg, #38bdf8, #0284c7);
+            box-shadow: 0 6px 20px rgba(14,165,233,0.4);
         }
+        /* KPI cards */
+        .kpi-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 20px 24px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        .kpi-value { font-size: 2.2em; font-weight: 800; margin: 4px 0; letter-spacing: -1px; }
+        .kpi-label { font-size: 0.8em; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-green .kpi-value { color: #4ade80; }
+        .kpi-blue .kpi-value { color: #38bdf8; }
+        .kpi-amber .kpi-value { color: #fbbf24; }
+        .kpi-red .kpi-value { color: #f87171; }
+        /* Suggestion chips */
+        .chip-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+        .chip {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 0.85em;
+            color: #e2e8f0;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .chip:hover { border-color: #0ea5e9; background: #0c4a6e; color: white; }
+        /* Chat bubbles */
+        .chat-user {
+            background: linear-gradient(135deg, #0ea5e9, #0369a1);
+            color: white;
+            border-radius: 18px 18px 4px 18px;
+            padding: 12px 18px;
+            margin: 8px 0;
+            max-width: 85%;
+            margin-left: auto;
+            font-size: 0.92em;
+        }
+        .chat-otto {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            border-radius: 18px 18px 18px 4px;
+            padding: 12px 18px;
+            margin: 8px 0;
+            max-width: 85%;
+            font-size: 0.92em;
+            line-height: 1.5;
+        }
+        .chat-otto strong { color: #38bdf8; }
+        /* Resident status cards */
+        .resident-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 8px;
+        }
+        .resident-card .name { font-weight: 700; font-size: 1em; }
+        .resident-card .meta { color: #94a3b8; font-size: 0.8em; }
+        .hours-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: #334155;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .hours-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        /* Status badge */
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600; }
+        .badge-safe { background: #166534; color: #4ade80; }
+        .badge-warn { background: #713f12; color: #fbbf24; }
+        .badge-danger { background: #7f1d1d; color: #f87171; }
     </style>""", unsafe_allow_html=True)
 
     # Professional branded header — single row with icons inline
@@ -433,26 +514,50 @@ def main():
         st.markdown("*Real-time ACGME duty hour compliance for all residents.*")
 
         if dashboard["all_compliant"]:
-            st.success(f"✅ ALL {dashboard['total_residents']} RESIDENTS SAFE — No duty hour violations. No fatigued providers on schedule.")
+            st.markdown(
+                f'<div style="background:linear-gradient(135deg,#1a2d1a,#0f1a0f);padding:16px 20px;border-radius:12px;'
+                f'border:1px solid #28a74555;margin-bottom:16px;">'
+                f'✅ <strong style="color:#4ade80;">ALL {dashboard["total_residents"]} RESIDENTS SAFE</strong> — '
+                f'<span style="color:#94a3b8;">No duty hour violations. No fatigued providers on schedule.</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
         else:
-            st.error(f"⚠️ {dashboard['at_risk']} RESIDENT(S) AT RISK — Immediate attention needed")
+            st.markdown(
+                f'<div style="background:linear-gradient(135deg,#2d1b1b,#1a1010);padding:16px 20px;border-radius:12px;'
+                f'border:1px solid #dc354555;margin-bottom:16px;">'
+                f'⚠️ <strong style="color:#f87171;">{dashboard["at_risk"]} RESIDENT(S) AT RISK</strong> — '
+                f'<span style="color:#94a3b8;">Immediate attention needed</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
-        # Duty hours table
+        # Resident cards with progress bars
         st.markdown("#### Duty Hours (4-Week Rolling Average)")
-        rows = []
+        cards_html = ''
         for r in dashboard["residents"]:
-            risk_color = {"CRITICAL": "🔴", "HIGH": "🟠", "MODERATE": "🟡", "SAFE": "🟢"}
-            rows.append({
-                "Status": risk_color.get(r["risk_level"], "⚪"),
-                "Resident": r["name"],
-                "PGY": r["pgy_level"],
-                "This Week": f"{r['this_week_hours']}h",
-                "4-Wk Avg": f"{r['four_week_average']}h",
-                "Remaining": f"{r['remaining_this_week']}h",
-                "Consec Days": r["consecutive_days"],
-                "Risk": r["risk_level"],
-            })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            pct = min(r["this_week_hours"] / 80 * 100, 100)
+            bar_color = "#4ade80" if pct < 75 else "#fbbf24" if pct < 90 else "#f87171"
+            badge_class = "badge-safe" if r["risk_level"] == "SAFE" else "badge-warn" if r["risk_level"] in ("MODERATE", "HIGH") else "badge-danger"
+            cards_html += f'''
+            <div class="resident-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <span class="name">{r["name"]}</span>
+                        <span class="meta" style="margin-left:8px;">{r["pgy_level"]} · {r["consecutive_days"]} consec days</span>
+                    </div>
+                    <span class="badge {badge_class}">{r["risk_level"]}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:6px;">
+                    <span style="font-size:0.85em;color:#e2e8f0;"><strong>{r["this_week_hours"]}h</strong> this week</span>
+                    <span style="font-size:0.85em;color:#94a3b8;">{r["four_week_average"]}h avg · {r["remaining_this_week"]}h remaining</span>
+                </div>
+                <div class="hours-bar">
+                    <div class="hours-bar-fill" style="width:{pct}%;background:{bar_color};"></div>
+                </div>
+            </div>
+            '''
+        st.markdown(cards_html, unsafe_allow_html=True)
 
         st.divider()
 
@@ -1879,36 +1984,79 @@ th {{ background: #f0f0f0; font-weight: bold; }}
     # ================================================================
     if tab5:
      with tab5:
-        # Proactive status — value without typing anything
+        # Hero KPI cards — immediate visual impact
         acgme_status = dashboard["all_compliant"]
         at_risk = dashboard["at_risk"]
+        total_res = dashboard["total_residents"]
 
+        # Calculate KPIs from dashboard
+        avg_hours = sum(r["this_week_hours"] for r in dashboard["residents"]) / max(len(dashboard["residents"]), 1)
+        max_hours = max((r["this_week_hours"] for r in dashboard["residents"]), default=0)
+        safe_count = sum(1 for r in dashboard["residents"] if r["risk_level"] == "SAFE")
+
+        kpi_html = f'''
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+            <div class="kpi-card kpi-green">
+                <div class="kpi-label">Compliance</div>
+                <div class="kpi-value">{"✓" if acgme_status else "!"}</div>
+                <div class="kpi-label">{"All Clear" if acgme_status else f"{at_risk} At Risk"}</div>
+            </div>
+            <div class="kpi-card kpi-blue">
+                <div class="kpi-label">Residents Safe</div>
+                <div class="kpi-value">{safe_count}/{total_res}</div>
+                <div class="kpi-label">ACGME Compliant</div>
+            </div>
+            <div class="kpi-card kpi-amber">
+                <div class="kpi-label">Avg Hours/Week</div>
+                <div class="kpi-value">{avg_hours:.0f}h</div>
+                <div class="kpi-label">of 80h Cap</div>
+            </div>
+            <div class="kpi-card {"kpi-red" if max_hours > 70 else "kpi-blue"}">
+                <div class="kpi-label">Highest Load</div>
+                <div class="kpi-value">{max_hours:.0f}h</div>
+                <div class="kpi-label">{"⚠️ Near Cap" if max_hours > 70 else "Within Limits"}</div>
+            </div>
+        </div>
+        '''
+        st.markdown(kpi_html, unsafe_allow_html=True)
+
+        # Status banner
         if not acgme_status:
             st.markdown(
-                f'<div style="background:#2d1b1b;padding:14px 18px;border-radius:10px;'
-                f'border-left:4px solid #dc3545;margin-bottom:12px;">'
-                f'⚠️ <strong style="color:#dc3545;">{at_risk} resident(s) approaching ACGME limits</strong><br>'
-                f'<span style="color:#ccc;">Ask me "who\'s at risk?" or check the Residency Program tab for details.</span>'
+                f'<div style="background:linear-gradient(135deg,#2d1b1b,#1a1010);padding:16px 20px;border-radius:12px;'
+                f'border:1px solid #dc354555;margin-bottom:16px;">'
+                f'⚠️ <strong style="color:#f87171;">{at_risk} resident(s) approaching ACGME limits</strong><br>'
+                f'<span style="color:#94a3b8;">Ask me "who\'s at risk?" or check the Residency Program tab.</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                f'<div style="background:#1a2d1a;padding:14px 18px;border-radius:10px;'
-                f'border-left:4px solid #28a745;margin-bottom:12px;">'
-                f'✅ <strong style="color:#28a745;">All {dashboard["total_residents"]} residents ACGME-compliant</strong><br>'
-                f'<span style="color:#ccc;">No duty hour violations. Ask me anything about scheduling or coverage.</span>'
+                f'<div style="background:linear-gradient(135deg,#1a2d1a,#0f1a0f);padding:16px 20px;border-radius:12px;'
+                f'border:1px solid #28a74555;margin-bottom:16px;">'
+                f'✅ <strong style="color:#4ade80;">All {total_res} residents ACGME-compliant</strong><br>'
+                f'<span style="color:#94a3b8;">No duty hour violations. Ask me anything about scheduling or coverage.</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
 
-        st.markdown("### Hi, I'm Otto. How can I help?")
+        # Otto greeting
+        st.markdown(
+            '<div style="display:flex;align-items:center;gap:12px;margin:20px 0 8px 0;">'
+            '<div style="width:48px;height:48px;background:linear-gradient(135deg,#0ea5e9,#6366f1);'
+            'border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;'
+            'box-shadow:0 4px 12px rgba(14,165,233,0.3);">🤖</div>'
+            '<div><h3 style="margin:0;color:white;">Hi, I\'m Otto</h3>'
+            '<p style="margin:0;color:#94a3b8;font-size:0.85em;">Your AI scheduling & compliance assistant</p></div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
         import os
         if not os.getenv("ANTHROPIC_API_KEY"):
-            st.caption("💡 Otto is using quick-response mode. Full AI conversations available with API configuration.")
+            st.caption("💡 Otto is in quick-response mode. Connect API key for full Claude conversations.")
 
-        # Suggestion chips
+        # Suggestion chips — styled pills
         suggestions = [
             "Is Dr. Chen safe to cover tonight?",
             "Who has the most night shifts this month?",
@@ -1920,20 +2068,23 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         cols = st.columns(3)
         for i, s in enumerate(suggestions):
             with cols[i % 3]:
-                if st.button(s, key=f"hc_suggest_{i}"):
+                if st.button(s, key=f"hc_suggest_{i}", use_container_width=True):
                     st.session_state["hc_chat_input"] = s
 
-        st.divider()
+        st.markdown('<div style="height:12px;"></div>', unsafe_allow_html=True)
 
-        # Chat history
+        # Chat history — styled bubbles
         if "hc_chat_messages" not in st.session_state:
             st.session_state["hc_chat_messages"] = []
 
-        # Display chat messages
         for msg in st.session_state["hc_chat_messages"]:
-            with st.chat_message("user" if msg["role"] == "user" else "assistant",
-                                 avatar="👤" if msg["role"] == "user" else "🤖"):
-                st.markdown(msg["content"])
+            if msg["role"] == "user":
+                st.markdown(f'<div class="chat-user">{msg["content"]}</div>', unsafe_allow_html=True)
+            else:
+                import re as _re
+                content = msg["content"].replace("\n", "<br>")
+                content = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
+                st.markdown(f'<div class="chat-otto">{content}</div>', unsafe_allow_html=True)
 
         # Handle suggestion button clicks
         selected_state = st.session_state.get("hospital_state_global", "Illinois")
@@ -1954,17 +2105,17 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             st.session_state["hc_chat_messages"].append({"role": "assistant", "content": response["message"]})
             st.rerun()
 
-        # Chat input (form-based for tab compatibility)
+        # Chat input — styled form
         with st.form("otto_chat_form", clear_on_submit=True):
             user_input = st.text_input("Ask Otto:", key="hc_chat_input_box",
-                                       placeholder="Type your question and press Enter...")
+                                       placeholder="Type your question and press Enter...",
+                                       label_visibility="collapsed")
             submitted = st.form_submit_button("Send", type="primary", use_container_width=True)
         user_input = user_input if submitted else None
 
         if user_input:
             st.session_state["hc_chat_messages"].append({"role": "user", "content": user_input})
 
-            # Initialize AI chat
             if "hc_ai_chat" not in st.session_state:
                 _state_rules = STATE_PENALTY_RULES.get(selected_state, STATE_PENALTY_RULES.get("_default", {}))
                 st.session_state["hc_ai_chat"] = AIChat(

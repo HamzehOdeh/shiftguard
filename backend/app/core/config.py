@@ -3,6 +3,16 @@ Application configuration — loaded from environment variables.
 """
 
 import os
+from pathlib import Path
+
+env_file = Path(__file__).resolve().parents[3] / ".env"
+if env_file.exists():
+    with open(env_file) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, val = line.split("=", 1)
+                os.environ.setdefault(key.strip(), val.strip())
 
 
 class Settings:

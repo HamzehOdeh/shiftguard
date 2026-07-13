@@ -1,6 +1,6 @@
-﻿'use client'
+'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -16,31 +16,36 @@ const SUGGESTIONS = [
   'Generate next month\'s call schedule',
 ]
 
-const DEMO_RESPONSES: Record<string, string> = {
-  'Is Dr. Chen safe to cover tonight?': "NO â€” Dr. Chen is at 74h this week (4-week avg: 71h). Adding a 12h night shift would push them to 86h, violating the ACGME 80h cap. Fatigue score is 68/100 (HIGH).\n\nRecommend: Dr. Santos (45h, fatigue 18/100) or Dr. Reeves (58h, fatigue 32/100) â€” both ACGME-safe.",
-  'Who has the most night shifts?': "This month's night shift distribution:\n\n1. Dr. Kim â€” 6 nights (highest)\n2. Dr. Patel â€” 5 nights\n3. Dr. Chen â€” 5 nights\n4. Dr. Reeves â€” 4 nights\n5. Dr. Santos â€” 3 nights (lowest, PGY-1)\n\nDr. Kim is approaching the ACGME 6-consecutive-night limit. Next night assignment should go to Dr. Santos or Dr. Reeves for fairness.",
-  'Can Dr. Kim moonlight this weekend?': "CONDITIONAL â€” Dr. Kim is at 71h this week. Moonlighting counts toward the 80h ACGME cap.\n\nâ€¢ 8h moonlighting shift â†’ 79h total = SAFE (barely)\nâ€¢ 12h moonlighting shift â†’ 83h total = VIOLATION\n\nApproved for up to 9 hours only. Program Director sign-off required per policy.",
-  'Show duty hours for all PGY-1s': "PGY-1 Duty Hours (current week):\n\nâ€¢ Dr. Santos â€” 45h / 80h cap (56% utilized)\n  - Fatigue: 18/100 (LOW)\n  - Consecutive days: 3\n  - Status: SAFE\n\nDr. Santos is the only PGY-1 in the program. Well within all ACGME limits. Available for additional coverage if needed.",
-  "Who's jeopardy backup tomorrow?": "Tomorrow's jeopardy backup: Dr. Reeves (PGY-2)\n\nâ€¢ Current hours: 58h (22h remaining before cap)\nâ€¢ Fatigue: 32/100 (LOW)\nâ€¢ Last jeopardy activation: 12 days ago\nâ€¢ ACGME status: SAFE for activation\n\nIf activated, Dr. Reeves would reach ~70h â€” still well under the 80h cap.",
-  "Generate next month's call schedule": "I'll generate a fair call schedule for August. Here's the distribution:\n\nâ€¢ 31 days Ã— 1 night resident = 31 night shifts needed\nâ€¢ 5 residents available\nâ€¢ Target: ~6 nights each\n\nProposed:\n- Dr. Patel: 7 nights (includes 1 weekend)\n- Dr. Kim: 6 nights\n- Dr. Chen: 6 nights\n- Dr. Reeves: 6 nights\n- Dr. Santos: 6 nights\n\nFairness score: EXCELLENT (max deviation: 1 shift). No ACGME violations. Golden weekends preserved for all residents.\n\nWant me to adjust anything?",
-}
-
 export default function OttoPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
 
-  function sendMessage(text: string) {
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, loading])
+
+  async function sendMessage(text: string) {
     const userMsg: Message = { role: 'user', content: text }
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setLoading(true)
 
-    setTimeout(() => {
-      const response = DEMO_RESPONSES[text] || `Based on the current schedule data, I can help with that. The residents are all within ACGME limits today. Dr. Chen is closest to the cap at 74h/80h. Would you like me to check something specific about "${text}"?`
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      })
+      const data = await res.json()
+      const response = data.message || 'Sorry, I couldn\'t process that.'
       setMessages(prev => [...prev, { role: 'assistant', content: response }])
+    } catch {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Connection error — please try again.' }])
+    } finally {
       setLoading(false)
-    }, 800)
+    }
   }
 
   return (
@@ -94,6 +99,7 @@ export default function OttoPage() {
             </div>
           </div>
         )}
+        <div ref={bottomRef} />
       </div>
 
       {/* Input */}

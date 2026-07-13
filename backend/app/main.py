@@ -174,7 +174,7 @@ async def check_compliance(current_user: dict = Depends(require_role(["MANAGER",
 
 
 @app.post("/api/v1/schedule/generate")
-async def generate_schedule(
+async def generate_schedule_endpoint(
     workers: int, pattern: str, start_date: str, end_date: str,
     current_user: dict = Depends(require_role(["MANAGER", "HR", "ADMIN"]))
 ):
