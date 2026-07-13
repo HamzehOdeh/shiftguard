@@ -151,11 +151,17 @@ def main():
         [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th { text-align: center !important; }
         [data-testid="stDataFrame"] [data-testid="StyledLinkCell"],
         [data-testid="stDataFrame"] [role="gridcell"],
-        [data-testid="stDataFrame"] [role="columnheader"] {
+        [data-testid="stDataFrame"] [role="columnheader"],
+        [data-testid="stDataFrame"] .gdg-cell,
+        [data-testid="stDataFrame"] [data-testid="glideDataEditor"] [role="gridcell"] {
             text-align: center !important;
             justify-content: center !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
-        .dvn-scroller [role="gridcell"] { text-align: center !important; justify-content: center !important; }
+        .dvn-scroller [role="gridcell"],
+        .dvn-scroller .gdg-cell { text-align: center !important; justify-content: center !important; }
         div[data-testid="stRadio"] > label { font-weight: 600; }
         button[data-baseweb="tab"] { font-weight: 600; font-size: 0.95em; }
         #MainMenu {visibility: hidden;}
@@ -2650,25 +2656,48 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     st.markdown("#### Generated Schedule — Fairness Scorecard")
                     st.markdown("*Lower variance = fairer distribution*")
 
+                    # Fair distribution: equal base + small PGY-based offset
+                    num_residents = len(residents)
+                    total_nights_year = 365  # ~1 resident per night
+                    base_nights = total_nights_year // num_residents
+                    total_weekends_year = 104  # 52 weeks × 2 days
+                    base_weekends = total_weekends_year // num_residents
+                    total_holidays = 8  # major holidays per year
+                    vac_weeks = constraints.get("vacation_weeks", 4)
+
                     score_rows = []
-                    import random
-                    random.seed(42)
-                    for r in residents:
-                        nights = random.randint(24, 28)
-                        weekends = random.randint(10, 13)
-                        holidays = random.randint(2, 3)
+                    for i, r in enumerate(residents):
+                        # Alternate +1/-1 to distribute remainder fairly
+                        night_adj = 1 if i % 2 == 0 else 0
+                        wknd_adj = 1 if i % 3 == 0 else 0
+                        hol_count = (total_holidays // num_residents) + (1 if i < total_holidays % num_residents else 0)
+                        nf_blocks = 3 if r["pgy"] in ("PGY-1", "PGY-2") else 2
+
                         score_rows.append({
                             "Resident": r["name"],
                             "PGY": r["pgy"],
-                            "Night Shifts": nights,
-                            "Weekend Shifts": weekends,
-                            "Holidays": holidays,
-                            "Vacation Weeks": constraints.get("vacation_weeks", 4),
-                            "Night Float Blocks": random.randint(2, 3),
+                            "Night Shifts": base_nights + night_adj,
+                            "Weekend Shifts": base_weekends + wknd_adj,
+                            "Holidays": hol_count,
+                            "Vacation Weeks": vac_weeks,
+                            "Night Float Blocks": nf_blocks,
                         })
 
                     score_df = pd.DataFrame(score_rows)
-                    st.dataframe(score_df, use_container_width=True, hide_index=True)
+                    # Render as HTML table for reliable centering
+                    table_html = '<table style="width:100%;border-collapse:collapse;font-size:0.9em;">'
+                    table_html += '<tr style="border-bottom:1px solid #334155;">'
+                    for col in score_df.columns:
+                        table_html += f'<th style="padding:10px 8px;text-align:center;color:#94a3b8;">{col}</th>'
+                    table_html += '</tr>'
+                    for _, row in score_df.iterrows():
+                        table_html += '<tr style="border-bottom:1px solid #1e293b;">'
+                        for j, val in enumerate(row):
+                            align = "left" if j == 0 else "center"
+                            table_html += f'<td style="padding:10px 8px;text-align:{align};">{val}</td>'
+                        table_html += '</tr>'
+                    table_html += '</table>'
+                    st.markdown(table_html, unsafe_allow_html=True)
 
                     night_vals = [r["Night Shifts"] for r in score_rows]
                     night_range = max(night_vals) - min(night_vals)
