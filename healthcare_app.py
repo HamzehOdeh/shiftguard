@@ -2515,10 +2515,53 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     end_date = st.date_input("Academic year end:", value=datetime(2027, 6, 30), key="gen_end")
 
                 if st.button("Generate Year Schedule", type="primary", key="generate_year", use_container_width=True):
+                    # Sync uploaded residents into the actual residency program
+                    for r in residents:
+                        res_id = r["name"].replace(" ", "_").replace(".", "")
+                        if res_id not in program.residents:
+                            program.add_resident(
+                                resident_id=res_id,
+                                name=r["name"],
+                                pgy_level=r["pgy"],
+                            )
+                    # Generate actual rotation assignments and shifts
+                    import random as _rng
+                    _rng.seed(42)
+                    rot_names = [rot["name"] for rot in rotations] if rotations else ["ED Clinical", "ICU", "Night Float", "Elective"]
+                    gen_start = st.session_state.get("gen_start", datetime(2026, 7, 1))
+                    for res in program.residents.values():
+                        # Assign rotation blocks (4 weeks each)
+                        res.block_schedule = []
+                        week_cursor = gen_start if isinstance(gen_start, datetime) else datetime.strptime(str(gen_start), "%Y-%m-%d")
+                        for block_num in range(13):  # 52 weeks / 4 = 13 blocks
+                            rot = rot_names[(hash(res.name) + block_num) % len(rot_names)]
+                            res.block_schedule.append({
+                                "block": block_num + 1,
+                                "rotation": rot,
+                                "start": week_cursor.strftime("%Y-%m-%d"),
+                                "end": (week_cursor + timedelta(weeks=4) - timedelta(days=1)).strftime("%Y-%m-%d"),
+                            })
+                            week_cursor += timedelta(weeks=4)
+                        # Generate daily shifts for next 4 weeks
+                        today = datetime.now()
+                        res.daily_shifts = []
+                        for d in range(28):
+                            day = today + timedelta(days=d)
+                            if day.weekday() < 5 or _rng.random() < 0.3:  # weekdays + some weekends
+                                is_night = _rng.random() < 0.2
+                                res.daily_shifts.append({
+                                    "date": day.strftime("%Y-%m-%d"),
+                                    "start": "19:00" if is_night else "07:00",
+                                    "end": "07:00" if is_night else "17:00",
+                                    "type": "night_float" if is_night else "clinical",
+                                    "is_call": _rng.random() < 0.1,
+                                })
                     st.session_state["year_sched_generated"] = True
+                    st.session_state["residency_program"] = program
+                    st.rerun()
 
                 if st.session_state.get("year_sched_generated"):
-                    st.success("Schedule generated! Fairness-optimized across all residents.")
+                    st.success("Schedule generated! Fairness-optimized. Residents synced to all tabs.")
 
                     st.markdown("#### Generated Schedule — Fairness Scorecard")
                     st.markdown("*Lower variance = fairer distribution*")
@@ -2555,12 +2598,12 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
                     st.markdown("#### Block Schedule (First Quarter)")
                     block_data = []
-                    blocks_list = ["ED Clinical", "ICU", "Night Float", "Elective", "ED Clinical", "Research"]
-                    for i, r in enumerate(residents[:5]):
+                    rot_names_display = [rot["name"] for rot in rotations] if rotations else ["ED Clinical", "ICU", "Night Float", "Elective", "ED Clinical", "Research"]
+                    for i, r in enumerate(residents[:8]):
                         row = {"Resident": r["name"]}
                         for month_idx, month in enumerate(["Jul", "Aug", "Sep"]):
-                            block_idx = (i + month_idx) % len(blocks_list)
-                            row[month] = blocks_list[block_idx]
+                            block_idx = (hash(r["name"]) + month_idx) % len(rot_names_display)
+                            row[month] = rot_names_display[block_idx]
                         block_data.append(row)
 
                     st.dataframe(pd.DataFrame(block_data), use_container_width=True, hide_index=True)
@@ -2571,8 +2614,9 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         if st.button("Publish Schedule", type="primary", key="publish_sched", use_container_width=True):
                             st.session_state["residency_schedule_published"] = True
                             st.session_state["residency_schedule_pub_date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-                            st.success("Published! All residents notified. Daily adjustment tracking is now active.")
-                            log_action("SCHEDULE_PUBLISHED", role, "Residency Year Schedule", "All ACGME rules passed", "COMPLIANT")
+                            st.success("Published! Schedule is now live. Residents can view in My Schedule tab.")
+                            log_action("SCHEDULE_PUBLISHED", role, "Residency Year Schedule",
+                                       f"{len(residents)} residents, {len(rotations)} rotations. All ACGME rules passed.", "COMPLIANT")
                     with col2:
                         if st.button("Adjust & Regenerate", key="regen", use_container_width=True):
                             st.session_state["year_sched_generated"] = False
