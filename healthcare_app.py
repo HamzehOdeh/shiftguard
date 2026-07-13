@@ -2975,7 +2975,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                     unsafe_allow_html=True,
                                 )
 
-                        # Click-to-swap instructions
+                        # Click-to-swap
                         if "month_swap_first" not in st.session_state:
                             st.session_state["month_swap_first"] = None
 
@@ -2985,74 +2985,68 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                 f'<div style="background:#0c4a6e;padding:8px 14px;border-radius:8px;'
                                 f'border:1px solid #0ea5e9;font-size:0.85em;margin-bottom:8px;">'
                                 f'🔄 Selected: <strong>{first["name"]}</strong> ({first["rot"]}) — '
-                                f'now click another resident to swap with</div>',
+                                f'now click another resident\'s block to swap</div>',
                                 unsafe_allow_html=True,
                             )
-                            if st.button("Cancel swap", key="cancel_month_swap"):
+                            if st.button("Cancel", key="cancel_month_swap"):
                                 st.session_state["month_swap_first"] = None
                                 st.rerun()
                         else:
-                            st.caption("💡 Click a resident's rotation to select them, then click another to swap.")
+                            st.caption("💡 Click a rotation cell to select, then click another to swap them.")
 
-                        # Render interactive grid
+                        # Table-style grid: Resident | Week 1 | Week 2 | Week 3 | Week 4
                         _res_list_month = list(program.residents.values())
-                        _cols_per_row = 5
-                        for row_start in range(0, len(_res_list_month), _cols_per_row):
-                            row_residents = _res_list_month[row_start:row_start + _cols_per_row]
-                            cols = st.columns(len(row_residents))
-                            for ci, res in enumerate(row_residents):
-                                with cols[ci]:
-                                    if _view_block_idx < len(res.block_schedule):
-                                        rot = res.block_schedule[_view_block_idx].get("rotation", "—")
-                                    else:
-                                        rot = "—"
-                                    bg = rot_colors.get(rot, "#334155")
+                        for res in _res_list_month:
+                            if _view_block_idx < len(res.block_schedule):
+                                rot = res.block_schedule[_view_block_idx].get("rotation", "—")
+                            else:
+                                rot = "—"
+                            bg = rot_colors.get(rot, "#334155")
+                            is_selected = (st.session_state.get("month_swap_first") or {}).get("id") == res.id
 
-                                    # Show as clickable card
-                                    is_selected = (st.session_state.get("month_swap_first") or {}).get("id") == res.id
-                                    border_style = f"3px solid #0ea5e9" if is_selected else f"1px solid {bg}"
-
+                            # Row: name column + 4 week columns
+                            row_cols = st.columns([2, 1, 1, 1, 1, 1])
+                            with row_cols[0]:
+                                name_style = "color:#38bdf8;font-weight:700;" if is_selected else "color:white;"
+                                st.markdown(f'<div style="{name_style}font-size:0.9em;padding-top:8px;">{res.name} <span style="color:#64748b;font-size:0.85em;">{res.pgy_level}</span></div>', unsafe_allow_html=True)
+                            for wk in range(4):
+                                with row_cols[wk + 1]:
                                     st.markdown(
-                                        f'<div style="background:{bg}15;border:{border_style};border-radius:10px;'
-                                        f'padding:10px;text-align:center;margin-bottom:4px;">'
-                                        f'<div style="font-weight:700;font-size:0.85em;color:white;">{res.name}</div>'
-                                        f'<div style="font-size:0.75em;color:#64748b;">{res.pgy_level}</div>'
-                                        f'<div style="margin-top:6px;background:{bg}33;border-radius:6px;padding:4px;'
-                                        f'color:{bg};font-weight:700;font-size:0.85em;">{rot}</div>'
-                                        f'</div>',
+                                        f'<div style="background:{bg}22;border:1px solid {bg};border-radius:6px;'
+                                        f'padding:6px 2px;text-align:center;color:{bg};font-weight:600;font-size:0.8em;">'
+                                        f'{rot}</div>',
                                         unsafe_allow_html=True,
                                     )
-                                    if st.button("Select", key=f"mswap_{res.id}_{_view_block_idx}", use_container_width=True):
-                                        if st.session_state["month_swap_first"] is None:
-                                            st.session_state["month_swap_first"] = {"id": res.id, "name": res.name, "rot": rot}
+                            with row_cols[5]:
+                                if st.button("↔", key=f"mswap_{res.id}_{_view_block_idx}", help=f"Swap {res.name}"):
+                                    if st.session_state["month_swap_first"] is None:
+                                        st.session_state["month_swap_first"] = {"id": res.id, "name": res.name, "rot": rot}
+                                        st.rerun()
+                                    else:
+                                        first = st.session_state["month_swap_first"]
+                                        if first["id"] != res.id:
+                                            for r in program.residents.values():
+                                                if r.id == first["id"] and _view_block_idx < len(r.block_schedule):
+                                                    r.block_schedule[_view_block_idx]["rotation"] = rot
+                                                elif r.id == res.id and _view_block_idx < len(r.block_schedule):
+                                                    r.block_schedule[_view_block_idx]["rotation"] = first["rot"]
+                                            log_action("ROTATION_SWAP", role, f"{first['name']} ↔ {res.name}",
+                                                       f"{_view_month}: {first['rot']} ↔ {rot}. Click-to-swap.", "COMPLIANT")
+                                            if "session_swaps" not in st.session_state:
+                                                st.session_state["session_swaps"] = []
+                                            st.session_state["session_swaps"].append({
+                                                "time": datetime.now().strftime("%H:%M"),
+                                                "month": _view_month,
+                                                "res_a": first["name"],
+                                                "rot_a": first["rot"],
+                                                "res_b": res.name,
+                                                "rot_b": rot,
+                                            })
+                                            st.session_state["month_swap_first"] = None
                                             st.rerun()
                                         else:
-                                            # Execute the swap
-                                            first = st.session_state["month_swap_first"]
-                                            if first["id"] != res.id:
-                                                for r in program.residents.values():
-                                                    if r.id == first["id"] and _view_block_idx < len(r.block_schedule):
-                                                        r.block_schedule[_view_block_idx]["rotation"] = rot
-                                                    elif r.id == res.id and _view_block_idx < len(r.block_schedule):
-                                                        r.block_schedule[_view_block_idx]["rotation"] = first["rot"]
-                                                log_action("ROTATION_SWAP", role, f"{first['name']} ↔ {res.name}",
-                                                           f"{_view_month}: {first['rot']} ↔ {rot}. Click-to-swap.", "COMPLIANT")
-                                                # Track swap for session summary
-                                                if "session_swaps" not in st.session_state:
-                                                    st.session_state["session_swaps"] = []
-                                                st.session_state["session_swaps"].append({
-                                                    "time": datetime.now().strftime("%H:%M"),
-                                                    "month": _view_month,
-                                                    "res_a": first["name"],
-                                                    "rot_a": first["rot"],
-                                                    "res_b": res.name,
-                                                    "rot_b": rot,
-                                                })
-                                                st.session_state["month_swap_first"] = None
-                                                st.rerun()
-                                            else:
-                                                st.session_state["month_swap_first"] = None
-                                                st.rerun()
+                                            st.session_state["month_swap_first"] = None
+                                            st.rerun()
 
                     # Session swap summary
                     if st.session_state.get("session_swaps"):
