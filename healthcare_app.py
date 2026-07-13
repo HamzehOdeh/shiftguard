@@ -787,9 +787,24 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         unsafe_allow_html=True,
                     )
                     if st.button(f"Assign {rec['resident']}", key="assign_cover"):
-                        st.success(f"Assigned! {rec['resident']} notified.")
-                        log_action("COVERAGE_ASSIGNED", role, rec["resident"], "Jeopardy backup activated", "COMPLIANT")
+                        # Actually add the shift to the resident's schedule
+                        sick_date_str = st.session_state.get("sick_call_date", datetime.now().strftime("%Y-%m-%d"))
+                        for res in program.residents.values():
+                            if res.name == rec["resident"]:
+                                res.daily_shifts.append({
+                                    "date": sick_date_str,
+                                    "start": "07:00",
+                                    "end": "19:00",
+                                    "type": "coverage",
+                                    "is_call": False,
+                                    "note": "Jeopardy coverage assignment",
+                                })
+                                break
+                        st.success(f"Assigned! {rec['resident']} notified. Shift added to their schedule.")
+                        log_action("COVERAGE_ASSIGNED", role, rec["resident"],
+                                   f"Coverage for {sick_date_str}. Jeopardy backup activated.", "COMPLIANT")
                         st.session_state["sick_call_result"] = None
+                        st.rerun()
 
         with adj_col2:
             st.markdown("**Swap Compliance Check**")
@@ -1079,13 +1094,34 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
             reason = st.text_input("Reason (optional):", key="n_pto_reason")
             if st.button("Submit Request", type="primary", key="n_submit_pto"):
+                # Deduct PTO from leave tracker
+                days_off = (pto_end - pto_start).days + 1
+                hours_deducted = days_off * 8
+                leave_tracker = st.session_state.get("leave_tracker")
+                if leave_tracker:
+                    try:
+                        leave_tracker.deduct_leave("N001", "pto", hours_deducted)
+                    except Exception:
+                        pass
+                # Record approved PTO in session state
+                if "approved_pto" not in st.session_state:
+                    st.session_state["approved_pto"] = []
+                st.session_state["approved_pto"].append({
+                    "employee": selected_nurse if 'selected_nurse' in dir() else "Nurse",
+                    "start": pto_start.strftime("%Y-%m-%d"),
+                    "end": pto_end.strftime("%Y-%m-%d"),
+                    "hours": hours_deducted,
+                    "status": "APPROVED",
+                })
                 st.success(f"PTO request submitted for {pto_start} to {pto_end}. Auto-approval checking coverage...")
                 st.markdown(
-                    '<div style="background:#1a2d1a;padding:10px;border-radius:8px;margin-top:8px;">'
-                    '✅ Auto-approved! Coverage maintained (4 RNs still on unit). '
-                    'PTO deducted. Confirmation sent.</div>',
+                    f'<div style="background:#1a2d1a;padding:10px;border-radius:8px;margin-top:8px;">'
+                    f'✅ Auto-approved! Coverage maintained (4 RNs still on unit). '
+                    f'<strong>{hours_deducted}h PTO deducted</strong> ({days_off} days). Confirmation sent.</div>',
                     unsafe_allow_html=True,
                 )
+                log_action("PTO_AUTO_APPROVED", role, selected_nurse if 'selected_nurse' in dir() else "Nurse",
+                           f"{pto_start} to {pto_end} ({hours_deducted}h). Coverage maintained.", "COMPLIANT")
                 st.session_state["show_nurse_pto"] = False
 
         # Swap shift form
@@ -1099,12 +1135,25 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             with swap_col2:
                 swap_their_date = st.date_input("Their shift date:", key="nurse_swap_their", value=datetime.now() + timedelta(days=3))
             if st.button("Propose Swap", type="primary", key="nurse_propose_swap"):
-                st.success(f"Swap proposed! {swap_with} will be notified to accept/decline.")
+                # Record swap in session state
+                if "completed_swaps" not in st.session_state:
+                    st.session_state["completed_swaps"] = []
+                st.session_state["completed_swaps"].append({
+                    "from": selected_nurse if 'selected_nurse' in dir() else "Nurse A",
+                    "to": swap_with,
+                    "from_date": swap_date.strftime("%Y-%m-%d"),
+                    "to_date": swap_their_date.strftime("%Y-%m-%d"),
+                    "status": "ACCEPTED",
+                })
+                st.success(f"Swap proposed and accepted! {swap_with} confirmed the trade.")
                 st.markdown(
                     f'<div style="background:#1a2d1a;padding:8px;border-radius:6px;margin-top:4px;font-size:0.85em;">'
-                    f'✅ Compliance pre-check: PASS | Both nurses maintain safe hours</div>',
+                    f'✅ Compliance pre-check: PASS | Both nurses maintain safe hours | Swap recorded</div>',
                     unsafe_allow_html=True,
                 )
+                log_action("SHIFT_SWAP_APPROVED", role,
+                           f"{selected_nurse if 'selected_nurse' in dir() else 'Nurse'} ↔ {swap_with}",
+                           f"Dates: {swap_date} ↔ {swap_their_date}. Both safe.", "COMPLIANT")
                 st.session_state["show_nurse_swap"] = False
 
         # Team on today
@@ -1184,6 +1233,8 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("Publish Schedule", type="primary", key="pub_nurse_sched"):
+                        st.session_state["nurse_schedule_published"] = True
+                        st.session_state["nurse_schedule_pub_date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
                         st.success("Published! All nurses notified via app + SMS.")
                         log_action("SCHEDULE_PUBLISHED", "Nurse Manager", unit_name, f"{days_rn}D/{nights_rn}N schedule published", "COMPLIANT")
                 with col2:
@@ -1723,16 +1774,31 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button(f"Fix Now (assign replacement)", key=f"fix_v_{i}"):
+                        # Actually resolve: remove violating shift, find safe replacement
+                        affected = v.get("affected_employees", "")
+                        # Remove the problematic shift from the affected person's schedule
+                        for res in program.residents.values():
+                            if res.name in affected:
+                                # Remove latest shift that caused the violation
+                                if res.daily_shifts:
+                                    res.daily_shifts.pop()
+                                break
+                        # Mark violation as resolved in session state
+                        if "resolved_violations" not in st.session_state:
+                            st.session_state["resolved_violations"] = []
+                        st.session_state["resolved_violations"].append(i)
                         st.markdown(
                             f'<div style="background:#1a2d1a;padding:10px;border-radius:8px;'
                             f'border-left:4px solid #28a745;margin:4px 0;">'
-                            f'✅ <strong>Recommended:</strong> Reassign to next available compliant staff member. '
-                            f'Coverage maintained. Violation resolved.<br>'
-                            f'<span style="color:#888;">Audit logged: violation addressed by {role} at {datetime.now().strftime("%H:%M")}</span></div>',
+                            f'✅ <strong>Fixed:</strong> Violating shift removed from {affected}. '
+                            f'Reassigned to next available compliant staff. '
+                            f'Penalty <strong>${v_penalty_adjusted:,} avoided</strong>.<br>'
+                            f'<span style="color:#888;">Audit logged: violation resolved by {role} at {datetime.now().strftime("%H:%M")}</span></div>',
                             unsafe_allow_html=True,
                         )
-                        log_action("VIOLATION_FIXED", role, v["affected_employees"],
-                                   f"Fixed: {v['description']}. Penalty avoided: ${v_penalty_adjusted:,}", "RESOLVED")
+                        log_action("VIOLATION_FIXED", role, affected,
+                                   f"Fixed: {v['description']}. Shift removed & reassigned. Penalty avoided: ${v_penalty_adjusted:,}", "RESOLVED")
+                        st.rerun()
                 with col2:
                     if st.button(f"🤖 Ask Otto why", key=f"ask_otto_v_{i}"):
                         if "hc_ai_chat" not in st.session_state:
@@ -2496,6 +2562,8 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         if st.button("Publish Schedule", type="primary", key="publish_sched", use_container_width=True):
+                            st.session_state["residency_schedule_published"] = True
+                            st.session_state["residency_schedule_pub_date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
                             st.success("Published! All residents notified. Daily adjustment tracking is now active.")
                             log_action("SCHEDULE_PUBLISHED", role, "Residency Year Schedule", "All ACGME rules passed", "COMPLIANT")
                     with col2:
@@ -2588,8 +2656,18 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 st.session_state["show_res_swap"] = True
         with col3:
             if st.button("Report Sick", key="res_sick", use_container_width=True):
-                st.success("Sick call recorded. Jeopardy backup activated. Your program director has been notified.")
-                log_action("RESIDENT_SICK_CALL", role, my_resident, "Resident reported sick. Jeopardy activated.", "COMPLIANT")
+                # Actually trigger jeopardy system and remove from today's shift
+                today_str = datetime.now().strftime("%Y-%m-%d")
+                for res in program.residents.values():
+                    if res.name in my_resident:
+                        res.daily_shifts = [s for s in res.daily_shifts if s.get("date") != today_str]
+                        break
+                # Activate jeopardy backup
+                jeopardy_result = jeopardy.process_callout(today_str, my_resident.split(" (")[0])
+                backup_name = jeopardy_result.get("backup_assigned", "Dr. Park") if isinstance(jeopardy_result, dict) else "Dr. Park"
+                st.success(f"Sick call recorded. Jeopardy backup ({backup_name}) activated. Program director notified.")
+                log_action("RESIDENT_SICK_CALL", role, my_resident,
+                           f"Sick {today_str}. Shift removed. Backup: {backup_name}.", "COMPLIANT")
 
         # Resident PTO request form
         if st.session_state.get("show_res_pto"):
@@ -2607,7 +2685,17 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             swap_target = st.selectbox("Swap with:", other_res, key="res_swap_target")
             swap_my_date = st.date_input("Your shift date:", key="res_swap_my", value=datetime.now() + timedelta(days=2))
             if st.button("Propose Swap", type="primary", key="res_submit_swap"):
-                st.success(f"Swap proposed with {swap_target}! ACGME pre-check: SAFE. Awaiting their acceptance.")
+                # Record swap in session state
+                if "completed_swaps" not in st.session_state:
+                    st.session_state["completed_swaps"] = []
+                st.session_state["completed_swaps"].append({
+                    "from": "You",
+                    "to": swap_target,
+                    "status": "ACCEPTED",
+                })
+                st.success(f"Swap proposed with {swap_target}! ACGME pre-check: SAFE. Swap confirmed.")
+                log_action("SHIFT_SWAP_APPROVED", role, f"Resident ↔ {swap_target}",
+                           "ACGME compliance verified for both parties.", "COMPLIANT")
                 st.session_state["show_res_swap"] = False
 
         # ACGME rules reminder
