@@ -2215,6 +2215,24 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 "What's my fatigue score?",
                 "When is my next day off?",
             ]
+        elif role in ("Nurse Manager",):
+            suggestions = [
+                "Who's in OT this week?",
+                "Which nurses have expiring credentials?",
+                "Generate next week's nursing schedule",
+                "Who can cover a night shift tomorrow?",
+                "What's the RN-to-patient ratio today?",
+                "How much OT are we spending this month?",
+            ]
+        elif role in ("Chief Resident",):
+            suggestions = [
+                "Who's at risk of hitting 80h this week?",
+                "Who has the most night shifts this month?",
+                "Is Dr. Chen safe to cover tonight?",
+                "Show me duty hours for all PGY-1s",
+                "Who's jeopardy backup tomorrow?",
+                "Generate next month's call schedule",
+            ]
         else:
             suggestions = [
                 "Is Dr. Chen safe to cover tonight?",
