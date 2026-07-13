@@ -2301,11 +2301,15 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         st.markdown("*Add your residents, define rotations, and generate a fair year schedule.*")
 
         _setup_options = ["1. Add Residents", "2. Define Rotations", "3. Set Constraints", "4. Generate Schedule"]
-        _setup_default = st.session_state.get("_setup_nav_index", 0)
+        _setup_default = st.session_state.pop("_setup_nav_to", None)
+        if _setup_default is not None:
+            setup_step = _setup_options[_setup_default]
+            st.session_state["setup_step"] = setup_step
+            # Scroll to top
+            st.markdown('<script>window.parent.document.querySelector("section.main").scrollTo(0,0);</script>', unsafe_allow_html=True)
         setup_step = st.radio(
             "Step:", _setup_options,
             horizontal=True, key="setup_step",
-            index=_setup_default,
         )
 
         if setup_step == "1. Add Residents":
@@ -2399,8 +2403,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 )
                 st.markdown("")
                 if st.button("➡️  Next: Define Rotations (Step 2)", type="primary", key="goto_step2", use_container_width=True):
-                    st.session_state["_setup_nav_index"] = 1
-                    del st.session_state["setup_step"]
+                    st.session_state["_setup_nav_to"] = 1
                     st.rerun()
 
         elif setup_step == "2. Define Rotations":
@@ -2494,8 +2497,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             # Next step button
             st.markdown("")
             if st.button("➡️  Next: Set Constraints (Step 3)", type="primary", key="goto_step3", use_container_width=True):
-                st.session_state["_setup_nav_index"] = 2
-                del st.session_state["setup_step"]
+                st.session_state["_setup_nav_to"] = 2
                 st.rerun()
 
         elif setup_step == "3. Set Constraints":
@@ -2553,8 +2555,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             # Next step button
             st.markdown("")
             if st.button("➡️  Next: Generate Schedule (Step 4)", type="primary", key="goto_step4", use_container_width=True):
-                st.session_state["_setup_nav_index"] = 3
-                del st.session_state["setup_step"]
+                st.session_state["_setup_nav_to"] = 3
                 st.rerun()
 
         elif setup_step == "4. Generate Schedule":
