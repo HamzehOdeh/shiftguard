@@ -2544,7 +2544,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
             col_fed, col_state = st.columns(2)
             with col_fed:
-                st.markdown("**ACGME (Federal — always enforced):**")
+                st.markdown("**ACGME (Federal — always enforced):** <span style='color:#64748b;font-size:0.8em;'>Last updated: March 2024</span>", unsafe_allow_html=True)
                 st.markdown("""
                 - ✅ 80h/week cap (4-week average)
                 - ✅ 24+4 continuous duty limit
