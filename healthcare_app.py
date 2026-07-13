@@ -2798,15 +2798,24 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             partial_res_b = st.selectbox("Resident B:", [n for n in res_names_list if n != partial_res_a], key="partial_swap_b")
                         with adj_col2:
                             partial_block = st.selectbox("Within block:", [f"Block {i+1} ({['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'][i % 12]})" for i in range(13)], key="partial_block")
-                            partial_which_weeks = st.multiselect("Which weeks to swap:", ["Week 1", "Week 2", "Week 3", "Week 4"], default=["Week 1"], key="partial_which")
+                            # Calculate actual dates for each week in this block
+                            _pb_num = int(partial_block.split(" ")[1]) - 1
+                            _gen_start = st.session_state.get("gen_start", datetime(2026, 7, 1))
+                            _block_start = _gen_start + timedelta(weeks=4 * _pb_num) if isinstance(_gen_start, datetime) else datetime(2026, 7, 1) + timedelta(weeks=4 * _pb_num)
+                            _week_labels = []
+                            for w in range(4):
+                                ws = _block_start + timedelta(weeks=w)
+                                we = ws + timedelta(days=6)
+                                _week_labels.append(f"Week {w+1} ({ws.strftime('%b %d')} – {we.strftime('%b %d')})")
+                            partial_which_weeks = st.multiselect("Which weeks to swap:", _week_labels, default=[_week_labels[0]], key="partial_which")
 
                         if st.button("Swap Selected Weeks", type="primary", key="exec_partial_swap"):
                             if partial_which_weeks:
                                 weeks_str = ", ".join(partial_which_weeks)
                                 st.success(f"✅ Partial swap! {partial_res_a} ↔ {partial_res_b} — "
-                                           f"{weeks_str} of {partial_block}. ACGME check: PASS.")
+                                           f"{weeks_str}. ACGME check: PASS.")
                                 log_action("PARTIAL_SWAP", role, f"{partial_res_a} ↔ {partial_res_b}",
-                                           f"{weeks_str} of {partial_block} swapped. Compliance verified.", "COMPLIANT")
+                                           f"{weeks_str} swapped. Compliance verified.", "COMPLIANT")
                             else:
                                 st.warning("Select at least one week to swap.")
 
@@ -2845,12 +2854,11 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             unsafe_allow_html=True,
                         )
 
-                    # Live calendar view of block schedule
+                    # Live calendar view — next 2 months (8 weeks)
                     st.divider()
-                    st.markdown("#### 📅 Block Schedule — Live View")
-                    st.caption("This updates in real-time as you make adjustments above.")
+                    st.markdown("#### 📅 Schedule — Next 8 Weeks")
+                    st.caption("Shows upcoming 2 months. Updates in real-time as you make adjustments.")
 
-                    months = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"]
                     rot_colors = {
                         "ED Clinical": "#0ea5e9", "ICU": "#dc3545", "Night Float": "#6366f1",
                         "Elective": "#28a745", "Research": "#fbbf24", "Vacation": "#94a3b8",
@@ -2858,17 +2866,32 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         "Ultrasound": "#14b8a6", "Admin / QI": "#6b7280", "Simulation": "#a78bfa",
                     }
 
-                    # Build calendar HTML
+                    # Calculate which blocks fall in the next 8 weeks
+                    _cal_start = datetime.now()
+                    _acad_start = st.session_state.get("gen_start", datetime(2026, 7, 1))
+                    if not isinstance(_acad_start, datetime):
+                        _acad_start = datetime(2026, 7, 1)
+                    _weeks_since_start = max(0, (_cal_start - _acad_start).days // 7)
+                    _current_block = _weeks_since_start // 4
+                    _show_blocks = [_current_block, _current_block + 1]
+
+                    # Week headers with dates
+                    week_headers = []
+                    for wk in range(8):
+                        wk_start = _cal_start + timedelta(weeks=wk)
+                        week_headers.append(f"{wk_start.strftime('%b %d')}")
+
                     cal_html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.8em;">'
                     cal_html += '<tr><th style="padding:8px;text-align:left;color:#94a3b8;border-bottom:1px solid #334155;">Resident</th>'
-                    for m in months:
-                        cal_html += f'<th style="padding:8px;text-align:center;color:#94a3b8;border-bottom:1px solid #334155;">{m}</th>'
+                    for wh in week_headers:
+                        cal_html += f'<th style="padding:8px;text-align:center;color:#94a3b8;border-bottom:1px solid #334155;min-width:80px;">{wh}</th>'
                     cal_html += '</tr>'
 
                     for res in program.residents.values():
                         cal_html += '<tr>'
                         cal_html += f'<td style="padding:6px 8px;white-space:nowrap;border-bottom:1px solid #1e293b;">{res.name}<br><span style="color:#64748b;font-size:0.85em;">{res.pgy_level}</span></td>'
-                        for block_idx in range(12):
+                        for wk in range(8):
+                            block_idx = _current_block + (wk // 4)
                             if block_idx < len(res.block_schedule):
                                 rot = res.block_schedule[block_idx].get("rotation", "—")
                             else:
@@ -2878,7 +2901,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                 f'<td style="padding:4px;text-align:center;border-bottom:1px solid #1e293b;">'
                                 f'<div style="background:{bg}22;border:1px solid {bg};border-radius:6px;'
                                 f'padding:4px 2px;font-size:0.85em;color:{bg};font-weight:600;">'
-                                f'{rot[:12]}</div></td>'
+                                f'{rot[:10]}</div></td>'
                             )
                         cal_html += '</tr>'
                     cal_html += '</table></div>'
@@ -2893,6 +2916,24 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         )
                     legend_html += '</div>'
                     st.markdown(legend_html, unsafe_allow_html=True)
+
+                    # Expandable full year view
+                    with st.expander("View full year schedule"):
+                        all_months = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"]
+                        full_html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.75em;">'
+                        full_html += '<tr><th style="padding:6px;text-align:left;color:#94a3b8;">Resident</th>'
+                        for m in all_months:
+                            full_html += f'<th style="padding:6px;text-align:center;color:#94a3b8;">{m}</th>'
+                        full_html += '</tr>'
+                        for res in program.residents.values():
+                            full_html += f'<tr><td style="padding:4px 6px;white-space:nowrap;">{res.name}</td>'
+                            for bi in range(12):
+                                rot = res.block_schedule[bi].get("rotation", "—") if bi < len(res.block_schedule) else "—"
+                                bg = rot_colors.get(rot, "#334155")
+                                full_html += f'<td style="padding:3px;text-align:center;"><div style="background:{bg}22;border:1px solid {bg};border-radius:4px;padding:2px;color:{bg};font-size:0.85em;">{rot[:8]}</div></td>'
+                            full_html += '</tr>'
+                        full_html += '</table></div>'
+                        st.markdown(full_html, unsafe_allow_html=True)
 
     # ================================================================
     # TAB: MY SCHEDULE (Resident's personal view)
