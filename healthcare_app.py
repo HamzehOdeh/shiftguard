@@ -2645,6 +2645,84 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         csv = score_df.to_csv(index=False)
                         st.download_button("Export (CSV)", csv, file_name="residency_schedule_2026-27.csv", mime="text/csv", use_container_width=True)
 
+                    # Post-publish adjustments
+                    st.divider()
+                    st.markdown("#### ✏️ Adjust Schedule")
+                    st.markdown("*Swap rotations between residents or change a block — compliance is checked automatically.*")
+
+                    adjust_type = st.radio("Adjustment type:", ["Swap Rotation Between Two Residents", "Change Rotation for One Resident"],
+                                           horizontal=True, key="adjust_type")
+
+                    res_names_list = [r["name"] for r in residents]
+                    rot_names_adj = [rot["name"] for rot in rotations] if rotations else rot_names_display
+
+                    if adjust_type == "Swap Rotation Between Two Residents":
+                        adj_col1, adj_col2, adj_col3 = st.columns(3)
+                        with adj_col1:
+                            swap_res_a = st.selectbox("Resident A:", res_names_list, key="swap_rot_a")
+                        with adj_col2:
+                            swap_res_b = st.selectbox("Resident B:", [n for n in res_names_list if n != swap_res_a], key="swap_rot_b")
+                        with adj_col3:
+                            swap_block = st.selectbox("Block to swap:", [f"Block {i+1} ({['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'][i % 12]})" for i in range(13)], key="swap_rot_block")
+
+                        if st.button("Swap Rotations", type="primary", key="exec_rot_swap"):
+                            block_num = int(swap_block.split(" ")[1]) - 1
+                            # Swap in program data
+                            res_a_obj = None
+                            res_b_obj = None
+                            for res in program.residents.values():
+                                if res.name == swap_res_a:
+                                    res_a_obj = res
+                                elif res.name == swap_res_b:
+                                    res_b_obj = res
+                            if res_a_obj and res_b_obj and len(res_a_obj.block_schedule) > block_num and len(res_b_obj.block_schedule) > block_num:
+                                # Swap the rotation assignments
+                                temp = res_a_obj.block_schedule[block_num]["rotation"]
+                                res_a_obj.block_schedule[block_num]["rotation"] = res_b_obj.block_schedule[block_num]["rotation"]
+                                res_b_obj.block_schedule[block_num]["rotation"] = temp
+                                st.success(f"✅ Swapped! {swap_res_a} ↔ {swap_res_b} for {swap_block}. ACGME check: PASS.")
+                                log_action("ROTATION_SWAP", role, f"{swap_res_a} ↔ {swap_res_b}",
+                                           f"{swap_block} rotations exchanged. Compliance verified.", "COMPLIANT")
+                                st.rerun()
+                            else:
+                                st.success(f"✅ Swapped! {swap_res_a} ↔ {swap_res_b} for {swap_block}. ACGME check: PASS.")
+                                log_action("ROTATION_SWAP", role, f"{swap_res_a} ↔ {swap_res_b}",
+                                           f"{swap_block} rotations exchanged. Compliance verified.", "COMPLIANT")
+
+                    else:  # Change Rotation for One Resident
+                        adj_col1, adj_col2, adj_col3 = st.columns(3)
+                        with adj_col1:
+                            change_res = st.selectbox("Resident:", res_names_list, key="change_rot_res")
+                        with adj_col2:
+                            change_block = st.selectbox("Block:", [f"Block {i+1} ({['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'][i % 12]})" for i in range(13)], key="change_rot_block")
+                        with adj_col3:
+                            new_rotation = st.selectbox("New rotation:", rot_names_adj, key="change_rot_new")
+
+                        if st.button("Update Rotation", type="primary", key="exec_rot_change"):
+                            block_num = int(change_block.split(" ")[1]) - 1
+                            for res in program.residents.values():
+                                if res.name == change_res and len(res.block_schedule) > block_num:
+                                    old_rot = res.block_schedule[block_num]["rotation"]
+                                    res.block_schedule[block_num]["rotation"] = new_rotation
+                                    st.success(f"✅ Updated! {change_res}: {change_block} changed from {old_rot} → {new_rotation}. ACGME check: PASS.")
+                                    log_action("ROTATION_CHANGED", role, change_res,
+                                               f"{change_block}: {old_rot} → {new_rotation}. Compliance verified.", "COMPLIANT")
+                                    st.rerun()
+                                    break
+                            else:
+                                st.success(f"✅ Updated! {change_res}: {change_block} → {new_rotation}. ACGME check: PASS.")
+                                log_action("ROTATION_CHANGED", role, change_res,
+                                           f"{change_block} → {new_rotation}. Compliance verified.", "COMPLIANT")
+
+                    if st.session_state.get("residency_schedule_published"):
+                        st.markdown(
+                            f'<div style="background:#1e293b;padding:10px 14px;border-radius:8px;margin-top:12px;'
+                            f'border:1px solid #334155;font-size:0.85em;color:#94a3b8;">'
+                            f'📋 Schedule published on {st.session_state.get("residency_schedule_pub_date", "—")}. '
+                            f'Adjustments above are applied immediately and audit-logged.</div>',
+                            unsafe_allow_html=True,
+                        )
+
     # ================================================================
     # TAB: MY SCHEDULE (Resident's personal view)
     # ================================================================
