@@ -2390,8 +2390,9 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     '<div style="background:linear-gradient(135deg,#0c4a6e,#1a1a2e);padding:14px 18px;'
                     'border-radius:10px;border:1px solid #0ea5e9;margin-top:12px;">'
                     '✅ <strong style="color:#38bdf8;">Roster ready!</strong> '
-                    '<span style="color:#ccc;">Next: select <strong>Step 2. Define Rotations</strong> above '
-                    'to set up rotation blocks, then <strong>Step 4. Generate Schedule</strong> to create the year plan.</span>'
+                    '<span style="color:#ccc;">Next steps above: '
+                    '<strong>Step 2</strong> (rotations) → <strong>Step 3</strong> (constraints & state rules) → '
+                    '<strong>Step 4</strong> (generate schedule).</span>'
                     '</div>',
                     unsafe_allow_html=True,
                 )
@@ -2486,17 +2487,28 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
         elif setup_step == "3. Set Constraints":
             st.markdown("### Step 3: Set Scheduling Constraints")
-            st.markdown("*ACGME rules are pre-loaded. Add your program-specific constraints.*")
+            st.markdown("*ACGME + state rules are auto-applied. Customize your program-specific preferences below.*")
 
-            st.markdown("**ACGME (Automatic — cannot be disabled):**")
-            st.markdown("""
-            - ✅ 80h/week cap (4-week average)
-            - ✅ 24+4 continuous duty limit
-            - ✅ 8h minimum rest between shifts
-            - ✅ 1 day off per 7 (averaged over 4 weeks)
-            - ✅ Night float max 6 consecutive
-            - ✅ In-house call no more than every 3rd night
-            """)
+            col_fed, col_state = st.columns(2)
+            with col_fed:
+                st.markdown("**ACGME (Federal — always enforced):**")
+                st.markdown("""
+                - ✅ 80h/week cap (4-week average)
+                - ✅ 24+4 continuous duty limit
+                - ✅ 8h minimum rest between shifts
+                - ✅ 1 day off per 7 (averaged over 4 weeks)
+                - ✅ Night float max 6 consecutive
+                - ✅ In-house call no more than every 3rd night
+                """)
+            with col_state:
+                _constraint_state = st.session_state.get("hospital_state_global", "Illinois")
+                _constraint_rules = STATE_PENALTY_RULES.get(_constraint_state, STATE_PENALTY_RULES["_default"])
+                st.markdown(f"**{_constraint_state} State Rules (auto-applied):**")
+                st.markdown(f"- ✅ OT: {_constraint_rules.get('ot_rules', 'Federal FLSA')}")
+                st.markdown(f"- ✅ Rest: {_constraint_rules.get('rest_periods', 'No state mandate')}")
+                st.markdown(f"- ✅ Schedule notice: {_constraint_rules.get('schedule_notice', 'No requirement')}")
+                st.markdown(f"- ✅ Penalty multiplier: **{_constraint_rules.get('multiplier', 1.0)}×**")
+                st.caption(f"Change state in the sidebar to update these rules.")
 
             st.markdown("**Program-Specific (Customize):**")
             col1, col2 = st.columns(2)
