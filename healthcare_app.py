@@ -2975,78 +2975,79 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                     unsafe_allow_html=True,
                                 )
 
-                        # Click-to-swap
-                        if "month_swap_first" not in st.session_state:
-                            st.session_state["month_swap_first"] = None
+                        # Click-to-swap per week
+                        if "week_swap_first" not in st.session_state:
+                            st.session_state["week_swap_first"] = None
 
-                        if st.session_state["month_swap_first"]:
-                            first = st.session_state["month_swap_first"]
+                        if st.session_state["week_swap_first"]:
+                            first = st.session_state["week_swap_first"]
                             st.markdown(
                                 f'<div style="background:#0c4a6e;padding:8px 14px;border-radius:8px;'
                                 f'border:1px solid #0ea5e9;font-size:0.85em;margin-bottom:8px;">'
-                                f'🔄 Selected: <strong>{first["name"]}</strong> ({first["rot"]}) — '
-                                f'now click another resident\'s block to swap</div>',
+                                f'🔄 Selected: <strong>{first["name"]}</strong> Week {first["week"]+1} ({first["rot"]}) — '
+                                f'click another resident\'s week to swap</div>',
                                 unsafe_allow_html=True,
                             )
-                            if st.button("Cancel", key="cancel_month_swap"):
-                                st.session_state["month_swap_first"] = None
+                            if st.button("Cancel", key="cancel_week_swap"):
+                                st.session_state["week_swap_first"] = None
                                 st.rerun()
                         else:
-                            st.caption("💡 Click a rotation cell to select, then click another to swap them.")
+                            st.caption("💡 Click any week cell to select it, then click another cell to swap those two weeks.")
 
-                        # Table-style grid: Resident | Week 1 | Week 2 | Week 3 | Week 4
+                        # Per-week schedule data (allows individual week overrides)
+                        if "week_overrides" not in st.session_state:
+                            st.session_state["week_overrides"] = {}
+
+                        def _get_week_rot(res_id, block_idx, week):
+                            override_key = f"{res_id}_{block_idx}_{week}"
+                            if override_key in st.session_state["week_overrides"]:
+                                return st.session_state["week_overrides"][override_key]
+                            for res in program.residents.values():
+                                if res.id == res_id and block_idx < len(res.block_schedule):
+                                    return res.block_schedule[block_idx].get("rotation", "—")
+                            return "—"
+
+                        # Render grid: each week cell is a button
                         _res_list_month = list(program.residents.values())
                         for res in _res_list_month:
-                            if _view_block_idx < len(res.block_schedule):
-                                rot = res.block_schedule[_view_block_idx].get("rotation", "—")
-                            else:
-                                rot = "—"
-                            bg = rot_colors.get(rot, "#334155")
-                            is_selected = (st.session_state.get("month_swap_first") or {}).get("id") == res.id
-
-                            # Row: name column + 4 week columns
-                            row_cols = st.columns([2, 1, 1, 1, 1, 1])
+                            row_cols = st.columns([3, 2, 2, 2, 2])
                             with row_cols[0]:
-                                name_style = "color:#38bdf8;font-weight:700;" if is_selected else "color:white;"
-                                st.markdown(f'<div style="{name_style}font-size:0.9em;padding-top:8px;">{res.name} <span style="color:#64748b;font-size:0.85em;">{res.pgy_level}</span></div>', unsafe_allow_html=True)
+                                is_sel = st.session_state.get("week_swap_first") and st.session_state["week_swap_first"]["id"] == res.id
+                                name_color = "#38bdf8" if is_sel else "white"
+                                st.markdown(f'<div style="color:{name_color};font-weight:700;font-size:0.9em;padding:8px 0;">{res.name} <span style="color:#64748b;font-size:0.85em;">{res.pgy_level}</span></div>', unsafe_allow_html=True)
                             for wk in range(4):
                                 with row_cols[wk + 1]:
-                                    st.markdown(
-                                        f'<div style="background:{bg}22;border:1px solid {bg};border-radius:6px;'
-                                        f'padding:6px 2px;text-align:center;color:{bg};font-weight:600;font-size:0.8em;">'
-                                        f'{rot}</div>',
-                                        unsafe_allow_html=True,
-                                    )
-                            with row_cols[5]:
-                                if st.button("↔", key=f"mswap_{res.id}_{_view_block_idx}", help=f"Swap {res.name}"):
-                                    if st.session_state["month_swap_first"] is None:
-                                        st.session_state["month_swap_first"] = {"id": res.id, "name": res.name, "rot": rot}
-                                        st.rerun()
-                                    else:
-                                        first = st.session_state["month_swap_first"]
-                                        if first["id"] != res.id:
-                                            for r in program.residents.values():
-                                                if r.id == first["id"] and _view_block_idx < len(r.block_schedule):
-                                                    r.block_schedule[_view_block_idx]["rotation"] = rot
-                                                elif r.id == res.id and _view_block_idx < len(r.block_schedule):
-                                                    r.block_schedule[_view_block_idx]["rotation"] = first["rot"]
-                                            log_action("ROTATION_SWAP", role, f"{first['name']} ↔ {res.name}",
-                                                       f"{_view_month}: {first['rot']} ↔ {rot}. Click-to-swap.", "COMPLIANT")
-                                            if "session_swaps" not in st.session_state:
-                                                st.session_state["session_swaps"] = []
-                                            st.session_state["session_swaps"].append({
-                                                "time": datetime.now().strftime("%H:%M"),
-                                                "month": _view_month,
-                                                "res_a": first["name"],
-                                                "rot_a": first["rot"],
-                                                "res_b": res.name,
-                                                "rot_b": rot,
-                                            })
-                                            st.session_state["month_swap_first"] = None
+                                    wk_rot = _get_week_rot(res.id, _view_block_idx, wk)
+                                    bg = rot_colors.get(wk_rot, "#334155")
+                                    if st.button(wk_rot, key=f"wcell_{res.id}_{_view_block_idx}_{wk}", use_container_width=True):
+                                        if st.session_state["week_swap_first"] is None:
+                                            st.session_state["week_swap_first"] = {"id": res.id, "name": res.name, "rot": wk_rot, "week": wk}
                                             st.rerun()
                                         else:
-                                            st.session_state["month_swap_first"] = None
-                                            st.rerun()
+                                            first = st.session_state["week_swap_first"]
+                                            if first["id"] != res.id or first["week"] != wk:
+                                                # Swap the two specific weeks
+                                                key_a = f"{first['id']}_{_view_block_idx}_{first['week']}"
+                                                key_b = f"{res.id}_{_view_block_idx}_{wk}"
+                                                st.session_state["week_overrides"][key_a] = wk_rot
+                                                st.session_state["week_overrides"][key_b] = first["rot"]
+                                                log_action("WEEK_SWAP", role, f"{first['name']} ↔ {res.name}",
+                                                           f"{_view_month} Wk{first['week']+1} ({first['rot']}) ↔ Wk{wk+1} ({wk_rot})", "COMPLIANT")
+                                                if "session_swaps" not in st.session_state:
+                                                    st.session_state["session_swaps"] = []
+                                                st.session_state["session_swaps"].append({
+                                                    "time": datetime.now().strftime("%H:%M"),
+                                                    "month": _view_month,
+                                                    "res_a": first["name"],
+                                                    "rot_a": f"Wk{first['week']+1} {first['rot']}",
+                                                    "res_b": res.name,
+                                                    "rot_b": f"Wk{wk+1} {wk_rot}",
+                                                })
+                                                st.session_state["week_swap_first"] = None
+                                                st.rerun()
+                                            else:
+                                                st.session_state["week_swap_first"] = None
+                                                st.rerun()
 
                     # Session swap summary
                     if st.session_state.get("session_swaps"):
