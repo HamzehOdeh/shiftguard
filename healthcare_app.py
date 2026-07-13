@@ -2385,17 +2385,28 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 roster_df = pd.DataFrame(st.session_state["setup_residents"])
                 st.dataframe(roster_df, use_container_width=True, hide_index=True)
 
-                # Guide user to next step
+                # Guide user to next step — actionable button
                 st.markdown(
                     '<div style="background:linear-gradient(135deg,#0c4a6e,#1a1a2e);padding:14px 18px;'
                     'border-radius:10px;border:1px solid #0ea5e9;margin-top:12px;">'
                     '✅ <strong style="color:#38bdf8;">Roster ready!</strong> '
-                    '<span style="color:#ccc;">Next steps above: '
-                    '<strong>Step 2</strong> (rotations) → <strong>Step 3</strong> (constraints & state rules) → '
-                    '<strong>Step 4</strong> (generate schedule).</span>'
+                    '<span style="color:#ccc;">Next: define rotations → set constraints → generate schedule.</span>'
                     '</div>',
                     unsafe_allow_html=True,
                 )
+                col_next1, col_next2, col_next3 = st.columns(3)
+                with col_next1:
+                    if st.button("➡️ Go to Step 2: Rotations", type="primary", key="goto_step2", use_container_width=True):
+                        st.session_state["setup_step"] = "2. Define Rotations"
+                        st.rerun()
+                with col_next2:
+                    if st.button("➡️ Go to Step 3: Constraints", key="goto_step3", use_container_width=True):
+                        st.session_state["setup_step"] = "3. Set Constraints"
+                        st.rerun()
+                with col_next3:
+                    if st.button("➡️ Go to Step 4: Generate", key="goto_step4", use_container_width=True):
+                        st.session_state["setup_step"] = "4. Generate Schedule"
+                        st.rerun()
 
         elif setup_step == "2. Define Rotations":
             st.markdown("### Step 2: Define Rotation Blocks")
