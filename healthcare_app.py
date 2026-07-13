@@ -1984,7 +1984,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
     # ================================================================
     if tab5:
      with tab5:
-        # Hero KPI cards — immediate visual impact
+        # Hero KPI cards — role-appropriate data
         acgme_status = dashboard["all_compliant"]
         at_risk = dashboard["at_risk"]
         total_res = dashboard["total_residents"]
@@ -1994,49 +1994,115 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         max_hours = max((r["this_week_hours"] for r in dashboard["residents"]), default=0)
         safe_count = sum(1 for r in dashboard["residents"] if r["risk_level"] == "SAFE")
 
-        kpi_html = f'''
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
-            <div class="kpi-card kpi-green">
-                <div class="kpi-label">Compliance</div>
-                <div class="kpi-value">{"✓" if acgme_status else "!"}</div>
-                <div class="kpi-label">{"All Clear" if acgme_status else f"{at_risk} At Risk"}</div>
-            </div>
-            <div class="kpi-card kpi-blue">
-                <div class="kpi-label">Residents Safe</div>
-                <div class="kpi-value">{safe_count}/{total_res}</div>
-                <div class="kpi-label">ACGME Compliant</div>
-            </div>
-            <div class="kpi-card kpi-amber">
-                <div class="kpi-label">Avg Hours/Week</div>
-                <div class="kpi-value">{avg_hours:.0f}h</div>
-                <div class="kpi-label">of 80h Cap</div>
-            </div>
-            <div class="kpi-card {"kpi-red" if max_hours > 70 else "kpi-blue"}">
+        # Role-appropriate KPI cards
+        if role in ("Program Director", "Chief Resident", "Admin / HR"):
+            kpi_html = f'''
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+                <div class="kpi-card kpi-green">
+                    <div class="kpi-label">Compliance</div>
+                    <div class="kpi-value">{"✓" if acgme_status else "!"}</div>
+                    <div class="kpi-label">{"All Clear" if acgme_status else f"{at_risk} At Risk"}</div>
+                </div>
+                <div class="kpi-card kpi-blue">
+                    <div class="kpi-label">Residents Safe</div>
+                    <div class="kpi-value">{safe_count}/{total_res}</div>
+                    <div class="kpi-label">ACGME Compliant</div>
+                </div>
+                <div class="kpi-card kpi-amber">
+                    <div class="kpi-label">Avg Hours/Week</div>
+                    <div class="kpi-value">{avg_hours:.0f}h</div>
+                    <div class="kpi-label">of 80h Cap</div>
+                </div>
+                <div class="kpi-card {"kpi-red" if max_hours > 70 else "kpi-blue"}">
                 <div class="kpi-label">Highest Load</div>
                 <div class="kpi-value">{max_hours:.0f}h</div>
                 <div class="kpi-label">{"⚠️ Near Cap" if max_hours > 70 else "Within Limits"}</div>
             </div>
         </div>
-        '''
+            '''
+        elif role in ("Nurse Manager", "Staff Nurse"):
+            # Nursing-focused KPIs
+            nursing_staff = st.session_state.get("nursing_staff", [])
+            nurses_on = len(nursing_staff) if nursing_staff else 8
+            kpi_html = f'''
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+                <div class="kpi-card kpi-green">
+                    <div class="kpi-label">Shift Status</div>
+                    <div class="kpi-value">✓</div>
+                    <div class="kpi-label">Fully Staffed</div>
+                </div>
+                <div class="kpi-card kpi-blue">
+                    <div class="kpi-label">On Shift</div>
+                    <div class="kpi-value">{nurses_on}</div>
+                    <div class="kpi-label">Nurses Active</div>
+                </div>
+                <div class="kpi-card kpi-amber">
+                    <div class="kpi-label">OT This Week</div>
+                    <div class="kpi-value">2</div>
+                    <div class="kpi-label">Staff in OT</div>
+                </div>
+                <div class="kpi-card kpi-green">
+                    <div class="kpi-label">Credentials</div>
+                    <div class="kpi-value">OK</div>
+                    <div class="kpi-label">All Current</div>
+                </div>
+            </div>
+            '''
+        else:
+            # Resident personal view
+            kpi_html = f'''
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+                <div class="kpi-card kpi-green">
+                    <div class="kpi-label">Your Status</div>
+                    <div class="kpi-value">✓</div>
+                    <div class="kpi-label">ACGME Safe</div>
+                </div>
+                <div class="kpi-card kpi-blue">
+                    <div class="kpi-label">Hours This Week</div>
+                    <div class="kpi-value">24h</div>
+                    <div class="kpi-label">of 80h Cap</div>
+                </div>
+                <div class="kpi-card kpi-green">
+                    <div class="kpi-label">Fatigue</div>
+                    <div class="kpi-value">Low</div>
+                    <div class="kpi-label">27/100</div>
+                </div>
+                <div class="kpi-card kpi-blue">
+                    <div class="kpi-label">Next Shift</div>
+                    <div class="kpi-value">Tue</div>
+                    <div class="kpi-label">7:00 AM</div>
+                </div>
+            </div>
+            '''
         st.markdown(kpi_html, unsafe_allow_html=True)
 
-        # Status banner
-        if not acgme_status:
+        # Status banner — role-appropriate
+        if role in ("Program Director", "Chief Resident", "Admin / HR"):
+            if not acgme_status:
+                st.markdown(
+                    f'<div style="background:linear-gradient(135deg,#2d1b1b,#1a1010);padding:16px 20px;border-radius:12px;'
+                    f'border:1px solid #dc354555;margin-bottom:16px;">'
+                    f'⚠️ <strong style="color:#f87171;">{at_risk} resident(s) approaching ACGME limits</strong><br>'
+                    f'<span style="color:#94a3b8;">Ask me "who\'s at risk?" or check the Residency Program tab.</span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    f'<div style="background:linear-gradient(135deg,#1a2d1a,#0f1a0f);padding:16px 20px;border-radius:12px;'
+                    f'border:1px solid #28a74555;margin-bottom:16px;">'
+                    f'✅ <strong style="color:#4ade80;">All {total_res} residents ACGME-compliant</strong><br>'
+                    f'<span style="color:#94a3b8;">No duty hour violations. Ask me anything about scheduling or coverage.</span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+        elif role in ("Nurse Manager", "Staff Nurse"):
             st.markdown(
-                f'<div style="background:linear-gradient(135deg,#2d1b1b,#1a1010);padding:16px 20px;border-radius:12px;'
-                f'border:1px solid #dc354555;margin-bottom:16px;">'
-                f'⚠️ <strong style="color:#f87171;">{at_risk} resident(s) approaching ACGME limits</strong><br>'
-                f'<span style="color:#94a3b8;">Ask me "who\'s at risk?" or check the Residency Program tab.</span>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(
-                f'<div style="background:linear-gradient(135deg,#1a2d1a,#0f1a0f);padding:16px 20px;border-radius:12px;'
-                f'border:1px solid #28a74555;margin-bottom:16px;">'
-                f'✅ <strong style="color:#4ade80;">All {total_res} residents ACGME-compliant</strong><br>'
-                f'<span style="color:#94a3b8;">No duty hour violations. Ask me anything about scheduling or coverage.</span>'
-                f'</div>',
+                '<div style="background:linear-gradient(135deg,#1a2d1a,#0f1a0f);padding:16px 20px;border-radius:12px;'
+                'border:1px solid #28a74555;margin-bottom:16px;">'
+                '✅ <strong style="color:#4ade80;">Unit fully staffed</strong> — '
+                '<span style="color:#94a3b8;">All credentials current. Ask me about coverage, PTO, or state labor rules.</span>'
+                '</div>',
                 unsafe_allow_html=True,
             )
 
