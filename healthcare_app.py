@@ -3064,7 +3064,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                         cell_bg = "#6366f122"
                                         cell_color = "#a5b4fc"
                                         label = "Night"
-                                    elif "call" in str(day_shift.get("is_call", "")):
+                                    elif day_shift.get("is_call"):
                                         cell_bg = "#fbbf2422"
                                         cell_color = "#fbbf24"
                                         label = "Call"
