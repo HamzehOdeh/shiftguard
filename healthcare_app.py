@@ -962,6 +962,16 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         st.success(f"Assigned! {rec['resident']} notified. Shift added to their schedule.")
                         log_action("COVERAGE_ASSIGNED", role, rec["resident"],
                                    f"Coverage for {sick_date_str}. Jeopardy backup activated.", "COMPLIANT")
+                        # Sync schedule for cross-tab consistency
+                        _cov_shifts = []
+                        for _cr in program.residents.values():
+                            for _cs in _cr.daily_shifts:
+                                _cov_shifts.append({
+                                    "employee_id": _cr.id, "name": _cr.name, "role": _cr.pgy_level,
+                                    "date": _cs["date"], "start": _cs["start"], "end": _cs["end"],
+                                    "hours": _cs.get("hours", 10), "shift_type": _cs.get("type", "Day"),
+                                })
+                        st.session_state["hc_schedule"]["shifts"] = _cov_shifts
                         st.session_state["sick_call_result"] = None
                         st.rerun()
 
@@ -2973,6 +2983,22 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                 })
                     st.session_state["year_sched_generated"] = True
                     st.session_state["residency_program"] = program
+                    # Sync program data into schedule/employees for cross-tab consistency
+                    _synced_shifts = []
+                    _synced_employees = []
+                    for res in program.residents.values():
+                        _synced_employees.append({
+                            "id": res.id, "name": res.name, "role": res.pgy_level,
+                            "is_minor": False, "max_hours": 80,
+                        })
+                        for s in res.daily_shifts:
+                            _synced_shifts.append({
+                                "employee_id": res.id, "name": res.name, "role": res.pgy_level,
+                                "date": s["date"], "start": s["start"], "end": s["end"],
+                                "hours": s.get("hours", 10), "shift_type": s.get("type", "Day"),
+                            })
+                    st.session_state["hc_schedule"] = {"shifts": _synced_shifts, "week_start": datetime.now().strftime("%Y-%m-%d")}
+                    st.session_state["hc_employees"] = _synced_employees
                     st.rerun()
 
                 if st.session_state.get("year_sched_generated"):
@@ -3330,6 +3356,16 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                 })
                                 log_action("DAY_SWAP", role, f"{_sw_res_a} ↔ {_sw_res_b}",
                                            f"Days: {', '.join(_sw_dates_a)} ↔ {', '.join(_sw_dates_b)}. Confirmed.", "COMPLIANT")
+                                # Re-sync schedule for cross-tab consistency
+                                _sync_shifts = []
+                                for _sr in program.residents.values():
+                                    for _ss in _sr.daily_shifts:
+                                        _sync_shifts.append({
+                                            "employee_id": _sr.id, "name": _sr.name, "role": _sr.pgy_level,
+                                            "date": _ss["date"], "start": _ss["start"], "end": _ss["end"],
+                                            "hours": _ss.get("hours", 10), "shift_type": _ss.get("type", "Day"),
+                                        })
+                                st.session_state["hc_schedule"]["shifts"] = _sync_shifts
                                 st.success(f"✅ Swap confirmed! {len(_sw_dates_a)} day(s) swapped between {_sw_res_a} and {_sw_res_b}.")
                                 st.rerun()
                         with _confirm_col2:
