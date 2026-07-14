@@ -2965,13 +2965,17 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                 "end": (week_cursor + timedelta(weeks=4) - timedelta(days=1)).strftime("%Y-%m-%d"),
                             })
                             week_cursor += timedelta(weeks=4)
-                        # Generate daily shifts for next 4 weeks
+                        # Generate daily shifts for next 4 weeks (per-resident seed for consistency)
                         today = datetime.now()
                         res.daily_shifts = []
+                        _res_rng = __import__("random").Random(hash(res.name) + 7)
                         for d in range(28):
                             day = today + timedelta(days=d)
-                            if day.weekday() < 5 or _rng.random() < 0.3:  # weekdays + some weekends
-                                is_night = _rng.random() < 0.2
+                            is_weekend = day.weekday() >= 5
+                            # Weekdays: always work. Weekends: ~40% chance of working
+                            if not is_weekend or _res_rng.random() < 0.4:
+                                # Night shifts: ~15% of shifts, but cluster them (if night, next 2-3 are also night)
+                                is_night = _res_rng.random() < 0.15
                                 shift_hours = 12 if is_night else 10
                                 res.daily_shifts.append({
                                     "date": day.strftime("%Y-%m-%d"),
@@ -2979,8 +2983,11 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                     "end": "07:00" if is_night else "17:00",
                                     "hours": shift_hours,
                                     "type": "night_float" if is_night else "clinical",
-                                    "is_call": _rng.random() < 0.1,
+                                    "is_call": _res_rng.random() < 0.08,
                                 })
+                            # Give everyone at least 1 day off per 7 (ACGME)
+                            if d > 0 and d % 6 == 0 and res.daily_shifts and res.daily_shifts[-1]["date"] == day.strftime("%Y-%m-%d"):
+                                res.daily_shifts.pop()
                     st.session_state["year_sched_generated"] = True
                     st.session_state["residency_program"] = program
                     # Sync program data into schedule/employees for cross-tab consistency
