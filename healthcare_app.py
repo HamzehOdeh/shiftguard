@@ -397,6 +397,26 @@ def main():
             "role": role,
         })
 
+    def _build_10day_csv(residents_sorted, days_list):
+        """Build CSV string for 10-day schedule download."""
+        import io
+        lines = []
+        header = ["Resident", "PGY"] + [d.strftime("%a %b %d") for d in days_list]
+        lines.append(",".join(header))
+        for res in residents_sorted:
+            row = [res.name, res.pgy_level]
+            for day in days_list:
+                d_str = day.strftime("%Y-%m-%d")
+                shift = next((s for s in res.daily_shifts if s.get("date") == d_str), None)
+                if shift:
+                    stype = shift.get("type", "clinical").replace("_", " ").title()
+                    hours = shift.get("hours", 10)
+                    row.append(f"{stype} {hours}h")
+                else:
+                    row.append("Off")
+            lines.append(",".join(row))
+        return "\n".join(lines)
+
     program = st.session_state["residency_program"]
     jeopardy = st.session_state["jeopardy"]
 
@@ -2338,6 +2358,37 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         st.markdown("## Program Setup")
         st.markdown("*Add your residents, define rotations, and generate a fair year schedule.*")
 
+        # Multi-year selector
+        if "academic_years" not in st.session_state:
+            st.session_state["academic_years"] = {"2026-2027": {"status": "active"}}
+        _years = list(st.session_state["academic_years"].keys())
+        _year_labels = []
+        for y in _years:
+            status = st.session_state["academic_years"][y].get("status", "planning")
+            badge = "⚡ Active" if status == "active" else "📝 Planning"
+            _year_labels.append(f"{y} ({badge})")
+        _yr_col1, _yr_col2 = st.columns([3, 1])
+        with _yr_col1:
+            _selected_year = st.selectbox("Academic Year:", _year_labels, key="selected_acad_year")
+        with _yr_col2:
+            if st.button("+ Add Next Year", key="add_next_year"):
+                # Auto-detect next year
+                last_year = _years[-1]
+                start_yr = int(last_year.split("-")[1])
+                new_year = f"{start_yr}-{start_yr + 1}"
+                if new_year not in st.session_state["academic_years"]:
+                    st.session_state["academic_years"][new_year] = {"status": "planning"}
+                    st.success(f"Added {new_year} (Planning). Current year schedule is protected.")
+                    st.rerun()
+
+        # Show protection warning for active year
+        if "Active" in _selected_year:
+            st.markdown(
+                '<div style="background:#713f1222;border:1px solid #fbbf2444;border-radius:8px;padding:8px 12px;font-size:0.85em;color:#fbbf24;margin-bottom:8px;">'
+                '⚠️ This is the <strong>active schedule</strong> — changes affect residents NOW. Generate new years under "Planning" to avoid disruption.</div>',
+                unsafe_allow_html=True,
+            )
+
         _setup_options = ["1. Add Residents", "2. Define Rotations", "3. Set Constraints", "4. Generate Schedule"]
         _setup_default = st.session_state.pop("_setup_nav_to", None)
         if _setup_default is not None:
@@ -2572,7 +2623,45 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             with col2:
                 require_golden_weekend = st.checkbox("Require 1 'golden weekend' (Sat+Sun off) per month", value=True, key="golden")
                 balance_holidays = st.checkbox("Balance holidays (Christmas ↔ Thanksgiving)", value=True, key="balance_hol")
-                conference_day = st.selectbox("Protected conference day:", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], index=2, key="conf_day")
+                conference_day = st.selectbox("Protected conference day:", ["None", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], index=3, key="conf_day")
+
+            # Holiday Alternation Assignment
+            if balance_holidays:
+                st.divider()
+                st.markdown("**🎄🦃 Holiday Week Assignments**")
+                st.caption("Auto-split: half work Thanksgiving week (get Christmas off), half work Christmas week (get Thanksgiving off). Alternates yearly.")
+
+                _setup_res = st.session_state.get("setup_residents", [])
+                if _setup_res:
+                    if "holiday_assignments" not in st.session_state:
+                        # Auto-assign: split 50/50
+                        st.session_state["holiday_assignments"] = {}
+                        for i, r in enumerate(_setup_res):
+                            st.session_state["holiday_assignments"][r["name"]] = "Thanksgiving" if i % 2 == 0 else "Christmas"
+
+                    h_col1, h_col2 = st.columns(2)
+                    with h_col1:
+                        st.markdown("**🦃 Working Thanksgiving Week**<br><span style='color:#4ade80;font-size:0.85em;'>(Christmas week OFF)</span>", unsafe_allow_html=True)
+                        for name, assignment in st.session_state["holiday_assignments"].items():
+                            if assignment == "Thanksgiving":
+                                st.markdown(f"• {name}")
+                    with h_col2:
+                        st.markdown("**🎄 Working Christmas Week**<br><span style='color:#4ade80;font-size:0.85em;'>(Thanksgiving week OFF)</span>", unsafe_allow_html=True)
+                        for name, assignment in st.session_state["holiday_assignments"].items():
+                            if assignment == "Christmas":
+                                st.markdown(f"• {name}")
+
+                    # Allow manual swap
+                    st.markdown("")
+                    _swap_holiday_res = st.selectbox("Swap holiday for:", [r["name"] for r in _setup_res], key="swap_hol_res")
+                    if st.button("Swap Holiday Assignment", key="swap_hol_btn"):
+                        current = st.session_state["holiday_assignments"].get(_swap_holiday_res, "Thanksgiving")
+                        new_assignment = "Christmas" if current == "Thanksgiving" else "Thanksgiving"
+                        st.session_state["holiday_assignments"][_swap_holiday_res] = new_assignment
+                        st.success(f"✅ {_swap_holiday_res}: now working {new_assignment} week (gets the other off).")
+                        st.rerun()
+                else:
+                    st.info("Add residents in Step 1 first to assign holidays.")
 
             st.markdown("**Blackout Dates** (no vacation allowed):")
             blackout = st.text_input("Enter dates (comma-separated):", key="blackouts",
@@ -3087,6 +3176,149 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             log_action("SWAPS_CONFIRMED", role, f"{len(swaps)} swaps",
                                        "All pending swaps confirmed and residents notified.", "COMPLIANT")
                             st.rerun()
+
+                    # ── 10-Day Operational View ──
+                    st.divider()
+                    st.markdown("#### 📋 10-Day View (Operational)")
+                    st.caption("Daily schedule sorted by PGY level. Shows rotation + hours. Jeopardy backup marked with 🔴.")
+
+                    # Today's jeopardy card
+                    _today_str = datetime.now().strftime("%Y-%m-%d")
+                    _today_jeopardy = jeopardy.jeopardy_assignments.get(f"{_today_str}_day", None)
+                    _jeopardy_name = ""
+                    if _today_jeopardy:
+                        _j_res = jeopardy.residents.get(_today_jeopardy, {})
+                        _jeopardy_name = _j_res.get("name", _today_jeopardy)
+                    st.markdown(
+                        f'<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;'
+                        f'padding:12px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">'
+                        f'<div><strong style="color:white;">🔴 Today\'s Jeopardy Backup:</strong> '
+                        f'<span style="color:#f87171;font-weight:700;">{_jeopardy_name or "Not assigned"}</span></div>'
+                        f'<span style="color:#64748b;font-size:0.8em;">{datetime.now().strftime("%A, %b %d")}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+
+                    # Build 10-day grid
+                    _ten_days = []
+                    for d in range(10):
+                        day = datetime.now() + timedelta(days=d)
+                        _ten_days.append(day)
+
+                    # Sort residents by PGY level
+                    _sorted_residents = sorted(program.residents.values(), key=lambda r: r.pgy_level)
+
+                    # Group by PGY
+                    _pgy_groups = {}
+                    for res in _sorted_residents:
+                        pgy = res.pgy_level
+                        if pgy not in _pgy_groups:
+                            _pgy_groups[pgy] = []
+                        _pgy_groups[pgy].append(res)
+
+                    # Jeopardy assignments for next 10 days
+                    _jeopardy_days = {}
+                    for d in _ten_days:
+                        d_str = d.strftime("%Y-%m-%d")
+                        j_id = jeopardy.jeopardy_assignments.get(f"{d_str}_day", None)
+                        if j_id:
+                            _jeopardy_days[d_str] = j_id
+
+                    # Render HTML table
+                    _grid_html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.8em;">'
+                    # Header row
+                    _grid_html += '<tr><th style="padding:8px;text-align:left;color:#94a3b8;border-bottom:2px solid #334155;min-width:140px;">Resident</th>'
+                    for day in _ten_days:
+                        is_today = day.date() == datetime.now().date()
+                        is_weekend = day.weekday() >= 5
+                        bg_hdr = "#0c4a6e" if is_today else "#1a1a2e" if is_weekend else ""
+                        _grid_html += (
+                            f'<th style="padding:6px 4px;text-align:center;color:#94a3b8;border-bottom:2px solid #334155;'
+                            f'min-width:70px;{"background:" + bg_hdr + ";" if bg_hdr else ""}">'
+                            f'<div style="font-weight:700;">{day.strftime("%a")}</div>'
+                            f'<div style="font-size:0.9em;">{day.strftime("%b %d")}</div></th>'
+                        )
+                    _grid_html += '</tr>'
+
+                    # Data rows grouped by PGY
+                    for pgy, pgy_residents in _pgy_groups.items():
+                        # PGY separator
+                        _grid_html += (
+                            f'<tr><td colspan="{11}" style="padding:6px 8px;background:#0f172a;'
+                            f'color:#64748b;font-weight:700;font-size:0.85em;border-bottom:1px solid #334155;">'
+                            f'── {pgy} ──</td></tr>'
+                        )
+                        for res in pgy_residents:
+                            _grid_html += '<tr>'
+                            _grid_html += (
+                                f'<td style="padding:6px 8px;border-bottom:1px solid #1e293b;white-space:nowrap;">'
+                                f'<strong style="color:white;">{res.name}</strong></td>'
+                            )
+                            for day in _ten_days:
+                                d_str = day.strftime("%Y-%m-%d")
+                                # Find shift for this day
+                                day_shift = next((s for s in res.daily_shifts if s.get("date") == d_str), None)
+                                is_jeopardy = _jeopardy_days.get(d_str) == res.id
+                                is_weekend = day.weekday() >= 5
+
+                                if day_shift:
+                                    shift_type = day_shift.get("type", "clinical")
+                                    hours = day_shift.get("hours", 10)
+                                    if "night" in shift_type.lower():
+                                        cell_bg = "#6366f122"
+                                        cell_color = "#a5b4fc"
+                                        label = "Night"
+                                    elif "call" in str(day_shift.get("is_call", "")):
+                                        cell_bg = "#fbbf2422"
+                                        cell_color = "#fbbf24"
+                                        label = "Call"
+                                    else:
+                                        cell_bg = "#0ea5e922"
+                                        cell_color = "#7dd3fc"
+                                        label = shift_type.replace("_", " ").title()[:6]
+                                    j_badge = ' <span style="color:#f87171;font-weight:900;">J</span>' if is_jeopardy else ""
+                                    _grid_html += (
+                                        f'<td style="padding:4px;text-align:center;border-bottom:1px solid #1e293b;'
+                                        f'{"background:#1a1a2e;" if is_weekend else ""}">'
+                                        f'<div style="background:{cell_bg};border-radius:6px;padding:4px 2px;">'
+                                        f'<div style="color:{cell_color};font-weight:600;font-size:0.9em;">{label}{j_badge}</div>'
+                                        f'<div style="color:#64748b;font-size:0.8em;">{hours}h</div>'
+                                        f'</div></td>'
+                                    )
+                                else:
+                                    j_badge = ' <span style="color:#f87171;font-weight:900;">J</span>' if is_jeopardy else ""
+                                    _grid_html += (
+                                        f'<td style="padding:4px;text-align:center;border-bottom:1px solid #1e293b;'
+                                        f'{"background:#1a1a2e;" if is_weekend else ""}">'
+                                        f'<div style="padding:4px 2px;">'
+                                        f'<div style="color:#4b5563;font-size:0.9em;">Off{j_badge}</div>'
+                                        f'</div></td>'
+                                    )
+                            _grid_html += '</tr>'
+                    _grid_html += '</table></div>'
+                    st.markdown(_grid_html, unsafe_allow_html=True)
+
+                    # Legend
+                    st.markdown(
+                        '<div style="display:flex;gap:12px;margin-top:8px;font-size:0.75em;color:#94a3b8;">'
+                        '<span>🔵 Day shift</span>'
+                        '<span>🟣 Night shift</span>'
+                        '<span style="color:#f87171;font-weight:700;">J</span> = Jeopardy backup'
+                        '<span>⬛ Off</span>'
+                        '<span style="background:#1a1a2e;padding:2px 6px;border-radius:4px;">Shaded = Weekend</span>'
+                        '</div>',
+                        unsafe_allow_html=True,
+                    )
+
+                    # Download PDF button (placeholder until fpdf2 implemented)
+                    st.markdown("")
+                    st.download_button(
+                        "📥 Download 10-Day Schedule (CSV)",
+                        data=_build_10day_csv(_sorted_residents, _ten_days),
+                        file_name=f"schedule_10day_{datetime.now().strftime('%Y%m%d')}.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                    )
 
     # ================================================================
     # TAB: MY SCHEDULE (Resident's personal view)
