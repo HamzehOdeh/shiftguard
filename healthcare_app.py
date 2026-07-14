@@ -2849,111 +2849,12 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         unsafe_allow_html=True,
                     )
 
-                    # Post-publish adjustments
-                    st.divider()
-                    st.markdown("#### ✏️ Adjust Schedule")
-                    st.markdown("*Swap full blocks, partial weeks, or change rotations — compliance checked automatically.*")
-
-                    adjust_type = st.radio("Adjustment type:",
-                                           ["Swap Full Block", "Swap Partial Weeks", "Change Rotation for One Resident"],
-                                           horizontal=True, key="adjust_type")
-
-                    res_names_list = [r["name"] for r in residents]
-                    rot_names_adj = [rot["name"] for rot in rotations] if rotations else rot_names_display
-
-                    if adjust_type == "Swap Full Block":
-                        st.caption("Exchange an entire 4-week rotation block between two residents.")
-                        adj_col1, adj_col2, adj_col3 = st.columns(3)
-                        with adj_col1:
-                            swap_res_a = st.selectbox("Resident A:", res_names_list, key="swap_rot_a")
-                        with adj_col2:
-                            swap_res_b = st.selectbox("Resident B:", [n for n in res_names_list if n != swap_res_a], key="swap_rot_b")
-                        with adj_col3:
-                            swap_block = st.selectbox("Block to swap:", [f"Block {i+1} ({['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'][i % 12]})" for i in range(13)], key="swap_rot_block")
-
-                        if st.button("Swap Full Block", type="primary", key="exec_rot_swap"):
-                            block_num = int(swap_block.split(" ")[1]) - 1
-                            res_a_obj = None
-                            res_b_obj = None
-                            for res in program.residents.values():
-                                if res.name == swap_res_a:
-                                    res_a_obj = res
-                                elif res.name == swap_res_b:
-                                    res_b_obj = res
-                            if res_a_obj and res_b_obj and len(res_a_obj.block_schedule) > block_num and len(res_b_obj.block_schedule) > block_num:
-                                temp = res_a_obj.block_schedule[block_num]["rotation"]
-                                res_a_obj.block_schedule[block_num]["rotation"] = res_b_obj.block_schedule[block_num]["rotation"]
-                                res_b_obj.block_schedule[block_num]["rotation"] = temp
-                                st.success(f"✅ Swapped! {swap_res_a} ↔ {swap_res_b} for {swap_block} (full 4 weeks). ACGME check: PASS.")
-                                log_action("ROTATION_SWAP", role, f"{swap_res_a} ↔ {swap_res_b}",
-                                           f"{swap_block} full block exchanged. Compliance verified.", "COMPLIANT")
-                                st.rerun()
-                            else:
-                                st.success(f"✅ Swapped! {swap_res_a} ↔ {swap_res_b} for {swap_block}. ACGME check: PASS.")
-                                log_action("ROTATION_SWAP", role, f"{swap_res_a} ↔ {swap_res_b}",
-                                           f"{swap_block} rotations exchanged.", "COMPLIANT")
-
-                    elif adjust_type == "Swap Partial Weeks":
-                        st.caption("Pick any week(s) within a block to swap between two residents.")
-                        adj_col1, adj_col2 = st.columns(2)
-                        with adj_col1:
-                            partial_res_a = st.selectbox("Resident A:", res_names_list, key="partial_swap_a")
-                            partial_res_b = st.selectbox("Resident B:", [n for n in res_names_list if n != partial_res_a], key="partial_swap_b")
-                        with adj_col2:
-                            partial_block = st.selectbox("Within block:", [f"Block {i+1} ({['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'][i % 12]})" for i in range(13)], key="partial_block")
-                            # Calculate actual dates for each week in this block
-                            _pb_num = int(partial_block.split(" ")[1]) - 1
-                            _gen_start = st.session_state.get("gen_start", datetime(2026, 7, 1))
-                            _block_start = _gen_start + timedelta(weeks=4 * _pb_num) if isinstance(_gen_start, datetime) else datetime(2026, 7, 1) + timedelta(weeks=4 * _pb_num)
-                            _week_labels = []
-                            for w in range(4):
-                                ws = _block_start + timedelta(weeks=w)
-                                we = ws + timedelta(days=6)
-                                _week_labels.append(f"Week {w+1} ({ws.strftime('%b %d')} – {we.strftime('%b %d')})")
-                            partial_which_weeks = st.multiselect("Which weeks to swap:", _week_labels, default=[_week_labels[0]], key="partial_which")
-
-                        if st.button("Swap Selected Weeks", type="primary", key="exec_partial_swap"):
-                            if partial_which_weeks:
-                                weeks_str = ", ".join(partial_which_weeks)
-                                st.success(f"✅ Partial swap! {partial_res_a} ↔ {partial_res_b} — "
-                                           f"{weeks_str}. ACGME check: PASS.")
-                                log_action("PARTIAL_SWAP", role, f"{partial_res_a} ↔ {partial_res_b}",
-                                           f"{weeks_str} swapped. Compliance verified.", "COMPLIANT")
-                            else:
-                                st.warning("Select at least one week to swap.")
-
-                    else:  # Change Rotation for One Resident
-                        st.caption("Reassign a resident to a different rotation for a specific block.")
-                        adj_col1, adj_col2, adj_col3 = st.columns(3)
-                        with adj_col1:
-                            change_res = st.selectbox("Resident:", res_names_list, key="change_rot_res")
-                        with adj_col2:
-                            change_block = st.selectbox("Block:", [f"Block {i+1} ({['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'][i % 12]})" for i in range(13)], key="change_rot_block")
-                        with adj_col3:
-                            new_rotation = st.selectbox("New rotation:", rot_names_adj, key="change_rot_new")
-
-                        if st.button("Update Rotation", type="primary", key="exec_rot_change"):
-                            block_num = int(change_block.split(" ")[1]) - 1
-                            for res in program.residents.values():
-                                if res.name == change_res and len(res.block_schedule) > block_num:
-                                    old_rot = res.block_schedule[block_num]["rotation"]
-                                    res.block_schedule[block_num]["rotation"] = new_rotation
-                                    st.success(f"✅ Updated! {change_res}: {change_block} changed from {old_rot} → {new_rotation}. ACGME check: PASS.")
-                                    log_action("ROTATION_CHANGED", role, change_res,
-                                               f"{change_block}: {old_rot} → {new_rotation}. Compliance verified.", "COMPLIANT")
-                                    st.rerun()
-                                    break
-                            else:
-                                st.success(f"✅ Updated! {change_res}: {change_block} → {new_rotation}. ACGME check: PASS.")
-                                log_action("ROTATION_CHANGED", role, change_res,
-                                           f"{change_block} → {new_rotation}. Compliance verified.", "COMPLIANT")
-
                     if st.session_state.get("residency_schedule_published"):
                         st.markdown(
                             f'<div style="background:#1e293b;padding:10px 14px;border-radius:8px;margin-top:12px;'
                             f'border:1px solid #334155;font-size:0.85em;color:#94a3b8;">'
                             f'📋 Schedule published on {st.session_state.get("residency_schedule_pub_date", "—")}. '
-                            f'Adjustments above are applied immediately and audit-logged.</div>',
+                            f'Use the swap tool below to make day-level adjustments.</div>',
                             unsafe_allow_html=True,
                         )
 
@@ -3124,8 +3025,99 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         unsafe_allow_html=True,
                     )
 
+                    # ── Day-Level Swap Tool ──
+                    st.divider()
+                    st.markdown("#### ↔ Swap Days")
+                    st.caption("Select two residents and their dates to swap. Review before confirming.")
+
+                    _swap_res_names = [res.name for res in _sorted_residents]
+                    _swap_date_options = [d.strftime("%a %b %d") for d in _ten_days]
+
+                    _sw_col1, _sw_col2 = st.columns(2)
+                    with _sw_col1:
+                        st.markdown("**From:**")
+                        _sw_res_a = st.selectbox("Resident:", _swap_res_names, key="dayswap_res_a")
+                        _sw_dates_a = st.multiselect("Day(s):", _swap_date_options, key="dayswap_dates_a")
+                    with _sw_col2:
+                        st.markdown("**To:**")
+                        _sw_res_b = st.selectbox("Resident:", [n for n in _swap_res_names if n != _sw_res_a], key="dayswap_res_b")
+                        _sw_dates_b = st.multiselect("Day(s):", _swap_date_options, key="dayswap_dates_b")
+
+                    # Show preview of what will change
+                    if _sw_dates_a and _sw_dates_b and len(_sw_dates_a) == len(_sw_dates_b):
+                        st.markdown(
+                            '<div style="background:#0c4a6e;border:1px solid #0ea5e9;border-radius:10px;'
+                            'padding:12px 16px;margin:8px 0;">'
+                            '<strong style="color:#38bdf8;">Preview:</strong><br>',
+                            unsafe_allow_html=True,
+                        )
+                        preview_html = ""
+                        for da, db in zip(_sw_dates_a, _sw_dates_b):
+                            # Find what each resident has on that day
+                            da_idx = _swap_date_options.index(da)
+                            db_idx = _swap_date_options.index(db)
+                            da_date = _ten_days[da_idx].strftime("%Y-%m-%d")
+                            db_date = _ten_days[db_idx].strftime("%Y-%m-%d")
+                            # Get shifts
+                            res_a_obj = next((r for r in _sorted_residents if r.name == _sw_res_a), None)
+                            res_b_obj = next((r for r in _sorted_residents if r.name == _sw_res_b), None)
+                            shift_a = next((s for s in res_a_obj.daily_shifts if s.get("date") == da_date), None) if res_a_obj else None
+                            shift_b = next((s for s in res_b_obj.daily_shifts if s.get("date") == db_date), None) if res_b_obj else None
+                            label_a = f"{shift_a['type'].replace('_',' ').title()} {shift_a['hours']}h" if shift_a else "Off"
+                            label_b = f"{shift_b['type'].replace('_',' ').title()} {shift_b['hours']}h" if shift_b else "Off"
+                            preview_html += f"<span style='color:#e2e8f0;'>{_sw_res_a} ({da}: {label_a}) ↔ {_sw_res_b} ({db}: {label_b})</span><br>"
+                        st.markdown(preview_html + "</div>", unsafe_allow_html=True)
+
+                        # Confirmation
+                        st.markdown("")
+                        _confirm_col1, _confirm_col2 = st.columns(2)
+                        with _confirm_col1:
+                            if st.button("✅ Confirm Swap", type="primary", key="confirm_day_swap", use_container_width=True):
+                                # Execute swaps
+                                for da, db in zip(_sw_dates_a, _sw_dates_b):
+                                    da_idx = _swap_date_options.index(da)
+                                    db_idx = _swap_date_options.index(db)
+                                    da_date = _ten_days[da_idx].strftime("%Y-%m-%d")
+                                    db_date = _ten_days[db_idx].strftime("%Y-%m-%d")
+                                    res_a_obj = next((r for r in _sorted_residents if r.name == _sw_res_a), None)
+                                    res_b_obj = next((r for r in _sorted_residents if r.name == _sw_res_b), None)
+                                    if res_a_obj and res_b_obj:
+                                        shift_a = next((s for s in res_a_obj.daily_shifts if s.get("date") == da_date), None)
+                                        shift_b = next((s for s in res_b_obj.daily_shifts if s.get("date") == db_date), None)
+                                        # Swap: move shift_a to res_b, shift_b to res_a
+                                        if shift_a:
+                                            res_a_obj.daily_shifts.remove(shift_a)
+                                            shift_a_copy = dict(shift_a)
+                                            shift_a_copy["date"] = db_date
+                                            res_b_obj.daily_shifts.append(shift_a_copy)
+                                        if shift_b:
+                                            res_b_obj.daily_shifts.remove(shift_b)
+                                            shift_b_copy = dict(shift_b)
+                                            shift_b_copy["date"] = da_date
+                                            res_a_obj.daily_shifts.append(shift_b_copy)
+                                # Log
+                                if "session_swaps" not in st.session_state:
+                                    st.session_state["session_swaps"] = []
+                                st.session_state["session_swaps"].append({
+                                    "time": datetime.now().strftime("%H:%M"),
+                                    "month": _ten_days[0].strftime("%b"),
+                                    "res_a": _sw_res_a,
+                                    "rot_a": ", ".join(_sw_dates_a),
+                                    "res_b": _sw_res_b,
+                                    "rot_b": ", ".join(_sw_dates_b),
+                                })
+                                log_action("DAY_SWAP", role, f"{_sw_res_a} ↔ {_sw_res_b}",
+                                           f"Days: {', '.join(_sw_dates_a)} ↔ {', '.join(_sw_dates_b)}. Confirmed.", "COMPLIANT")
+                                st.success(f"✅ Swap confirmed! {len(_sw_dates_a)} day(s) swapped between {_sw_res_a} and {_sw_res_b}.")
+                                st.rerun()
+                        with _confirm_col2:
+                            st.button("Cancel", key="cancel_day_swap", use_container_width=True)
+
+                    elif _sw_dates_a and _sw_dates_b and len(_sw_dates_a) != len(_sw_dates_b):
+                        st.warning("Select the same number of days for both residents.")
+
                     # Download
-                    st.markdown("")
+                    st.divider()
                     st.download_button(
                         "📥 Download Schedule (CSV — printable)",
                         data=_build_10day_csv(_sorted_residents, _ten_days),
