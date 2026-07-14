@@ -2303,8 +2303,9 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         st.markdown(
             '<div style="display:flex;align-items:center;gap:12px;margin:20px 0 8px 0;">'
             '<div style="width:48px;height:48px;background:linear-gradient(135deg,#0ea5e9,#6366f1);'
-            'border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;'
-            'box-shadow:0 4px 12px rgba(14,165,233,0.3);">🤖</div>'
+            'border-radius:50%;display:flex;align-items:center;justify-content:center;'
+            'box-shadow:0 4px 12px rgba(14,165,233,0.3);">'
+            '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="11"/><circle cx="8" cy="16" r="1" fill="white"/><circle cx="16" cy="16" r="1" fill="white"/></svg></div>'
             '<div><h3 style="margin:0;color:white;">Hi, I\'m Otto</h3>'
             '<p style="margin:0;color:#94a3b8;font-size:0.85em;">Your AI scheduling & compliance assistant</p></div>'
             '</div>',
@@ -3431,7 +3432,8 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         st.markdown(
             '<div style="display:flex;align-items:center;gap:10px;">'
             '<div style="width:36px;height:36px;background:linear-gradient(135deg,#0ea5e9,#6366f1);'
-            'border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;">🤖</div>'
+            'border-radius:50%;display:flex;align-items:center;justify-content:center;">'
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="11"/><circle cx="8" cy="16" r="1" fill="white"/><circle cx="16" cy="16" r="1" fill="white"/></svg></div>'
             '<div><strong style="color:white;">Ask Otto</strong><br>'
             '<span style="color:#94a3b8;font-size:0.8em;">Quick question from any page</span></div></div>',
             unsafe_allow_html=True,
@@ -3461,7 +3463,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             )
 
     # Render floating bubble (visual only — clicking opens sidebar)
-    st.markdown('<div class="otto-fab">🤖</div>', unsafe_allow_html=True)
+    st.markdown('<div class="otto-fab"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="11"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></div>', unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
