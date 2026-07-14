@@ -2962,31 +2962,34 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     st.markdown("#### 📋 Daily Schedule")
 
                     # Navigation arrows + date picker
-                    if "_dv_offset" not in st.session_state:
-                        st.session_state["_dv_offset"] = 0
+                    if "_dv_start_date" not in st.session_state:
+                        st.session_state["_dv_start_date"] = datetime.now().date()
 
                     _nav_col1, _nav_col2, _nav_col3, _nav_col4, _nav_col5, _nav_col6 = st.columns([1, 1, 1, 1, 3, 1])
                     with _nav_col1:
                         if st.button("◀ Day", key="nav_prev_day", use_container_width=True):
-                            st.session_state["_dv_offset"] -= 1
+                            st.session_state["_dv_start_date"] = st.session_state["_dv_start_date"] - timedelta(days=1)
                             st.rerun()
                     with _nav_col2:
                         if st.button("◀ Week", key="nav_prev_week", use_container_width=True):
-                            st.session_state["_dv_offset"] -= 7
+                            st.session_state["_dv_start_date"] = st.session_state["_dv_start_date"] - timedelta(days=7)
                             st.rerun()
                     with _nav_col3:
                         if st.button("Today", key="nav_today", use_container_width=True):
-                            st.session_state["_dv_offset"] = 0
+                            st.session_state["_dv_start_date"] = datetime.now().date()
                             st.rerun()
                     with _nav_col4:
                         if st.button("Week ▶", key="nav_next_week", use_container_width=True):
-                            st.session_state["_dv_offset"] += 7
+                            st.session_state["_dv_start_date"] = st.session_state["_dv_start_date"] + timedelta(days=7)
                             st.rerun()
                     with _nav_col5:
-                        _dv_start = st.date_input("Starting from:", value=datetime.now() + timedelta(days=st.session_state["_dv_offset"]), key="daily_view_start", label_visibility="collapsed")
+                        _dv_start = st.date_input("Go to date:", value=st.session_state["_dv_start_date"], key="daily_view_start", label_visibility="collapsed")
+                        if _dv_start != st.session_state["_dv_start_date"]:
+                            st.session_state["_dv_start_date"] = _dv_start
+                            st.rerun()
                     with _nav_col6:
                         if st.button("Day ▶", key="nav_next_day", use_container_width=True):
-                            st.session_state["_dv_offset"] += 1
+                            st.session_state["_dv_start_date"] = st.session_state["_dv_start_date"] + timedelta(days=1)
                             st.rerun()
 
                     st.caption("10-day view sorted by PGY level. Jeopardy backup marked with 🔴.")
@@ -3010,7 +3013,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
                     # Build 10-day grid from selected date
                     _ten_days = []
-                    _dv_start_dt = datetime.combine(_dv_start, datetime.min.time()) if not isinstance(_dv_start, datetime) else _dv_start
+                    _dv_start_dt = datetime.combine(st.session_state["_dv_start_date"], datetime.min.time())
                     for d in range(10):
                         day = _dv_start_dt + timedelta(days=d)
                         _ten_days.append(day)
