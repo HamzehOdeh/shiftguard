@@ -2957,230 +2957,17 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             unsafe_allow_html=True,
                         )
 
-                    # Live calendar view — next 2 months (8 weeks)
+                    # ── Daily Schedule View ──
                     st.divider()
-                    _print_col1, _print_col2 = st.columns([4, 1])
-                    with _print_col1:
-                        st.markdown("#### 📅 Schedule — Next 8 Weeks")
-                    with _print_col2:
-                        st.markdown(
-                            '<button onclick="window.print()" style="background:#1e293b;border:1px solid #334155;'
-                            'color:#94a3b8;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:0.8em;">'
-                            '🖨️ Print</button>',
-                            unsafe_allow_html=True,
-                        )
-                    st.caption("Shows upcoming 2 months. Updates in real-time as you make adjustments.")
+                    st.markdown("#### 📋 Daily Schedule")
 
-                    rot_colors = {
-                        "ED Clinical": "#0ea5e9", "ICU": "#dc3545", "Night Float": "#6366f1",
-                        "Elective": "#28a745", "Research": "#fbbf24", "Vacation": "#94a3b8",
-                        "Trauma": "#f97316", "Pediatric ED": "#ec4899", "Toxicology": "#8b5cf6",
-                        "Ultrasound": "#14b8a6", "Admin / QI": "#6b7280", "Simulation": "#a78bfa",
-                    }
-
-                    # Calculate which blocks fall in the next 8 weeks
-                    _cal_start = datetime.now()
-                    _acad_start = st.session_state.get("gen_start", datetime(2026, 7, 1))
-                    if not isinstance(_acad_start, datetime):
-                        _acad_start = datetime(2026, 7, 1)
-                    _weeks_since_start = max(0, (_cal_start - _acad_start).days // 7)
-                    _current_block = _weeks_since_start // 4
-                    _show_blocks = [_current_block, _current_block + 1]
-
-                    # Week headers with dates
-                    week_headers = []
-                    for wk in range(8):
-                        wk_start = _cal_start + timedelta(weeks=wk)
-                        week_headers.append(f"{wk_start.strftime('%b %d')}")
-
-                    cal_html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.8em;">'
-                    cal_html += '<tr><th style="padding:8px;text-align:left;color:#94a3b8;border-bottom:1px solid #334155;">Resident</th>'
-                    for wh in week_headers:
-                        cal_html += f'<th style="padding:8px;text-align:center;color:#94a3b8;border-bottom:1px solid #334155;min-width:80px;">{wh}</th>'
-                    cal_html += '</tr>'
-
-                    for res in program.residents.values():
-                        cal_html += '<tr>'
-                        cal_html += f'<td style="padding:6px 8px;white-space:nowrap;border-bottom:1px solid #1e293b;">{res.name}<br><span style="color:#64748b;font-size:0.85em;">{res.pgy_level}</span></td>'
-                        for wk in range(8):
-                            block_idx = _current_block + (wk // 4)
-                            if block_idx < len(res.block_schedule):
-                                rot = res.block_schedule[block_idx].get("rotation", "—")
-                            else:
-                                rot = "—"
-                            bg = rot_colors.get(rot, "#334155")
-                            cal_html += (
-                                f'<td style="padding:4px;text-align:center;border-bottom:1px solid #1e293b;">'
-                                f'<div style="background:{bg}22;border:1px solid {bg};border-radius:6px;'
-                                f'padding:4px 2px;font-size:0.85em;color:{bg};font-weight:600;">'
-                                f'{rot[:10]}</div></td>'
-                            )
-                        cal_html += '</tr>'
-                    cal_html += '</table></div>'
-                    st.markdown(cal_html, unsafe_allow_html=True)
-
-                    # Color legend
-                    legend_html = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">'
-                    for rot_name, color in rot_colors.items():
-                        legend_html += (
-                            f'<span style="background:{color}22;border:1px solid {color};color:{color};'
-                            f'border-radius:4px;padding:2px 8px;font-size:0.75em;">{rot_name}</span>'
-                        )
-                    legend_html += '</div>'
-                    st.markdown(legend_html, unsafe_allow_html=True)
-
-                    # Expandable full year view
-                    with st.expander("📅 View & Edit by Month (click-to-swap)"):
-                        all_months = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"]
-                        _vm_col1, _vm_col2 = st.columns([2, 1])
-                        with _vm_col1:
-                            _view_month = st.selectbox("Select month:", all_months, index=datetime.now().month - 7 if datetime.now().month >= 7 else datetime.now().month + 5, key="view_month_select")
-                        with _vm_col2:
-                            st.markdown(
-                                '<button onclick="window.print()" style="background:#1e293b;border:1px solid #334155;'
-                                'color:#94a3b8;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:0.8em;margin-top:28px;">'
-                                '🖨️ Print Month</button>',
-                                unsafe_allow_html=True,
-                            )
-                        _view_block_idx = all_months.index(_view_month)
-
-                        # Calculate the actual dates for this block's 4 weeks
-                        _vm_start = _acad_start + timedelta(weeks=4 * _view_block_idx)
-                        _vm_week_dates = []
-                        for w in range(4):
-                            ws = _vm_start + timedelta(weeks=w)
-                            we = ws + timedelta(days=6)
-                            _vm_week_dates.append(f"{ws.strftime('%b %d')}–{we.strftime('%b %d')}")
-
-                        # Week date headers — aligned with data rows [3, 2, 2, 2, 2]
-                        st.markdown(f"**{_view_month} Block**")
-                        _wk_header_cols = st.columns([3, 2, 2, 2, 2])
-                        with _wk_header_cols[0]:
-                            st.markdown("")
-                        for wi, wh in enumerate(_vm_week_dates):
-                            with _wk_header_cols[wi + 1]:
-                                st.markdown(
-                                    f'<div style="text-align:center;background:#1e293b;border:1px solid #334155;'
-                                    f'border-radius:8px;padding:6px;font-size:0.8em;color:#94a3b8;">'
-                                    f'<strong>Week {wi+1}</strong><br>{wh}</div>',
-                                    unsafe_allow_html=True,
-                                )
-
-                        # Click-to-swap per week
-                        if "week_swap_first" not in st.session_state:
-                            st.session_state["week_swap_first"] = None
-
-                        if st.session_state["week_swap_first"]:
-                            first = st.session_state["week_swap_first"]
-                            st.markdown(
-                                f'<div style="background:#0c4a6e;padding:8px 14px;border-radius:8px;'
-                                f'border:1px solid #0ea5e9;font-size:0.85em;margin-bottom:8px;">'
-                                f'🔄 Selected: <strong>{first["name"]}</strong> Week {first["week"]+1} ({first["rot"]}) — '
-                                f'click another resident\'s week to swap</div>',
-                                unsafe_allow_html=True,
-                            )
-                            if st.button("Cancel", key="cancel_week_swap"):
-                                st.session_state["week_swap_first"] = None
-                                st.rerun()
-                        else:
-                            st.caption("💡 Click any week cell to select it, then click another cell to swap those two weeks.")
-
-                        # Per-week schedule data (allows individual week overrides)
-                        if "week_overrides" not in st.session_state:
-                            st.session_state["week_overrides"] = {}
-
-                        def _get_week_rot(res_id, block_idx, week):
-                            override_key = f"{res_id}_{block_idx}_{week}"
-                            if override_key in st.session_state["week_overrides"]:
-                                return st.session_state["week_overrides"][override_key]
-                            for res in program.residents.values():
-                                if res.id == res_id and block_idx < len(res.block_schedule):
-                                    return res.block_schedule[block_idx].get("rotation", "—")
-                            return "—"
-
-                        # Render grid: each week cell is a button
-                        _res_list_month = list(program.residents.values())
-                        for res in _res_list_month:
-                            row_cols = st.columns([3, 2, 2, 2, 2])
-                            with row_cols[0]:
-                                is_sel = st.session_state.get("week_swap_first") and st.session_state["week_swap_first"]["id"] == res.id
-                                name_color = "#38bdf8" if is_sel else "white"
-                                st.markdown(f'<div style="color:{name_color};font-weight:700;font-size:0.9em;padding:8px 0;">{res.name} <span style="color:#64748b;font-size:0.85em;">{res.pgy_level}</span></div>', unsafe_allow_html=True)
-                            for wk in range(4):
-                                with row_cols[wk + 1]:
-                                    wk_rot = _get_week_rot(res.id, _view_block_idx, wk)
-                                    bg = rot_colors.get(wk_rot, "#334155")
-                                    _clicked = st.button(wk_rot, key=f"wcell_{res.id}_{_view_block_idx}_{wk}", use_container_width=True)
-                                    st.markdown(f'<div style="text-align:center;color:#64748b;font-size:0.65em;margin-top:-10px;">{_vm_week_dates[wk]}</div>', unsafe_allow_html=True)
-                                    if _clicked:
-                                        if st.session_state["week_swap_first"] is None:
-                                            st.session_state["week_swap_first"] = {"id": res.id, "name": res.name, "rot": wk_rot, "week": wk}
-                                            st.rerun()
-                                        else:
-                                            first = st.session_state["week_swap_first"]
-                                            if first["id"] != res.id or first["week"] != wk:
-                                                # Swap the two specific weeks
-                                                key_a = f"{first['id']}_{_view_block_idx}_{first['week']}"
-                                                key_b = f"{res.id}_{_view_block_idx}_{wk}"
-                                                st.session_state["week_overrides"][key_a] = wk_rot
-                                                st.session_state["week_overrides"][key_b] = first["rot"]
-                                                log_action("WEEK_SWAP", role, f"{first['name']} ↔ {res.name}",
-                                                           f"{_view_month} Wk{first['week']+1} ({first['rot']}) ↔ Wk{wk+1} ({wk_rot})", "COMPLIANT")
-                                                if "session_swaps" not in st.session_state:
-                                                    st.session_state["session_swaps"] = []
-                                                st.session_state["session_swaps"].append({
-                                                    "time": datetime.now().strftime("%H:%M"),
-                                                    "month": _view_month,
-                                                    "res_a": first["name"],
-                                                    "rot_a": f"Wk{first['week']+1} {first['rot']}",
-                                                    "res_b": res.name,
-                                                    "rot_b": f"Wk{wk+1} {wk_rot}",
-                                                })
-                                                st.session_state["week_swap_first"] = None
-                                                st.rerun()
-                                            else:
-                                                st.session_state["week_swap_first"] = None
-                                                st.rerun()
-
-                    # Session swap summary
-                    if st.session_state.get("session_swaps"):
-                        swaps = st.session_state["session_swaps"]
-                        st.divider()
-                        st.markdown(f"#### 🔄 Swap Summary ({len(swaps)} change{'s' if len(swaps) != 1 else ''} this session)")
-                        summary_html = '<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-top:8px;">'
-                        for i, s in enumerate(swaps):
-                            summary_html += (
-                                f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                                f'padding:8px 0;{"border-top:1px solid #334155;" if i > 0 else ""}">'
-                                f'<div>'
-                                f'<strong style="color:white;">{s["res_a"]}</strong> '
-                                f'<span style="color:#94a3b8;">({s["rot_a"]})</span>'
-                                f' ↔ '
-                                f'<strong style="color:white;">{s["res_b"]}</strong> '
-                                f'<span style="color:#94a3b8;">({s["rot_b"]})</span>'
-                                f'<span style="color:#64748b;font-size:0.8em;margin-left:8px;">{s["month"]} block</span>'
-                                f'</div>'
-                                f'<div style="display:flex;align-items:center;gap:8px;">'
-                                f'<span style="color:#fbbf24;font-size:0.8em;">⏳ Pending confirmation</span>'
-                                f'<span style="color:#64748b;font-size:0.75em;">{s["time"]}</span>'
-                                f'</div>'
-                                f'</div>'
-                            )
-                        summary_html += '</div>'
-                        st.markdown(summary_html, unsafe_allow_html=True)
-                        st.caption("Swaps are pending until confirmed. Residents will be notified to accept/decline.")
-                        if st.button("✅ Confirm & Notify All", type="primary", key="confirm_all_swaps"):
-                            for s in st.session_state["session_swaps"]:
-                                s["status"] = "confirmed"
-                            st.success(f"All {len(swaps)} swap(s) confirmed! Notifications sent to affected residents.")
-                            log_action("SWAPS_CONFIRMED", role, f"{len(swaps)} swaps",
-                                       "All pending swaps confirmed and residents notified.", "COMPLIANT")
-                            st.rerun()
-
-                    # ── 10-Day Operational View ──
-                    st.divider()
-                    st.markdown("#### 📋 10-Day View (Operational)")
-                    st.caption("Daily schedule sorted by PGY level. Shows rotation + hours. Jeopardy backup marked with 🔴.")
+                    # Date picker + download
+                    _dv_col1, _dv_col2 = st.columns([3, 1])
+                    with _dv_col1:
+                        _dv_start = st.date_input("Starting from:", value=datetime.now(), key="daily_view_start")
+                    with _dv_col2:
+                        st.markdown("")  # spacing
+                    st.caption("10-day view sorted by PGY level. Jeopardy backup marked with 🔴.")
 
                     # Today's jeopardy card
                     _today_str = datetime.now().strftime("%Y-%m-%d")
@@ -3199,10 +2986,11 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         unsafe_allow_html=True,
                     )
 
-                    # Build 10-day grid
+                    # Build 10-day grid from selected date
                     _ten_days = []
+                    _dv_start_dt = datetime.combine(_dv_start, datetime.min.time()) if not isinstance(_dv_start, datetime) else _dv_start
                     for d in range(10):
-                        day = datetime.now() + timedelta(days=d)
+                        day = _dv_start_dt + timedelta(days=d)
                         _ten_days.append(day)
 
                     # Sort residents by PGY level
@@ -3310,15 +3098,50 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         unsafe_allow_html=True,
                     )
 
-                    # Download PDF button (placeholder until fpdf2 implemented)
+                    # Download
                     st.markdown("")
                     st.download_button(
-                        "📥 Download 10-Day Schedule (CSV)",
+                        "📥 Download Schedule (CSV — printable)",
                         data=_build_10day_csv(_sorted_residents, _ten_days),
-                        file_name=f"schedule_10day_{datetime.now().strftime('%Y%m%d')}.csv",
+                        file_name=f"schedule_{_dv_start.strftime('%Y%m%d')}_10days.csv",
                         mime="text/csv",
                         use_container_width=True,
                     )
+
+                    # Session swap summary
+                    if st.session_state.get("session_swaps"):
+                        swaps = st.session_state["session_swaps"]
+                        st.divider()
+                        st.markdown(f"#### 🔄 Swap Summary ({len(swaps)} change{'s' if len(swaps) != 1 else ''} this session)")
+                        summary_html = '<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-top:8px;">'
+                        for i, s in enumerate(swaps):
+                            summary_html += (
+                                f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                                f'padding:8px 0;{"border-top:1px solid #334155;" if i > 0 else ""}">'
+                                f'<div>'
+                                f'<strong style="color:white;">{s["res_a"]}</strong> '
+                                f'<span style="color:#94a3b8;">({s["rot_a"]})</span>'
+                                f' ↔ '
+                                f'<strong style="color:white;">{s["res_b"]}</strong> '
+                                f'<span style="color:#94a3b8;">({s["rot_b"]})</span>'
+                                f'<span style="color:#64748b;font-size:0.8em;margin-left:8px;">{s.get("month", "")} block</span>'
+                                f'</div>'
+                                f'<div style="display:flex;align-items:center;gap:8px;">'
+                                f'<span style="color:#fbbf24;font-size:0.8em;">⏳ Pending confirmation</span>'
+                                f'<span style="color:#64748b;font-size:0.75em;">{s["time"]}</span>'
+                                f'</div>'
+                                f'</div>'
+                            )
+                        summary_html += '</div>'
+                        st.markdown(summary_html, unsafe_allow_html=True)
+                        st.caption("Swaps are pending until confirmed. Residents will be notified to accept/decline.")
+                        if st.button("✅ Confirm & Notify All", type="primary", key="confirm_all_swaps"):
+                            for s in st.session_state["session_swaps"]:
+                                s["status"] = "confirmed"
+                            st.success(f"All {len(swaps)} swap(s) confirmed! Notifications sent to affected residents.")
+                            log_action("SWAPS_CONFIRMED", role, f"{len(swaps)} swaps",
+                                       "All pending swaps confirmed and residents notified.", "COMPLIANT")
+                            st.rerun()
 
     # ================================================================
     # TAB: MY SCHEDULE (Resident's personal view)
