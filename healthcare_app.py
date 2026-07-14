@@ -3400,14 +3400,47 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         unsafe_allow_html=True,
     )
 
-    # Sidebar AI chat (accessible from any tab via sidebar)
+    # Floating Otto chat bubble (bottom-right, accessible from any page)
+    # CSS for fixed position bubble
+    st.markdown("""
+    <style>
+    .otto-fab {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 56px;
+        height: 56px;
+        background: linear-gradient(135deg, #0ea5e9, #6366f1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        box-shadow: 0 4px 20px rgba(14,165,233,0.4), 0 2px 8px rgba(99,102,241,0.3);
+        cursor: pointer;
+        z-index: 9999;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .otto-fab:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(14,165,233,0.5); }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Sidebar chat (triggered by the visual bubble)
     with st.sidebar:
         st.divider()
-        st.markdown("#### 🤖 Ask Otto")
-        st.caption("Quick question from any page:")
+        st.markdown(
+            '<div style="display:flex;align-items:center;gap:10px;">'
+            '<div style="width:36px;height:36px;background:linear-gradient(135deg,#0ea5e9,#6366f1);'
+            'border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;">🤖</div>'
+            '<div><strong style="color:white;">Ask Otto</strong><br>'
+            '<span style="color:#94a3b8;font-size:0.8em;">Quick question from any page</span></div></div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown("")
         ai_quick = st.text_input("Ask anything:", key="floating_ai_input",
-                                  placeholder="e.g., Can Dr. Kim cover tonight?")
-        if ai_quick and st.button("Ask", key="floating_ai_send", type="primary"):
+                                  placeholder="e.g., Can Dr. Kim cover tonight?",
+                                  label_visibility="collapsed")
+        if ai_quick and st.button("Ask", key="floating_ai_send", type="primary", use_container_width=True):
             if "hc_ai_chat" not in st.session_state:
                 _float_state = st.session_state.get("hospital_state_global", "Illinois")
                 _float_rules = STATE_PENALTY_RULES.get(_float_state, STATE_PENALTY_RULES.get("_default", {}))
@@ -3421,10 +3454,14 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 )
             response = st.session_state["hc_ai_chat"].chat(ai_quick)
             st.markdown(
-                f'<div style="background:#1a2d1a;padding:10px;border-radius:8px;margin-top:8px;font-size:0.85em;">'
-                f'🤖 <strong>Otto:</strong> {response["message"]}</div>',
+                f'<div style="background:#1a2d1a;padding:10px;border-radius:8px;margin-top:8px;font-size:0.85em;'
+                f'border-left:3px solid #4ade80;">'
+                f'🤖 {response["message"]}</div>',
                 unsafe_allow_html=True,
             )
+
+    # Render floating bubble (visual only — clicking opens sidebar)
+    st.markdown('<div class="otto-fab">🤖</div>', unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
