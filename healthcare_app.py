@@ -2961,12 +2961,34 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     st.divider()
                     st.markdown("#### 📋 Daily Schedule")
 
-                    # Date picker + download
-                    _dv_col1, _dv_col2 = st.columns([3, 1])
-                    with _dv_col1:
-                        _dv_start = st.date_input("Starting from:", value=datetime.now(), key="daily_view_start")
-                    with _dv_col2:
-                        st.markdown("")  # spacing
+                    # Navigation arrows + date picker
+                    if "_dv_offset" not in st.session_state:
+                        st.session_state["_dv_offset"] = 0
+
+                    _nav_col1, _nav_col2, _nav_col3, _nav_col4, _nav_col5, _nav_col6 = st.columns([1, 1, 1, 1, 3, 1])
+                    with _nav_col1:
+                        if st.button("◀ Day", key="nav_prev_day", use_container_width=True):
+                            st.session_state["_dv_offset"] -= 1
+                            st.rerun()
+                    with _nav_col2:
+                        if st.button("◀ Week", key="nav_prev_week", use_container_width=True):
+                            st.session_state["_dv_offset"] -= 7
+                            st.rerun()
+                    with _nav_col3:
+                        if st.button("Today", key="nav_today", use_container_width=True):
+                            st.session_state["_dv_offset"] = 0
+                            st.rerun()
+                    with _nav_col4:
+                        if st.button("Week ▶", key="nav_next_week", use_container_width=True):
+                            st.session_state["_dv_offset"] += 7
+                            st.rerun()
+                    with _nav_col5:
+                        _dv_start = st.date_input("Starting from:", value=datetime.now() + timedelta(days=st.session_state["_dv_offset"]), key="daily_view_start", label_visibility="collapsed")
+                    with _nav_col6:
+                        if st.button("Day ▶", key="nav_next_day", use_container_width=True):
+                            st.session_state["_dv_offset"] += 1
+                            st.rerun()
+
                     st.caption("10-day view sorted by PGY level. Jeopardy backup marked with 🔴.")
 
                     # Today's jeopardy card
