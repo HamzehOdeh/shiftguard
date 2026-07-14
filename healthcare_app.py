@@ -865,6 +865,38 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
         st.divider()
 
+        # 10-Day Operational View (compact, on Residency tab)
+        st.markdown("#### 📋 10-Day Schedule")
+        _res_tab_days = [datetime.now() + timedelta(days=d) for d in range(10)]
+        _res_tab_sorted = sorted(program.residents.values(), key=lambda r: r.pgy_level)
+
+        _rt_grid = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.75em;">'
+        _rt_grid += '<tr><th style="padding:6px;text-align:left;color:#94a3b8;border-bottom:1px solid #334155;">Resident</th>'
+        for day in _res_tab_days:
+            _is_today = day.date() == datetime.now().date()
+            _bg = "background:#0c4a6e;" if _is_today else ""
+            _rt_grid += f'<th style="padding:4px;text-align:center;color:#94a3b8;border-bottom:1px solid #334155;{_bg}">{day.strftime("%a")}<br>{day.strftime("%d")}</th>'
+        _rt_grid += '</tr>'
+
+        for res in _res_tab_sorted:
+            _rt_grid += f'<tr><td style="padding:4px 6px;border-bottom:1px solid #1e293b;white-space:nowrap;">{res.name}</td>'
+            for day in _res_tab_days:
+                d_str = day.strftime("%Y-%m-%d")
+                shift = next((s for s in res.daily_shifts if s.get("date") == d_str), None)
+                if shift:
+                    _stype = shift.get("type", "clinical")
+                    _hrs = shift.get("hours", 10)
+                    _color = "#a5b4fc" if "night" in _stype.lower() else "#7dd3fc"
+                    _rt_grid += f'<td style="padding:3px;text-align:center;border-bottom:1px solid #1e293b;"><span style="color:{_color};font-size:0.9em;">{_hrs}h</span></td>'
+                else:
+                    _rt_grid += '<td style="padding:3px;text-align:center;border-bottom:1px solid #1e293b;color:#4b5563;">—</td>'
+            _rt_grid += '</tr>'
+        _rt_grid += '</table></div>'
+        st.markdown(_rt_grid, unsafe_allow_html=True)
+        st.caption("Full daily view with swap tools available in Program Setup → Step 4.")
+
+        st.divider()
+
         # Daily Adjustment Workflow
         st.markdown("#### Daily Adjustments")
         adj_col1, adj_col2 = st.columns(2)
@@ -1701,18 +1733,44 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         st.markdown("## Physician Dashboard")
         st.markdown("*Attending schedule, coverage needs, and moonlighting.*")
 
-        # Attending schedule overview
+        # Attending schedule overview (session-state driven)
         st.markdown("#### This Week's Coverage")
-        attending_schedule = [
-            {"Day": "Monday", "Attending": "Dr. Rodriguez", "Time": "07:00-19:00", "Unit": "ED"},
-            {"Day": "Tuesday", "Attending": "Dr. Thompson", "Time": "07:00-19:00", "Unit": "ED"},
-            {"Day": "Wednesday", "Attending": "Dr. Rodriguez", "Time": "07:00-19:00", "Unit": "ED"},
-            {"Day": "Thursday", "Attending": "Dr. Park", "Time": "07:00-19:00", "Unit": "ED"},
-            {"Day": "Friday", "Attending": "Dr. Thompson", "Time": "19:00-07:00", "Unit": "ED (Night)"},
-            {"Day": "Saturday", "Attending": "Dr. Park", "Time": "07:00-19:00", "Unit": "ED"},
-            {"Day": "Sunday", "Attending": "Dr. Rodriguez", "Time": "07:00-19:00", "Unit": "ED"},
-        ]
+        if "attending_schedule" not in st.session_state:
+            st.session_state["attending_schedule"] = [
+                {"Day": "Monday", "Attending": "Dr. Rodriguez", "Time": "07:00-19:00", "Unit": "ED"},
+                {"Day": "Tuesday", "Attending": "Dr. Thompson", "Time": "07:00-19:00", "Unit": "ED"},
+                {"Day": "Wednesday", "Attending": "Dr. Rodriguez", "Time": "07:00-19:00", "Unit": "ED"},
+                {"Day": "Thursday", "Attending": "Dr. Park", "Time": "07:00-19:00", "Unit": "ED"},
+                {"Day": "Friday", "Attending": "—", "Time": "19:00-07:00", "Unit": "ED (Night)"},
+                {"Day": "Saturday", "Attending": "Dr. Park", "Time": "07:00-19:00", "Unit": "ED"},
+                {"Day": "Sunday", "Attending": "Dr. Rodriguez", "Time": "07:00-19:00", "Unit": "ED"},
+            ]
+        attending_schedule = st.session_state["attending_schedule"]
         st.dataframe(pd.DataFrame(attending_schedule), use_container_width=True, hide_index=True)
+
+        # Quick edit: assign attending to a slot
+        with st.expander("Edit Coverage"):
+            _phys_staff = st.session_state.get("physician_staff", [
+                {"Name": "Dr. Rodriguez", "Role": "Attending"}, {"Name": "Dr. Thompson", "Role": "Attending"},
+                {"Name": "Dr. Park", "Role": "Attending"}, {"Name": "Dr. Walsh", "Role": "Attending"},
+            ])
+            _phys_names = [p.get("Name", p.get("name", "")) for p in _phys_staff]
+            _edit_col1, _edit_col2, _edit_col3 = st.columns(3)
+            with _edit_col1:
+                _edit_day = st.selectbox("Day:", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], key="edit_att_day")
+            with _edit_col2:
+                _edit_att = st.selectbox("Attending:", _phys_names, key="edit_att_name")
+            with _edit_col3:
+                _edit_time = st.selectbox("Shift:", ["07:00-19:00", "19:00-07:00", "07:00-15:00"], key="edit_att_time")
+            if st.button("Update", type="primary", key="update_att_sched"):
+                for slot in st.session_state["attending_schedule"]:
+                    if slot["Day"] == _edit_day:
+                        slot["Attending"] = _edit_att
+                        slot["Time"] = _edit_time
+                        break
+                log_action("ATTENDING_SCHEDULE_UPDATED", role, _edit_att, f"{_edit_day} → {_edit_att} ({_edit_time})", "COMPLIANT")
+                st.success(f"Updated! {_edit_day}: {_edit_att} ({_edit_time})")
+                st.rerun()
 
         # Coverage needs
         st.divider()
@@ -1739,10 +1797,18 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 unsafe_allow_html=True,
             )
             gap_date = (datetime.now() + timedelta(days=5)).strftime("%b %d")
+            gap_day = (datetime.now() + timedelta(days=5)).strftime("%A")
             if st.button(f"Assign Dr. Park to {gap_date} Night", type="primary", key="assign_att_gap"):
+                # Update the schedule
+                for slot in st.session_state.get("attending_schedule", []):
+                    if slot["Day"] == gap_day:
+                        slot["Attending"] = "Dr. Park"
+                        slot["Time"] = "19:00-07:00"
+                        break
                 st.success(f"Assigned! Dr. Park notified for {gap_date} Night coverage (19:00-07:00).")
-                log_action("ATTENDING_ASSIGNED", role, "Dr. Park", f"Assigned to {gap_date} Night coverage gap", "COMPLIANT")
+                log_action("ATTENDING_ASSIGNED", role, "Dr. Park", f"Assigned to {gap_date} ({gap_day}) Night coverage gap", "COMPLIANT")
                 st.session_state["att_search_done"] = False
+                st.rerun()
 
         # Moonlighting tracker
         st.divider()
@@ -2339,9 +2405,35 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 unsafe_allow_html=True,
             )
 
+        # Morning Briefing (Program Director / Chief Resident only)
+        if role in ("Program Director", "Chief Resident"):
+            _near_cap = [r for r in dashboard["residents"] if r["this_week_hours"] >= 65]
+            _high_fatigue = [r for r in dashboard["residents"] if r.get("consecutive_days", 0) >= 5]
+            _briefing_items = []
+            if _near_cap:
+                _briefing_items.append(f'<strong style="color:#fbbf24;">{len(_near_cap)} resident{"s" if len(_near_cap) > 1 else ""} approaching 80h cap</strong> ({", ".join(r["name"].split()[-1] for r in _near_cap[:3])})')
+            if _high_fatigue:
+                _briefing_items.append(f'<strong style="color:#f87171;">{len(_high_fatigue)} with 5+ consecutive days</strong> — consider rest day')
+            if not _briefing_items:
+                _briefing_items.append('<strong style="color:#4ade80;">All residents well-rested and within limits</strong>')
+            _briefing_items.append(f'<span style="color:#94a3b8;">Fairness: {safe_count}/{total_res} safe | Avg {avg_hours:.0f}h/wk | Peak {max_hours:.0f}h</span>')
+
+            st.markdown(
+                '<div style="background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #334155;'
+                'border-radius:12px;padding:16px 20px;margin-bottom:16px;">'
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+                f'<strong style="color:#38bdf8;">Morning Briefing</strong>'
+                f'<span style="color:#64748b;font-size:0.8em;margin-left:auto;">{datetime.now().strftime("%A, %b %d")}</span>'
+                '</div>'
+                + "".join(f'<div style="margin:4px 0;font-size:0.9em;color:#e2e8f0;">• {item}</div>' for item in _briefing_items)
+                + '</div>',
+                unsafe_allow_html=True,
+            )
+
         # Otto greeting
         st.markdown(
-            '<div style="display:flex;align-items:center;gap:12px;margin:20px 0 8px 0;">'
+            '<div style="display:flex;align-items:center;gap:12px;margin:12px 0 8px 0;">'
             '<div style="width:48px;height:48px;background:linear-gradient(135deg,#0ea5e9,#6366f1);'
             'border-radius:50%;display:flex;align-items:center;justify-content:center;'
             'box-shadow:0 4px 12px rgba(14,165,233,0.3);">'
@@ -2354,7 +2446,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
         import os
         if not os.getenv("ANTHROPIC_API_KEY"):
-            st.caption("💡 Otto is in quick-response mode. Connect API key for full Claude conversations.")
+            st.caption("💡 Otto uses built-in clinical intelligence for instant responses.")
 
         # Suggestion chips — styled pills
         # Role-appropriate suggestions
@@ -2392,6 +2484,15 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 "Is Dr. Chen safe to cover tonight?",
                 "Show me duty hours for all PGY-1s",
                 "Who's jeopardy backup tomorrow?",
+                "Generate next month's call schedule",
+            ]
+        elif role in ("Program Director",):
+            suggestions = [
+                "Who's approaching the 80h cap this week?",
+                "Show me the fairness report",
+                "Any jeopardy gaps next week?",
+                "Is Dr. Chen safe to cover tonight?",
+                "Which residents haven't had a golden weekend?",
                 "Generate next month's call schedule",
             ]
         else:
