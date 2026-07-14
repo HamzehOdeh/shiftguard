@@ -1090,8 +1090,13 @@ th {{ background: #f0f0f0; font-weight: bold; }}
     # ================================================================
     if tab2:
      with tab2:
-        st.markdown("## Nursing Dashboard")
-        st.markdown("*Shift management, ratios, credentials, and fair scheduling.*")
+        # Role-split: Nurse Manager gets management view, Staff Nurse gets personal view
+        if role == "Nurse Manager":
+            st.markdown("## Nursing Management")
+            st.markdown("*Build schedules, manage staff, check ratios, and track credentials.*")
+        else:
+            st.markdown("## My Nursing Dashboard")
+            st.markdown("*Your shifts, PTO, credentials, and team.*")
 
         # Select nurse
         nurses = [e for e in employees if e.get("role") in ("Staff RN", "Charge RN", "CNA", "RN")]
@@ -1099,7 +1104,10 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             nurses = employees[:5]
 
         nurse_names = [n["name"] for n in nurses]
-        selected_nurse = st.selectbox("View as:", nurse_names, key="nurse_select")
+        if role == "Nurse Manager":
+            selected_nurse = st.selectbox("View nurse:", nurse_names, key="nurse_select")
+        else:
+            selected_nurse = st.selectbox("I am:", nurse_names, key="nurse_select")
         nurse_id = next((n["id"] for n in nurses if n["name"] == selected_nurse), nurses[0]["id"] if nurses else "N001")
 
         # Hours + balance bar
@@ -1302,12 +1310,16 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             else:
                 st.caption("Schedule will populate once published for this week.")
 
-        # ---- NURSE SCHEDULE BUILDER ----
-        st.divider()
-        st.markdown("#### Build Unit Schedule")
-        st.markdown("*Assign nurses to shifts — ratio auto-checked, fairness-balanced.*")
+        # ---- NURSE SCHEDULE BUILDER (Manager only) ----
+        if role != "Staff Nurse":
+            st.divider()
+            st.markdown("#### Build Unit Schedule")
+            st.markdown("*Assign nurses to shifts — ratio auto-checked, fairness-balanced.*")
 
-        sched_mode = st.radio("", ["Auto-Generate", "Manual Assign", "View Week"], horizontal=True, key="nurse_sched_mode")
+        if role != "Staff Nurse":
+            sched_mode = st.radio("", ["Auto-Generate", "Manual Assign", "View Week"], horizontal=True, key="nurse_sched_mode")
+        else:
+            sched_mode = None
 
         if sched_mode == "Auto-Generate":
             st.markdown("**Tell me your staffing needs and I'll build a fair schedule:**")
@@ -1436,12 +1448,15 @@ th {{ background: #f0f0f0; font-weight: bold; }}
         ]
         st.dataframe(pd.DataFrame(cred_data), use_container_width=True, hide_index=True)
 
-        # ---- NURSING STAFF MANAGEMENT ----
-        st.divider()
-        st.markdown("#### Manage Nursing Staff")
+        # ---- NURSING STAFF MANAGEMENT (Manager only) ----
+        if role != "Staff Nurse":
+            st.divider()
+            st.markdown("#### Manage Nursing Staff")
 
-        nurse_mgmt = st.radio("", ["View Roster", "Add Staff", "Bulk Import", "Upload File", "Locum / Agency"],
-                              horizontal=True, key="nurse_mgmt_mode")
+            nurse_mgmt = st.radio("", ["View Roster", "Add Staff", "Bulk Import", "Upload File", "Locum / Agency"],
+                                  horizontal=True, key="nurse_mgmt_mode")
+        else:
+            nurse_mgmt = None
 
         if nurse_mgmt == "View Roster":
             if "nursing_staff" not in st.session_state:
