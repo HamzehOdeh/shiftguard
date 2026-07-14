@@ -2965,23 +2965,25 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     if "_dv_start_date" not in st.session_state:
                         st.session_state["_dv_start_date"] = datetime.now().date()
 
+                    def _nav_update(new_date):
+                        st.session_state["_dv_start_date"] = new_date
+                        if "daily_view_start" in st.session_state:
+                            del st.session_state["daily_view_start"]
+                        st.rerun()
+
                     _nav_col1, _nav_col2, _nav_col3, _nav_col4, _nav_col5, _nav_col6 = st.columns([1, 1, 1, 1, 3, 1])
                     with _nav_col1:
                         if st.button("◀ Day", key="nav_prev_day", use_container_width=True):
-                            st.session_state["_dv_start_date"] = st.session_state["_dv_start_date"] - timedelta(days=1)
-                            st.rerun()
+                            _nav_update(st.session_state["_dv_start_date"] - timedelta(days=1))
                     with _nav_col2:
                         if st.button("◀ Week", key="nav_prev_week", use_container_width=True):
-                            st.session_state["_dv_start_date"] = st.session_state["_dv_start_date"] - timedelta(days=7)
-                            st.rerun()
+                            _nav_update(st.session_state["_dv_start_date"] - timedelta(days=7))
                     with _nav_col3:
                         if st.button("Today", key="nav_today", use_container_width=True):
-                            st.session_state["_dv_start_date"] = datetime.now().date()
-                            st.rerun()
+                            _nav_update(datetime.now().date())
                     with _nav_col4:
                         if st.button("Week ▶", key="nav_next_week", use_container_width=True):
-                            st.session_state["_dv_start_date"] = st.session_state["_dv_start_date"] + timedelta(days=7)
-                            st.rerun()
+                            _nav_update(st.session_state["_dv_start_date"] + timedelta(days=7))
                     with _nav_col5:
                         _dv_start = st.date_input("Go to date:", value=st.session_state["_dv_start_date"], key="daily_view_start", label_visibility="collapsed")
                         if _dv_start != st.session_state["_dv_start_date"]:
@@ -2989,8 +2991,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             st.rerun()
                     with _nav_col6:
                         if st.button("Day ▶", key="nav_next_day", use_container_width=True):
-                            st.session_state["_dv_start_date"] = st.session_state["_dv_start_date"] + timedelta(days=1)
-                            st.rerun()
+                            _nav_update(st.session_state["_dv_start_date"] + timedelta(days=1))
 
                     st.caption("10-day view sorted by PGY level. Jeopardy backup marked with 🔴.")
 
