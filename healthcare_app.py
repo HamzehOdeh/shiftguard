@@ -1090,10 +1090,13 @@ th {{ background: #f0f0f0; font-weight: bold; }}
     # ================================================================
     if tab2:
      with tab2:
-        # Role-split: Nurse Manager gets management view, Staff Nurse gets personal view
+        # Role-split header
         if role == "Nurse Manager":
             st.markdown("## Nursing Management")
             st.markdown("*Build schedules, manage staff, check ratios, and track credentials.*")
+        elif role == "Admin / HR":
+            st.markdown("## Nursing Overview")
+            st.markdown("*Staff ratios, credentials, and scheduling compliance.*")
         else:
             st.markdown("## My Nursing Dashboard")
             st.markdown("*Your shifts, PTO, credentials, and team.*")
@@ -1104,7 +1107,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             nurses = employees[:5]
 
         nurse_names = [n["name"] for n in nurses]
-        if role == "Nurse Manager":
+        if role in ("Nurse Manager", "Admin / HR"):
             selected_nurse = st.selectbox("View nurse:", nurse_names, key="nurse_select")
         else:
             selected_nurse = st.selectbox("I am:", nurse_names, key="nurse_select")
@@ -1161,7 +1164,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     f"Excess hours will not carry to next year."
                 )
 
-        _show_personal = (role != "Nurse Manager")
+        _show_personal = (role == "Staff Nurse")
 
         if _show_personal:
             st.divider()
@@ -1401,12 +1404,21 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 assign_role = st.selectbox("Role:", ["Staff RN", "Charge RN", "Resource RN"], key="assign_role_type")
 
             if st.button("Assign Shift", type="primary", key="assign_nurse_shift"):
+                # Store assignment in session state
+                if "nurse_manual_assignments" not in st.session_state:
+                    st.session_state["nurse_manual_assignments"] = []
+                st.session_state["nurse_manual_assignments"].append({
+                    "nurse": assign_nurse, "date": assign_date.strftime("%Y-%m-%d"),
+                    "shift": assign_shift, "role": assign_role,
+                })
                 st.success(f"Assigned: {assign_nurse} → {assign_date.strftime('%b %d')} {assign_shift}")
                 st.markdown(
                     '<div style="background:#1a2d1a;padding:8px;border-radius:6px;margin-top:4px;font-size:0.85em;">'
                     '✅ Ratio check: PASS | ✅ No consecutive violation | ✅ Credentials valid</div>',
                     unsafe_allow_html=True,
                 )
+                log_action("SHIFT_ASSIGNED", role, assign_nurse,
+                           f"{assign_date.strftime('%b %d')} {assign_shift} ({assign_role})", "COMPLIANT")
 
         elif sched_mode == "View Week":
             st.markdown("**Current week schedule:**")
@@ -2262,28 +2274,36 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             </div>
             '''
         else:
-            # Resident personal view
+            # Resident personal view — compute from first resident's data
+            _my_res = list(program.residents.values())[0] if program.residents else None
+            _my_hours = sum(s.get("hours", 10) for s in (_my_res.daily_shifts if _my_res else []) if s.get("date", "") >= (datetime.now() - timedelta(days=datetime.now().weekday())).strftime("%Y-%m-%d"))
+            _my_fatigue = min(100, int(_my_hours * 1.2))
+            _fat_level = "Low" if _my_fatigue < 30 else "Med" if _my_fatigue < 60 else "High"
+            _fat_color = "kpi-green" if _my_fatigue < 30 else "kpi-amber" if _my_fatigue < 60 else "kpi-red"
+            _next_shift = next((s for s in sorted((_my_res.daily_shifts if _my_res else []), key=lambda x: x.get("date", "")) if s.get("date", "") >= datetime.now().strftime("%Y-%m-%d")), None)
+            _next_day = datetime.strptime(_next_shift["date"], "%Y-%m-%d").strftime("%a") if _next_shift else "—"
+            _next_time = _next_shift.get("start", "—") if _next_shift else "—"
             kpi_html = f'''
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
                 <div class="kpi-card kpi-green">
                     <div class="kpi-label">Your Status</div>
-                    <div class="kpi-value">✓</div>
-                    <div class="kpi-label">ACGME Safe</div>
+                    <div class="kpi-value">{"✓" if _my_hours < 80 else "!"}</div>
+                    <div class="kpi-label">{"ACGME Safe" if _my_hours < 80 else "Over Cap!"}</div>
                 </div>
                 <div class="kpi-card kpi-blue">
                     <div class="kpi-label">Hours This Week</div>
-                    <div class="kpi-value">24h</div>
+                    <div class="kpi-value">{_my_hours}h</div>
                     <div class="kpi-label">of 80h Cap</div>
                 </div>
-                <div class="kpi-card kpi-green">
+                <div class="kpi-card {_fat_color}">
                     <div class="kpi-label">Fatigue</div>
-                    <div class="kpi-value">Low</div>
-                    <div class="kpi-label">27/100</div>
+                    <div class="kpi-value">{_fat_level}</div>
+                    <div class="kpi-label">{_my_fatigue}/100</div>
                 </div>
                 <div class="kpi-card kpi-blue">
                     <div class="kpi-label">Next Shift</div>
-                    <div class="kpi-value">Tue</div>
-                    <div class="kpi-label">7:00 AM</div>
+                    <div class="kpi-value">{_next_day}</div>
+                    <div class="kpi-label">{_next_time}</div>
                 </div>
             </div>
             '''
@@ -3377,7 +3397,16 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             res_pto_date = st.date_input("Day off requested:", key="res_pto_date", value=datetime.now() + timedelta(days=7))
             res_pto_reason = st.text_input("Reason:", key="res_pto_reason", placeholder="e.g., appointment, personal")
             if st.button("Submit Request", type="primary", key="res_submit_pto"):
+                if "approved_pto" not in st.session_state:
+                    st.session_state["approved_pto"] = []
+                st.session_state["approved_pto"].append({
+                    "employee": my_resident,
+                    "start": res_pto_date.strftime("%Y-%m-%d"),
+                    "end": res_pto_date.strftime("%Y-%m-%d"),
+                    "status": "PENDING",
+                })
                 st.success(f"Request submitted for {res_pto_date.strftime('%b %d')}. Your chief will be notified.")
+                log_action("PTO_REQUESTED", role, my_resident, f"Requested {res_pto_date.strftime('%b %d')} off.", "PENDING")
                 st.session_state["show_res_pto"] = False
 
         # Resident swap form
