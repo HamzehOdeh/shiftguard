@@ -1161,41 +1161,46 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     f"Excess hours will not carry to next year."
                 )
 
-        st.divider()
+        _show_personal = (role != "Nurse Manager")
+
+        if _show_personal:
+            st.divider()
 
         # Upcoming shifts
-        st.markdown("#### My Upcoming Shifts")
-        if nurse_shifts:
-            shift_rows = []
-            for s in sorted(nurse_shifts, key=lambda x: x.get("date", ""))[:7]:
-                shift_rows.append({
-                    "Date": s.get("date", ""),
-                    "Time": f"{s.get('start', '')}-{s.get('end', '')}",
-                    "Unit": s.get("role", "ED"),
-                    "Type": s.get("shift_type", "Day"),
-                })
-            st.dataframe(pd.DataFrame(shift_rows), use_container_width=True, hide_index=True)
-        else:
-            st.caption("Schedule will appear here once published by your nurse manager.")
+        if _show_personal:
+            st.markdown("#### My Upcoming Shifts")
+            if nurse_shifts:
+                shift_rows = []
+                for s in sorted(nurse_shifts, key=lambda x: x.get("date", ""))[:7]:
+                    shift_rows.append({
+                        "Date": s.get("date", ""),
+                        "Time": f"{s.get('start', '')}-{s.get('end', '')}",
+                        "Unit": s.get("role", "ED"),
+                        "Type": s.get("shift_type", "Day"),
+                    })
+                st.dataframe(pd.DataFrame(shift_rows), use_container_width=True, hide_index=True)
+            else:
+                st.caption("Schedule will appear here once published by your nurse manager.")
 
-        # Quick actions
-        st.divider()
-        st.markdown("#### Quick Actions")
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            if st.button("Request PTO", key="nurse_pto", use_container_width=True):
-                st.session_state["show_nurse_pto"] = True
-        with col2:
-            if st.button("Report Sick", key="nurse_sick", use_container_width=True):
-                if tracker:
-                    tracker.report_sick_today(nurse_id)
-                    st.success("Sick day recorded. Feel better!")
-        with col3:
-            if st.button("Swap Shift", key="nurse_swap", use_container_width=True):
-                st.session_state["show_nurse_swap"] = True
-        with col4:
-            if st.button("Pick Up OT", key="nurse_ot", use_container_width=True):
-                st.session_state["show_nurse_ot"] = True
+        # Quick actions (staff nurse personal only)
+        if _show_personal:
+            st.divider()
+            st.markdown("#### Quick Actions")
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                if st.button("Request PTO", key="nurse_pto", use_container_width=True):
+                    st.session_state["show_nurse_pto"] = True
+            with col2:
+                if st.button("Report Sick", key="nurse_sick", use_container_width=True):
+                    if tracker:
+                        tracker.report_sick_today(nurse_id)
+                        st.success("Sick day recorded. Feel better!")
+            with col3:
+                if st.button("Swap Shift", key="nurse_swap", use_container_width=True):
+                    st.session_state["show_nurse_swap"] = True
+            with col4:
+                if st.button("Pick Up OT", key="nurse_ot", use_container_width=True):
+                    st.session_state["show_nurse_ot"] = True
 
         # OT pickup offers
         if st.session_state.get("show_nurse_ot"):
@@ -1291,7 +1296,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                            f"Dates: {swap_date} ↔ {swap_their_date}. Both safe.", "COMPLIANT")
                 st.session_state["show_nurse_swap"] = False
 
-        # Team on today
+        # Team on today (both roles see this)
         st.divider()
         st.markdown("#### Team On Shift Today")
         today_str = datetime.now().strftime("%Y-%m-%d")
