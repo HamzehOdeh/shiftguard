@@ -2662,6 +2662,51 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 content = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
                 st.markdown(f'<div class="chat-otto">{content}</div>', unsafe_allow_html=True)
 
+        # Otto swap action button (when AI suggests a swap)
+        if st.session_state.get("_otto_suggested_swap"):
+            _oss = st.session_state["_otto_suggested_swap"]
+            st.markdown(
+                f'<div style="background:#0c4a6e;border:1px solid #0ea5e9;border-radius:10px;padding:12px;margin:8px 0;">'
+                f'<strong style="color:#38bdf8;">Otto recommends:</strong> '
+                f'Swap <strong>{_oss["from"]}</strong> with <strong>{_oss["to"]}</strong> '
+                f'({_oss["to_hours"]}h this week, {_oss["to_remaining"]}h capacity remaining)</div>',
+                unsafe_allow_html=True,
+            )
+            _oss_col1, _oss_col2 = st.columns(2)
+            with _oss_col1:
+                if st.button("✅ Accept Swap", type="primary", key="otto_accept_swap", use_container_width=True):
+                    # Execute: find next available date and swap shifts
+                    _swap_from = _oss["from"]
+                    _swap_to = _oss["to"]
+                    _tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+                    # Find the from-resident's next shift and move it to the to-resident
+                    _from_obj = next((r for r in program.residents.values() if r.name == _swap_from), None)
+                    _to_obj = next((r for r in program.residents.values() if r.name == _swap_to), None)
+                    if _from_obj and _to_obj:
+                        _next_shift = next((s for s in sorted(_from_obj.daily_shifts, key=lambda x: x["date"]) if s["date"] >= _tomorrow), None)
+                        if _next_shift:
+                            _from_obj.daily_shifts.remove(_next_shift)
+                            _to_obj.daily_shifts.append(dict(_next_shift))
+                            log_action("OTTO_SWAP_EXECUTED", role, f"{_swap_from} → {_swap_to}",
+                                       f"Otto-initiated swap on {_next_shift['date']}. Confirmed by {role}.", "COMPLIANT")
+                            st.session_state["hc_chat_messages"].append({
+                                "role": "assistant",
+                                "content": f"✅ Done! Swapped {_swap_from}'s shift on {_next_shift['date']} to {_swap_to}. Schedule updated across all tabs.",
+                            })
+                            # Sync
+                            _sync_s = []
+                            for _r in program.residents.values():
+                                for _s in _r.daily_shifts:
+                                    _sync_s.append({"employee_id": _r.id, "name": _r.name, "role": _r.pgy_level, "date": _s["date"], "start": _s["start"], "end": _s["end"], "hours": _s.get("hours", 10), "shift_type": _s.get("type", "Day")})
+                            st.session_state["hc_schedule"]["shifts"] = _sync_s
+                    st.session_state["_otto_suggested_swap"] = None
+                    st.rerun()
+            with _oss_col2:
+                if st.button("Decline", key="otto_decline_swap", use_container_width=True):
+                    st.session_state["_otto_suggested_swap"] = None
+                    st.session_state["hc_chat_messages"].append({"role": "assistant", "content": "No problem — swap declined. Use the Daily Schedule tool if you'd like to pick a different partner or date."})
+                    st.rerun()
+
         # Handle suggestion button clicks
         selected_state = st.session_state.get("hospital_state_global", "Illinois")
         if "hc_chat_input" in st.session_state:
@@ -2679,6 +2724,8 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 )
             response = st.session_state["hc_ai_chat"].chat(suggestion_text)
             st.session_state["hc_chat_messages"].append({"role": "assistant", "content": response["message"]})
+            if response.get("suggested_swap"):
+                st.session_state["_otto_suggested_swap"] = response["suggested_swap"]
             st.rerun()
 
         # Chat input — styled form
@@ -2707,6 +2754,8 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             chat = st.session_state["hc_ai_chat"]
             response = chat.chat(user_input)
             st.session_state["hc_chat_messages"].append({"role": "assistant", "content": response["message"]})
+            if response.get("suggested_swap"):
+                st.session_state["_otto_suggested_swap"] = response["suggested_swap"]
             st.rerun()
 
     # ================================================================

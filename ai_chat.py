@@ -457,6 +457,7 @@ class AIChat:
 
             if eligible:
                 top3 = eligible[:3]
+                best = top3[0]
                 lines = ["Here are the **best swap candidates** right now:\n"]
                 for i, c in enumerate(top3, 1):
                     hrs = c.get("weekly_hours", 0)
@@ -467,10 +468,19 @@ class AIChat:
                         f"   Fatigue: {fatigue.upper()} | Consecutive days: {c.get('consecutive_days', 0)}\n"
                         f"   {'✅ SAFE to take extra shift' if remaining > 12 else '⚠️ Close to cap — short shift only'}\n"
                     )
-                lines.append("\n**How to swap:** Go to the Daily Schedule → Swap Days tool, select the day and the resident above. I've ranked them by availability and fairness.")
+                lines.append(f"\n**My recommendation:** {best.get('name', '?')} is the best fit (lowest hours, most capacity).")
+                lines.append("\nClick **Accept Swap** below to execute, or use the Daily Schedule tool for custom dates.")
                 if target_name:
                     lines.insert(0, f"Looking for swap partners for **{target_name}**:\n\n")
-                return {"message": "\n".join(lines)}
+                return {
+                    "message": "\n".join(lines),
+                    "suggested_swap": {
+                        "from": target_name or "Selected resident",
+                        "to": best.get("name", "?"),
+                        "to_hours": best.get("weekly_hours", 0),
+                        "to_remaining": max(0, 80 - best.get("weekly_hours", 0)),
+                    },
+                }
             else:
                 return {"message": "All residents are above 70h this week — no safe swap partners available without risking an ACGME violation. Consider deferring the swap to next week."}
         except Exception:
