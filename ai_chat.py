@@ -161,8 +161,10 @@ class AIChat:
                                      "holiday request", "vacation"]):
             return self._handle_time_off_request(msg)
 
-        # --- Swap requests ---
-        if any(kw in msg for kw in ["swap", "trade", "switch shift", "exchange"]):
+        # --- Swap / find coverage requests ---
+        if any(kw in msg for kw in ["swap", "trade", "switch shift", "exchange",
+                                     "find me coverage", "who can swap", "find someone",
+                                     "need coverage", "find a replacement"]):
             return self._handle_swap_query(msg)
 
         # --- What-if / impact questions ---
@@ -425,18 +427,61 @@ class AIChat:
         }
 
     def _handle_swap_query(self, msg):
-        """Handle shift swap intent."""
-        return {
-            "message": (
-                "To propose a shift swap, I need:\n\n"
-                "1. **Your shift date** you want to give up\n"
-                "2. **Who** you want to swap with\n"
-                "3. **Their shift date** you want to take\n\n"
-                "Example: \"Swap my Tuesday with James's Thursday\"\n\n"
-                "I'll check compliance for both of you, verify no violations are created, "
-                "and send the proposal to them for acceptance."
+        """Handle shift swap intent — find eligible partners and suggest top candidates."""
+        if not self.employees or not self.schedule_data.get("shifts"):
+            return {"message": "I need schedule data loaded to find swap partners. Generate a schedule first."}
+
+        ref_date = datetime.now()
+
+        # Try to identify who needs coverage or wants to swap
+        target_name = None
+        for emp in self.employees:
+            name_parts = emp.get("name", "").lower().split()
+            if any(part in msg for part in name_parts if len(part) > 2):
+                target_name = emp.get("name")
+                break
+
+        # Find candidates ranked by availability and fairness
+        try:
+            dashboards = get_all_employee_dashboards(
+                self.schedule_data["shifts"], self.employees, ref_date
             )
-        }
+            # Sort by lowest hours (most available)
+            available = sorted(dashboards, key=lambda d: d.get("weekly_hours", 0))
+
+            # Filter out anyone over 70h (too close to cap)
+            eligible = [d for d in available if d.get("weekly_hours", 0) < 70]
+
+            if target_name:
+                eligible = [d for d in eligible if d.get("name") != target_name]
+
+            if eligible:
+                top3 = eligible[:3]
+                lines = ["Here are the **best swap candidates** right now:\n"]
+                for i, c in enumerate(top3, 1):
+                    hrs = c.get("weekly_hours", 0)
+                    fatigue = c.get("fatigue_level", "green")
+                    remaining = max(0, 80 - hrs)
+                    lines.append(
+                        f"**{i}. {c.get('name', '?')}** — {hrs}h this week ({remaining}h remaining)\n"
+                        f"   Fatigue: {fatigue.upper()} | Consecutive days: {c.get('consecutive_days', 0)}\n"
+                        f"   {'✅ SAFE to take extra shift' if remaining > 12 else '⚠️ Close to cap — short shift only'}\n"
+                    )
+                lines.append("\n**How to swap:** Go to the Daily Schedule → Swap Days tool, select the day and the resident above. I've ranked them by availability and fairness.")
+                if target_name:
+                    lines.insert(0, f"Looking for swap partners for **{target_name}**:\n\n")
+                return {"message": "\n".join(lines)}
+            else:
+                return {"message": "All residents are above 70h this week — no safe swap partners available without risking an ACGME violation. Consider deferring the swap to next week."}
+        except Exception:
+            return {
+                "message": (
+                    "I can help find a swap partner. Based on the current schedule, here's what I suggest:\n\n"
+                    "Go to the **Daily Schedule** view and use the **Swap Days** tool — it shows each resident's "
+                    "availability and checks ACGME compliance automatically before confirming.\n\n"
+                    "Or tell me specifically: who needs to swap and which day?"
+                )
+            }
 
     def _handle_what_if(self, msg):
         """Handle what-if/impact questions."""

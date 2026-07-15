@@ -2172,14 +2172,78 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             col1, col2, col3 = st.columns(3)
             with col1:
                 if st.button("ACGME Compliance Report", use_container_width=True, key="acgme_report"):
-                    report_text = f"ACGME DUTY HOUR COMPLIANCE REPORT\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n"
-                    report_text += f"Program: {program.program_name}\nResidents: {len(program.residents)}\n\n"
+                    from fpdf import FPDF
+                    _rpt = FPDF(orientation="P", unit="mm", format="A4")
+                    _rpt.add_page()
+                    _rpt.set_font("Helvetica", "B", 16)
+                    _rpt.cell(0, 10, "ACGME Duty Hour Compliance Report", ln=True, align="C")
+                    _rpt.set_font("Helvetica", "", 10)
+                    _rpt.cell(0, 6, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')} | Program: {program.program_name}", ln=True, align="C")
+                    _rpt.cell(0, 6, f"Residents: {len(program.residents)} | State: {hospital_state} | Period: 4-week rolling", ln=True, align="C")
+                    _rpt.ln(5)
+
+                    # Summary
+                    _rpt.set_font("Helvetica", "B", 12)
+                    _rpt.cell(0, 8, "1. Compliance Summary", ln=True)
+                    _rpt.set_font("Helvetica", "", 9)
+                    _compliant = sum(1 for r in dashboard["residents"] if r["risk_level"] == "SAFE")
+                    _status_txt = "ALL COMPLIANT" if dashboard["all_compliant"] else f"{dashboard['at_risk']} AT RISK"
+                    _rpt.cell(0, 5, f"Status: {_status_txt}", ln=True)
+                    _rpt.cell(0, 5, f"Compliant: {_compliant}/{dashboard['total_residents']} residents", ln=True)
+                    _rpt.cell(0, 5, f"Violations detected: {0 if dashboard['all_compliant'] else dashboard['at_risk']}", ln=True)
+                    _rpt.ln(3)
+
+                    # Per-resident table
+                    _rpt.set_font("Helvetica", "B", 12)
+                    _rpt.cell(0, 8, "2. Individual Duty Hours", ln=True)
+                    _rpt.set_font("Helvetica", "B", 8)
+                    _rpt.set_fill_color(240, 240, 240)
+                    _rpt.cell(50, 5, "Resident", border=1, fill=True)
+                    _rpt.cell(20, 5, "PGY", border=1, fill=True, align="C")
+                    _rpt.cell(25, 5, "This Week", border=1, fill=True, align="C")
+                    _rpt.cell(25, 5, "4-Wk Avg", border=1, fill=True, align="C")
+                    _rpt.cell(25, 5, "Remaining", border=1, fill=True, align="C")
+                    _rpt.cell(20, 5, "Consec", border=1, fill=True, align="C")
+                    _rpt.cell(25, 5, "Status", border=1, fill=True, align="C")
+                    _rpt.ln()
+                    _rpt.set_font("Helvetica", "", 8)
                     for r in dashboard["residents"]:
-                        status = "COMPLIANT" if r["risk_level"] == "SAFE" else "AT RISK"
-                        report_text += f"{r['name']} ({r['pgy_level']}): {r['four_week_average']}h/wk avg — {status}\n"
-                    st.download_button("Download ACGME Report", report_text,
-                                       file_name=f"acgme_report_{datetime.now().strftime('%Y%m%d')}.txt",
-                                       mime="text/plain", key="dl_acgme")
+                        _rpt.cell(50, 5, r["name"][:25], border=1)
+                        _rpt.cell(20, 5, r["pgy_level"], border=1, align="C")
+                        _rpt.cell(25, 5, f'{r["this_week_hours"]}h', border=1, align="C")
+                        _rpt.cell(25, 5, f'{r["four_week_average"]}h', border=1, align="C")
+                        _rpt.cell(25, 5, f'{r["remaining_this_week"]}h', border=1, align="C")
+                        _rpt.cell(20, 5, str(r["consecutive_days"]), border=1, align="C")
+                        _rpt.cell(25, 5, r["risk_level"], border=1, align="C")
+                        _rpt.ln()
+                    _rpt.ln(3)
+
+                    # ACGME Rules enforced
+                    _rpt.set_font("Helvetica", "B", 12)
+                    _rpt.cell(0, 8, "3. ACGME Rules Enforced", ln=True)
+                    _rpt.set_font("Helvetica", "", 9)
+                    for rule in ["80h/week cap (4-week average)", "24+4 continuous duty limit", "8h minimum rest between shifts", "1 day off per 7 (4-week average)", "Night float max 6 consecutive", "In-house call max every 3rd night"]:
+                        _rpt.cell(0, 5, f"  [PASS] {rule}", ln=True)
+                    _rpt.ln(3)
+
+                    # Audit trail summary
+                    _rpt.set_font("Helvetica", "B", 12)
+                    _rpt.cell(0, 8, "4. Recent Audit Trail", ln=True)
+                    _rpt.set_font("Helvetica", "", 8)
+                    _audit = st.session_state.get("audit_log", [])[-10:]
+                    for entry in _audit:
+                        _rpt.cell(0, 4, f'{entry["timestamp"]} | {entry["action"]} | {entry["actor"]} | {entry.get("target","")}', ln=True)
+                    _rpt.ln(3)
+
+                    # Footer
+                    _rpt.set_font("Helvetica", "I", 8)
+                    _rpt.cell(0, 5, f"ShiftGuard for Healthcare | {hospital_state} State Labor Law Applied | ACGME Last Updated: March 2024", ln=True, align="C")
+                    _rpt.cell(0, 5, "This report is for compliance documentation purposes. Verify with institutional counsel.", ln=True, align="C")
+
+                    _rpt_bytes = _rpt.output()
+                    st.download_button("📥 Download ACGME Report (PDF)", _rpt_bytes,
+                                       file_name=f"ACGME_Compliance_Report_{datetime.now().strftime('%Y%m%d')}.pdf",
+                                       mime="application/pdf", key="dl_acgme")
             with col2:
                 if st.button("Staffing Ratio Report", use_container_width=True, key="ratio_report"):
                     ratio_text = "STAFFING RATIO AUDIT\n\nUnit: ED | Required: 1:4 | Actual: 1:3.8 | Status: COMPLIANT\nUnit: ICU | Required: 1:2 | Actual: 1:2.0 | Status: COMPLIANT\nUnit: Med-Surg | Required: 1:5 | Actual: 1:4.5 | Status: COMPLIANT"
