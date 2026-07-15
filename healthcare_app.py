@@ -3051,6 +3051,51 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             # Give everyone at least 1 day off per 7 (ACGME)
                             if d > 0 and d % 6 == 0 and res.daily_shifts and res.daily_shifts[-1]["date"] == day.strftime("%Y-%m-%d"):
                                 res.daily_shifts.pop()
+                    # Holiday alternation: split residents 50/50 for Thanksgiving/Christmas
+                    _all_res = list(program.residents.values())
+                    if "holiday_assignments" not in st.session_state:
+                        st.session_state["holiday_assignments"] = {}
+                    for i, res in enumerate(_all_res):
+                        if res.name not in st.session_state["holiday_assignments"]:
+                            st.session_state["holiday_assignments"][res.name] = "Thanksgiving" if i % 2 == 0 else "Christmas"
+                    # Calculate holiday week dates for the academic year
+                    _acad_year = int(str(gen_start.year if isinstance(gen_start, datetime) else gen_start.year))
+                    # Thanksgiving = 4th Thursday of November
+                    _nov1 = datetime(_acad_year, 11, 1)
+                    _thanksgiving = _nov1 + timedelta(days=(3 - _nov1.weekday() + 7) % 7 + 21)
+                    _thanksgiving_week_start = _thanksgiving - timedelta(days=_thanksgiving.weekday())
+                    # Christmas week
+                    _christmas_week_start = datetime(_acad_year, 12, 22)
+                    # Mark holiday weeks in daily_shifts (remove shifts for residents who have that week OFF)
+                    for res in _all_res:
+                        assignment = st.session_state["holiday_assignments"].get(res.name, "Thanksgiving")
+                        if assignment == "Thanksgiving":
+                            # Gets Christmas week OFF — remove shifts in Christmas week
+                            off_start = _christmas_week_start.strftime("%Y-%m-%d")
+                            off_end = (_christmas_week_start + timedelta(days=6)).strftime("%Y-%m-%d")
+                        else:
+                            # Gets Thanksgiving week OFF — remove shifts in Thanksgiving week
+                            off_start = _thanksgiving_week_start.strftime("%Y-%m-%d")
+                            off_end = (_thanksgiving_week_start + timedelta(days=6)).strftime("%Y-%m-%d")
+                        res.daily_shifts = [s for s in res.daily_shifts if not (off_start <= s["date"] <= off_end)]
+                        # Add a marker for the holiday week they're working
+                        if assignment == "Thanksgiving":
+                            _work_start = _thanksgiving_week_start.strftime("%Y-%m-%d")
+                            _work_end = (_thanksgiving_week_start + timedelta(days=6)).strftime("%Y-%m-%d")
+                        else:
+                            _work_start = _christmas_week_start.strftime("%Y-%m-%d")
+                            _work_end = (_christmas_week_start + timedelta(days=6)).strftime("%Y-%m-%d")
+                        # Ensure they have shifts during their working holiday week
+                        for hd in range(7):
+                            h_day = datetime.strptime(_work_start, "%Y-%m-%d") + timedelta(days=hd)
+                            if not any(s["date"] == h_day.strftime("%Y-%m-%d") for s in res.daily_shifts):
+                                if h_day.weekday() < 5:
+                                    res.daily_shifts.append({
+                                        "date": h_day.strftime("%Y-%m-%d"),
+                                        "start": "07:00", "end": "17:00", "hours": 10,
+                                        "type": "clinical", "is_call": False,
+                                    })
+
                     st.session_state["year_sched_generated"] = True
                     st.session_state["residency_program"] = program
                     # Sync program data into schedule/employees for cross-tab consistency
@@ -3230,22 +3275,98 @@ th {{ background: #f0f0f0; font-weight: bold; }}
 
                     st.caption("10-day view sorted by PGY level. Jeopardy backup marked with 🔴.")
 
-                    # Today's jeopardy card
+                    # Jeopardy eligibility logic
+                    def _is_jeopardy_eligible(res, check_date_str):
+                        """Check if resident is eligible for jeopardy backup on a given date."""
+                        # Not eligible if working that day
+                        if any(s["date"] == check_date_str for s in res.daily_shifts):
+                            return False, "Already working"
+                        # Not eligible if on vacation/leave
+                        approved_pto = st.session_state.get("approved_pto", [])
+                        for pto in approved_pto:
+                            if pto.get("employee", "") == res.name or pto.get("employee", "") == f"{res.name} ({res.pgy_level})":
+                                if pto.get("start", "") <= check_date_str <= pto.get("end", ""):
+                                    return False, "On PTO/vacation"
+                        # Not eligible if would exceed 80h cap
+                        week_start = (datetime.strptime(check_date_str, "%Y-%m-%d") - timedelta(days=datetime.strptime(check_date_str, "%Y-%m-%d").weekday())).strftime("%Y-%m-%d")
+                        week_hours = sum(s.get("hours", 10) for s in res.daily_shifts if s["date"] >= week_start and s["date"] <= check_date_str)
+                        if week_hours + 12 > 80:
+                            return False, "Would exceed 80h cap"
+                        # Not eligible if worked night shift yesterday (post-call rest)
+                        prev_day = (datetime.strptime(check_date_str, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+                        prev_shift = next((s for s in res.daily_shifts if s["date"] == prev_day), None)
+                        if prev_shift and "night" in prev_shift.get("type", "").lower():
+                            return False, "Post-call (night before)"
+                        return True, "Available"
+
+                    # Today's jeopardy card with eligibility
                     _today_str = datetime.now().strftime("%Y-%m-%d")
                     _today_jeopardy = jeopardy.jeopardy_assignments.get(f"{_today_str}_day", None)
                     _jeopardy_name = ""
+                    _jeopardy_eligible = True
                     if _today_jeopardy:
                         _j_res = jeopardy.residents.get(_today_jeopardy, {})
                         _jeopardy_name = _j_res.get("name", _today_jeopardy)
-                    st.markdown(
-                        f'<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;'
-                        f'padding:12px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">'
-                        f'<div><strong style="color:white;">🔴 Today\'s Jeopardy Backup:</strong> '
-                        f'<span style="color:#f87171;font-weight:700;">{_jeopardy_name or "Not assigned"}</span></div>'
-                        f'<span style="color:#64748b;font-size:0.8em;">{datetime.now().strftime("%A, %b %d")}</span>'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
+                        # Check if assigned backup is actually eligible
+                        _j_res_obj = next((r for r in program.residents.values() if r.name == _jeopardy_name), None)
+                        if _j_res_obj:
+                            _jeopardy_eligible, _j_reason = _is_jeopardy_eligible(_j_res_obj, _today_str)
+
+                    # Count upcoming days with no eligible backup
+                    _no_backup_days = []
+                    for _jd in range(7):
+                        _jd_str = (datetime.now() + timedelta(days=_jd)).strftime("%Y-%m-%d")
+                        _jd_key = f"{_jd_str}_day"
+                        _jd_assigned = jeopardy.jeopardy_assignments.get(_jd_key)
+                        if not _jd_assigned:
+                            # Check if ANY resident is eligible
+                            _any_eligible = any(_is_jeopardy_eligible(r, _jd_str)[0] for r in program.residents.values())
+                            if not _any_eligible:
+                                _no_backup_days.append((datetime.now() + timedelta(days=_jd)).strftime("%a %b %d"))
+
+                    # Display card
+                    if _jeopardy_name and _jeopardy_eligible:
+                        st.markdown(
+                            f'<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;'
+                            f'padding:12px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">'
+                            f'<div><strong style="color:white;">🔴 Today\'s Backup:</strong> '
+                            f'<span style="color:#f87171;font-weight:700;">{_jeopardy_name}</span>'
+                            f'<span style="color:#4ade80;font-size:0.8em;margin-left:8px;">✓ Eligible</span></div>'
+                            f'<span style="color:#64748b;font-size:0.8em;">{datetime.now().strftime("%A, %b %d")}</span>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+                    elif _jeopardy_name and not _jeopardy_eligible:
+                        st.markdown(
+                            f'<div style="background:#2d1b1b;border:1px solid #dc354555;border-radius:10px;'
+                            f'padding:12px 16px;margin-bottom:12px;">'
+                            f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+                            f'<div>⚠️ <strong style="color:#fbbf24;">Backup issue:</strong> '
+                            f'<span style="color:white;">{_jeopardy_name}</span> assigned but '
+                            f'<strong style="color:#f87171;">NOT eligible</strong> ({_j_reason})</div>'
+                            f'<span style="color:#64748b;font-size:0.8em;">{datetime.now().strftime("%A, %b %d")}</span></div>'
+                            f'<div style="color:#94a3b8;font-size:0.85em;margin-top:4px;">Reassign backup or find alternative coverage.</div>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.markdown(
+                            f'<div style="background:#2d1b1b;border:1px solid #dc354555;border-radius:10px;'
+                            f'padding:12px 16px;margin-bottom:12px;">'
+                            f'⚠️ <strong style="color:#f87171;">No jeopardy backup assigned for today!</strong>'
+                            f'<span style="color:#94a3b8;font-size:0.85em;"> — Generate schedule to auto-assign.</span>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+
+                    # Alert for upcoming gaps
+                    if _no_backup_days:
+                        st.markdown(
+                            f'<div style="background:#713f1222;border:1px solid #fbbf2444;border-radius:8px;padding:8px 12px;'
+                            f'font-size:0.85em;color:#fbbf24;margin-bottom:8px;">'
+                            f'⚠️ <strong>No eligible backup</strong> on: {", ".join(_no_backup_days)}. Coverage gap — assign manually.</div>',
+                            unsafe_allow_html=True,
+                        )
 
                     # Build 10-day grid from selected date
                     _ten_days = []
