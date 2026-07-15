@@ -945,35 +945,49 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         f'ACGME-safe if activated.</div>',
                         unsafe_allow_html=True,
                     )
+                    # Confirmation flow for coverage assignment
                     if st.button(f"Assign {rec['resident']}", key="assign_cover"):
-                        # Actually add the shift to the resident's schedule
+                        st.session_state["_confirm_coverage"] = rec
+
+                    if st.session_state.get("_confirm_coverage"):
+                        _cc = st.session_state["_confirm_coverage"]
                         sick_date_str = st.session_state.get("sick_call_date", datetime.now().strftime("%Y-%m-%d"))
-                        for res in program.residents.values():
-                            if res.name == rec["resident"]:
-                                res.daily_shifts.append({
-                                    "date": sick_date_str,
-                                    "start": "07:00",
-                                    "end": "19:00",
-                                    "type": "coverage",
-                                    "is_call": False,
-                                    "note": "Jeopardy coverage assignment",
-                                })
-                                break
-                        st.success(f"Assigned! {rec['resident']} notified. Shift added to their schedule.")
-                        log_action("COVERAGE_ASSIGNED", role, rec["resident"],
-                                   f"Coverage for {sick_date_str}. Jeopardy backup activated.", "COMPLIANT")
-                        # Sync schedule for cross-tab consistency
-                        _cov_shifts = []
-                        for _cr in program.residents.values():
-                            for _cs in _cr.daily_shifts:
-                                _cov_shifts.append({
-                                    "employee_id": _cr.id, "name": _cr.name, "role": _cr.pgy_level,
-                                    "date": _cs["date"], "start": _cs["start"], "end": _cs["end"],
-                                    "hours": _cs.get("hours", 10), "shift_type": _cs.get("type", "Day"),
-                                })
-                        st.session_state["hc_schedule"]["shifts"] = _cov_shifts
-                        st.session_state["sick_call_result"] = None
-                        st.rerun()
+                        st.markdown(
+                            f'<div style="background:#0c4a6e;border:1px solid #0ea5e9;border-radius:10px;padding:12px;margin:8px 0;">'
+                            f'<strong style="color:#38bdf8;">Confirm:</strong> Assign <strong>{_cc["resident"]}</strong> '
+                            f'to cover {sick_date_str} (07:00-19:00)?</div>',
+                            unsafe_allow_html=True,
+                        )
+                        _cc_col1, _cc_col2 = st.columns(2)
+                        with _cc_col1:
+                            if st.button("✅ Yes, assign", type="primary", key="confirm_cover_yes"):
+                                for res in program.residents.values():
+                                    if res.name == _cc["resident"]:
+                                        res.daily_shifts.append({
+                                            "date": sick_date_str,
+                                            "start": "07:00", "end": "19:00", "hours": 12,
+                                            "type": "coverage", "is_call": False,
+                                        })
+                                        break
+                                log_action("COVERAGE_ASSIGNED", role, _cc["resident"],
+                                           f"Coverage for {sick_date_str}. Confirmed by {role}.", "COMPLIANT")
+                                _cov_shifts = []
+                                for _cr in program.residents.values():
+                                    for _cs in _cr.daily_shifts:
+                                        _cov_shifts.append({
+                                            "employee_id": _cr.id, "name": _cr.name, "role": _cr.pgy_level,
+                                            "date": _cs["date"], "start": _cs["start"], "end": _cs["end"],
+                                            "hours": _cs.get("hours", 10), "shift_type": _cs.get("type", "Day"),
+                                        })
+                                st.session_state["hc_schedule"]["shifts"] = _cov_shifts
+                                st.session_state["sick_call_result"] = None
+                                st.session_state["_confirm_coverage"] = None
+                                st.success(f"✅ Confirmed! {_cc['resident']} assigned to {sick_date_str}.")
+                                st.rerun()
+                        with _cc_col2:
+                            if st.button("Cancel", key="confirm_cover_no"):
+                                st.session_state["_confirm_coverage"] = None
+                                st.rerun()
 
         with adj_col2:
             st.markdown("**Swap Compliance Check**")
@@ -1067,13 +1081,31 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 }
                 check = program.check_swap_compliance(to_id, proposed)
                 if check["safe"]:
-                    st.success(f"✅ Moved! {move_from}'s shift on {move_date.strftime('%b %d')} → {move_to}. ACGME: safe.")
-                    log_action("SHIFT_REASSIGNED", role, move_to,
-                               f"From {move_from} to {move_to} on {move_date}. ACGME pre-check: SAFE.", "COMPLIANT")
+                    st.session_state["_confirm_move"] = {"from": move_from, "to": move_to, "date": move_date, "to_id": to_id, "proposed": proposed}
                 else:
                     st.error(f"❌ Cannot move — {check['explanation']}")
                     log_action("SHIFT_MOVE_DENIED", role, move_to,
                                f"Attempted {move_from}→{move_to} on {move_date}. DENIED: {check['explanation']}", "VIOLATION_PREVENTED")
+
+        if st.session_state.get("_confirm_move"):
+            _cm = st.session_state["_confirm_move"]
+            st.markdown(
+                f'<div style="background:#0c4a6e;border:1px solid #0ea5e9;border-radius:10px;padding:12px;margin:8px 0;">'
+                f'<strong style="color:#38bdf8;">Confirm:</strong> Move shift from <strong>{_cm["from"]}</strong> → '
+                f'<strong>{_cm["to"]}</strong> on {_cm["date"].strftime("%b %d")}? ACGME check: PASS</div>',
+                unsafe_allow_html=True,
+            )
+            _cm_col1, _cm_col2 = st.columns(2)
+            with _cm_col1:
+                if st.button("✅ Yes, move shift", type="primary", key="confirm_move_yes"):
+                    st.success(f"✅ Moved! {_cm['from']}'s shift on {_cm['date'].strftime('%b %d')} → {_cm['to']}.")
+                    log_action("SHIFT_REASSIGNED", role, _cm["to"],
+                               f"From {_cm['from']} to {_cm['to']} on {_cm['date']}. Confirmed.", "COMPLIANT")
+                    st.session_state["_confirm_move"] = None
+            with _cm_col2:
+                if st.button("Cancel", key="confirm_move_no"):
+                    st.session_state["_confirm_move"] = None
+                    st.rerun()
 
         # Procedure Logging
         st.divider()
@@ -1422,10 +1454,25 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("Publish Schedule", type="primary", key="pub_nurse_sched"):
-                        st.session_state["nurse_schedule_published"] = True
-                        st.session_state["nurse_schedule_pub_date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-                        st.success("Published! All nurses notified via app + SMS.")
-                        log_action("SCHEDULE_PUBLISHED", "Nurse Manager", unit_name, f"{days_rn}D/{nights_rn}N schedule published", "COMPLIANT")
+                        st.session_state["_confirm_pub_nurse"] = True
+                    if st.session_state.get("_confirm_pub_nurse"):
+                        st.markdown(
+                            '<div style="background:#0c4a6e;border:1px solid #0ea5e9;border-radius:10px;padding:12px;margin:8px 0;">'
+                            '<strong style="color:#38bdf8;">Confirm:</strong> Publish this schedule? All nurses will be notified.</div>',
+                            unsafe_allow_html=True,
+                        )
+                        _pn1, _pn2 = st.columns(2)
+                        with _pn1:
+                            if st.button("✅ Yes, publish", type="primary", key="confirm_pub_nurse_yes"):
+                                st.session_state["nurse_schedule_published"] = True
+                                st.session_state["nurse_schedule_pub_date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+                                st.session_state["_confirm_pub_nurse"] = None
+                                st.success("Published! All nurses notified.")
+                                log_action("SCHEDULE_PUBLISHED", "Nurse Manager", unit_name, f"{days_rn}D/{nights_rn}N schedule published", "COMPLIANT")
+                        with _pn2:
+                            if st.button("Cancel", key="confirm_pub_nurse_no"):
+                                st.session_state["_confirm_pub_nurse"] = None
+                                st.rerun()
                 with col2:
                     if st.button("Adjust & Regenerate", key="regen_nurse_sched"):
                         st.session_state["nurse_sched_generated"] = False
@@ -1809,16 +1856,32 @@ th {{ background: #f0f0f0; font-weight: bold; }}
             gap_date = (datetime.now() + timedelta(days=5)).strftime("%b %d")
             gap_day = (datetime.now() + timedelta(days=5)).strftime("%A")
             if st.button(f"Assign Dr. Park to {gap_date} Night", type="primary", key="assign_att_gap"):
-                # Update the schedule
-                for slot in st.session_state.get("attending_schedule", []):
-                    if slot["Day"] == gap_day:
-                        slot["Attending"] = "Dr. Park"
-                        slot["Time"] = "19:00-07:00"
-                        break
-                st.success(f"Assigned! Dr. Park notified for {gap_date} Night coverage (19:00-07:00).")
-                log_action("ATTENDING_ASSIGNED", role, "Dr. Park", f"Assigned to {gap_date} ({gap_day}) Night coverage gap", "COMPLIANT")
-                st.session_state["att_search_done"] = False
-                st.rerun()
+                st.session_state["_confirm_att"] = {"name": "Dr. Park", "date": gap_date, "day": gap_day}
+            if st.session_state.get("_confirm_att"):
+                _ca = st.session_state["_confirm_att"]
+                st.markdown(
+                    f'<div style="background:#0c4a6e;border:1px solid #0ea5e9;border-radius:10px;padding:12px;margin:8px 0;">'
+                    f'<strong style="color:#38bdf8;">Confirm:</strong> Assign <strong>{_ca["name"]}</strong> '
+                    f'to {_ca["date"]} ({_ca["day"]}) Night shift (19:00-07:00)?</div>',
+                    unsafe_allow_html=True,
+                )
+                _ca1, _ca2 = st.columns(2)
+                with _ca1:
+                    if st.button("✅ Yes, assign", type="primary", key="confirm_att_yes"):
+                        for slot in st.session_state.get("attending_schedule", []):
+                            if slot["Day"] == _ca["day"]:
+                                slot["Attending"] = _ca["name"]
+                                slot["Time"] = "19:00-07:00"
+                                break
+                        log_action("ATTENDING_ASSIGNED", role, _ca["name"], f"Assigned to {_ca['date']} ({_ca['day']}) Night. Confirmed.", "COMPLIANT")
+                        st.session_state["att_search_done"] = False
+                        st.session_state["_confirm_att"] = None
+                        st.success(f"✅ Confirmed! {_ca['name']} assigned to {_ca['date']} Night.")
+                        st.rerun()
+                with _ca2:
+                    if st.button("Cancel", key="confirm_att_no"):
+                        st.session_state["_confirm_att"] = None
+                        st.rerun()
 
         # Moonlighting tracker
         st.divider()
@@ -3083,11 +3146,27 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         if st.button("Publish Schedule", type="primary", key="publish_sched", use_container_width=True):
-                            st.session_state["residency_schedule_published"] = True
-                            st.session_state["residency_schedule_pub_date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-                            st.success("Published! Schedule is now live. Residents can view in My Schedule tab.")
-                            log_action("SCHEDULE_PUBLISHED", role, "Residency Year Schedule",
-                                       f"{len(residents)} residents, {len(rotations)} rotations. All ACGME rules passed.", "COMPLIANT")
+                            st.session_state["_confirm_pub_res"] = True
+                    if st.session_state.get("_confirm_pub_res"):
+                        st.markdown(
+                            f'<div style="background:#0c4a6e;border:1px solid #0ea5e9;border-radius:10px;padding:12px;margin:8px 0;">'
+                            f'<strong style="color:#38bdf8;">Confirm:</strong> Publish schedule for {len(residents)} residents? '
+                            f'This makes it live and visible to all.</div>',
+                            unsafe_allow_html=True,
+                        )
+                        _pr1, _pr2 = st.columns(2)
+                        with _pr1:
+                            if st.button("✅ Yes, publish", type="primary", key="confirm_pub_res_yes"):
+                                st.session_state["residency_schedule_published"] = True
+                                st.session_state["residency_schedule_pub_date"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+                                st.session_state["_confirm_pub_res"] = None
+                                st.success("Published! Schedule is now live. Residents can view in My Schedule tab.")
+                                log_action("SCHEDULE_PUBLISHED", role, "Residency Year Schedule",
+                                           f"{len(residents)} residents, {len(rotations)} rotations. All ACGME rules passed.", "COMPLIANT")
+                        with _pr2:
+                            if st.button("Cancel", key="confirm_pub_res_no"):
+                                st.session_state["_confirm_pub_res"] = None
+                                st.rerun()
                     with col2:
                         if st.button("Adjust & Regenerate", key="regen", use_container_width=True):
                             st.session_state["year_sched_generated"] = False
