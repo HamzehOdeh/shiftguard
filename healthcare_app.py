@@ -3312,7 +3312,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                         st.markdown(_wv_html, unsafe_allow_html=True)
 
                         # Expandable week detail
-                        with st.expander("🔍 Click to see day breakdown for a specific week"):
+                        with st.expander("🔍 View week details & swap days"):
                             _exp_col1, _exp_col2 = st.columns(2)
                             with _exp_col1:
                                 _exp_res = st.selectbox("Resident:", [r.name for r in _wv_sorted], key="wv_detail_res")
@@ -3343,6 +3343,55 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                     )
                                 _exp_html += '</div>'
                                 st.markdown(_exp_html, unsafe_allow_html=True)
+
+                                # Quick swap within this week
+                                st.markdown("---")
+                                st.markdown("**↔ Swap a day this week**")
+                                _wk_dates = [(_exp_ws + timedelta(days=d)).strftime("%a %b %d") for d in range(7)]
+                                _ws_col1, _ws_col2 = st.columns(2)
+                                with _ws_col1:
+                                    _ws_day = st.selectbox("Day to swap:", _wk_dates, key="wv_swap_day")
+                                    _ws_date_str = (_exp_ws + timedelta(days=_wk_dates.index(_ws_day))).strftime("%Y-%m-%d")
+                                with _ws_col2:
+                                    _ws_other = st.selectbox("Swap with:", [r.name for r in _wv_sorted if r.name != _exp_res], key="wv_swap_other")
+
+                                # Preview
+                                _ws_other_obj = next((r for r in _wv_sorted if r.name == _ws_other), None)
+                                _ws_shift_a = next((s for s in _exp_res_obj.daily_shifts if s.get("date") == _ws_date_str), None)
+                                _ws_shift_b = next((s for s in _ws_other_obj.daily_shifts if s.get("date") == _ws_date_str), None) if _ws_other_obj else None
+                                _ws_label_a = f'{_ws_shift_a["type"].replace("_"," ").title()} {_ws_shift_a.get("hours",10)}h' if _ws_shift_a else "Off"
+                                _ws_label_b = f'{_ws_shift_b["type"].replace("_"," ").title()} {_ws_shift_b.get("hours",10)}h' if _ws_shift_b else "Off"
+
+                                st.markdown(
+                                    f'<div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px;margin:8px 0;font-size:0.9em;">'
+                                    f'<strong>{_exp_res}</strong> ({_ws_label_a}) ↔ <strong>{_ws_other}</strong> ({_ws_label_b}) on {_ws_day}</div>',
+                                    unsafe_allow_html=True,
+                                )
+
+                                _ws_btn_col1, _ws_btn_col2 = st.columns(2)
+                                with _ws_btn_col1:
+                                    if st.button("✅ Confirm Swap", type="primary", key="wv_confirm_swap"):
+                                        # Execute swap
+                                        if _ws_shift_a and _ws_other_obj:
+                                            _exp_res_obj.daily_shifts.remove(_ws_shift_a)
+                                            _ws_other_obj.daily_shifts.append(dict(_ws_shift_a))
+                                        if _ws_shift_b and _ws_other_obj:
+                                            _ws_other_obj.daily_shifts.remove(_ws_shift_b)
+                                            _exp_res_obj.daily_shifts.append(dict(_ws_shift_b))
+                                        # Sync
+                                        _sync_s = []
+                                        for _r in program.residents.values():
+                                            for _s in _r.daily_shifts:
+                                                _sync_s.append({"employee_id": _r.id, "name": _r.name, "role": _r.pgy_level, "date": _s["date"], "start": _s["start"], "end": _s["end"], "hours": _s.get("hours", 10), "shift_type": _s.get("type", "Day")})
+                                        st.session_state["hc_schedule"]["shifts"] = _sync_s
+                                        if "session_swaps" not in st.session_state:
+                                            st.session_state["session_swaps"] = []
+                                        st.session_state["session_swaps"].append({"time": datetime.now().strftime("%H:%M"), "month": _exp_ws.strftime("%b"), "res_a": _exp_res, "rot_a": _ws_label_a, "res_b": _ws_other, "rot_b": _ws_label_b})
+                                        log_action("DAY_SWAP", role, f"{_exp_res} ↔ {_ws_other}", f"{_ws_day}: {_ws_label_a} ↔ {_ws_label_b}. Confirmed.", "COMPLIANT")
+                                        st.success(f"✅ Swapped! {_exp_res} ↔ {_ws_other} on {_ws_day}")
+                                        st.rerun()
+                                with _ws_btn_col2:
+                                    st.button("Cancel", key="wv_cancel_swap")
 
                     else:
                         # 10-Day Daily View (default)
