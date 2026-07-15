@@ -3237,13 +3237,123 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             unsafe_allow_html=True,
                         )
 
-                    # ── Daily Schedule View ──
+                    # ── Schedule View ──
                     st.divider()
-                    st.markdown("#### 📋 Daily Schedule")
+                    _sched_view = st.radio("View:", ["📋 10-Day (Daily)", "📅 4-Week (Weekly)"], horizontal=True, key="sched_view_toggle")
 
-                    # Navigation arrows + date picker
+                    if _sched_view == "📅 4-Week (Weekly)":
+                        # Weekly view: 4 weeks, dominant rotation per week + mixed indicator
+                        st.caption("Shows dominant rotation per week. ● = mixed week (click to expand).")
+
+                        _wv_start = datetime.now() - timedelta(days=datetime.now().weekday())  # This Monday
+                        _wv_sorted = sorted(program.residents.values(), key=lambda r: r.pgy_level)
+                        _wv_pgy_groups = {}
+                        for res in _wv_sorted:
+                            if res.pgy_level not in _wv_pgy_groups:
+                                _wv_pgy_groups[res.pgy_level] = []
+                            _wv_pgy_groups[res.pgy_level].append(res)
+
+                        # Week headers
+                        _wv_weeks = []
+                        for w in range(4):
+                            ws = _wv_start + timedelta(weeks=w)
+                            _wv_weeks.append(ws)
+
+                        _rot_colors = {
+                            "clinical": "#0ea5e9", "night_float": "#6366f1", "coverage": "#28a745",
+                            "elective": "#fbbf24", "research": "#94a3b8", "off": "#334155",
+                        }
+
+                        _wv_html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.8em;">'
+                        _wv_html += '<tr><th style="padding:8px;text-align:left;color:#94a3b8;border-bottom:2px solid #334155;">Resident</th>'
+                        for ws in _wv_weeks:
+                            we = ws + timedelta(days=6)
+                            _wv_html += f'<th style="padding:8px;text-align:center;color:#94a3b8;border-bottom:2px solid #334155;min-width:130px;">Week of {ws.strftime("%b %d")}<br><span style="font-size:0.85em;font-weight:normal;">{ws.strftime("%b %d")}–{we.strftime("%b %d")}</span></th>'
+                        _wv_html += '</tr>'
+
+                        # Track which cell is expanded
+                        if "_wv_expand" not in st.session_state:
+                            st.session_state["_wv_expand"] = None
+
+                        for pgy, pgy_res in _wv_pgy_groups.items():
+                            _wv_html += f'<tr><td colspan="5" style="padding:4px 8px;background:#0f172a;color:#64748b;font-weight:700;border-bottom:1px solid #334155;">── {pgy} ──</td></tr>'
+                            for res in pgy_res:
+                                _wv_html += '<tr>'
+                                _wv_html += f'<td style="padding:6px 8px;border-bottom:1px solid #1e293b;white-space:nowrap;"><strong style="color:white;">{res.name}</strong></td>'
+                                for wi, ws in enumerate(_wv_weeks):
+                                    # Get all shifts this week
+                                    week_dates = [(ws + timedelta(days=d)).strftime("%Y-%m-%d") for d in range(7)]
+                                    week_shifts = [s for s in res.daily_shifts if s.get("date") in week_dates]
+                                    total_hours = sum(s.get("hours", 10) for s in week_shifts)
+
+                                    if not week_shifts:
+                                        _wv_html += '<td style="padding:4px;text-align:center;border-bottom:1px solid #1e293b;"><span style="color:#4b5563;">Off</span></td>'
+                                    else:
+                                        # Find dominant rotation
+                                        type_counts = {}
+                                        for s in week_shifts:
+                                            t = s.get("type", "clinical")
+                                            type_counts[t] = type_counts.get(t, 0) + 1
+                                        dominant = max(type_counts, key=type_counts.get)
+                                        is_mixed = len(type_counts) > 1
+                                        color = _rot_colors.get(dominant, "#0ea5e9")
+                                        label = dominant.replace("_", " ").title()[:10]
+                                        mixed_dot = ' <span style="color:#fbbf24;">●</span>' if is_mixed else ""
+                                        _wv_html += (
+                                            f'<td style="padding:4px;text-align:center;border-bottom:1px solid #1e293b;">'
+                                            f'<div style="background:{color}22;border:1px solid {color};border-radius:6px;padding:4px;">'
+                                            f'<span style="color:{color};font-weight:600;">{label}{mixed_dot}</span>'
+                                            f'<div style="color:#64748b;font-size:0.85em;">{total_hours}h / {len(week_shifts)}d</div>'
+                                            f'</div></td>'
+                                        )
+                                _wv_html += '</tr>'
+                        _wv_html += '</table></div>'
+                        _wv_html += '<div style="color:#94a3b8;font-size:0.75em;margin-top:6px;">● = mixed week (multiple rotations). Hours shown as total/days worked.</div>'
+                        st.markdown(_wv_html, unsafe_allow_html=True)
+
+                        # Expandable week detail
+                        with st.expander("🔍 Click to see day breakdown for a specific week"):
+                            _exp_col1, _exp_col2 = st.columns(2)
+                            with _exp_col1:
+                                _exp_res = st.selectbox("Resident:", [r.name for r in _wv_sorted], key="wv_detail_res")
+                            with _exp_col2:
+                                _exp_week = st.selectbox("Week:", [f"Week of {ws.strftime('%b %d')}" for ws in _wv_weeks], key="wv_detail_week")
+                            _exp_wi = [f"Week of {ws.strftime('%b %d')}" for ws in _wv_weeks].index(_exp_week)
+                            _exp_ws = _wv_weeks[_exp_wi]
+                            _exp_res_obj = next((r for r in _wv_sorted if r.name == _exp_res), None)
+                            if _exp_res_obj:
+                                _exp_html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px;">'
+                                for d in range(7):
+                                    _ed = _exp_ws + timedelta(days=d)
+                                    _ed_str = _ed.strftime("%Y-%m-%d")
+                                    _ed_shift = next((s for s in _exp_res_obj.daily_shifts if s.get("date") == _ed_str), None)
+                                    if _ed_shift:
+                                        _et = _ed_shift.get("type", "clinical")
+                                        _ec = _rot_colors.get(_et, "#0ea5e9")
+                                        _el = f'{_et.replace("_"," ").title()[:6]} {_ed_shift.get("hours",10)}h'
+                                    else:
+                                        _ec = "#334155"
+                                        _el = "Off"
+                                    _exp_html += (
+                                        f'<div style="background:{_ec}22;border:1px solid {_ec};border-radius:6px;padding:6px;text-align:center;">'
+                                        f'<div style="color:#94a3b8;font-size:0.8em;">{_ed.strftime("%a")}</div>'
+                                        f'<div style="color:#94a3b8;font-size:0.75em;">{_ed.strftime("%b %d")}</div>'
+                                        f'<div style="color:{_ec};font-weight:600;font-size:0.85em;margin-top:2px;">{_el}</div>'
+                                        f'</div>'
+                                    )
+                                _exp_html += '</div>'
+                                st.markdown(_exp_html, unsafe_allow_html=True)
+
+                    else:
+                        # 10-Day Daily View (default)
+                        st.markdown("#### 📋 10-Day Schedule")
+
+                    # Daily view state init (always, so swaps work regardless of view)
                     if "_dv_start_date" not in st.session_state:
                         st.session_state["_dv_start_date"] = datetime.now().date()
+
+                    # Navigation + daily grid (only when daily view selected)
+                    _show_daily = (_sched_view != "📅 4-Week (Weekly)")
 
                     def _nav_update(new_date):
                         st.session_state["_dv_start_date"] = new_date
@@ -3251,6 +3361,9 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             del st.session_state["daily_view_start"]
                         st.rerun()
 
+                    # Daily view content (hidden when weekly view is selected)
+                    if not _show_daily:
+                        st.markdown('<div style="display:none;">', unsafe_allow_html=True)
                     _nav_col1, _nav_col2, _nav_col3, _nav_col4, _nav_col5, _nav_col6 = st.columns([1, 1, 1, 1, 3, 1])
                     with _nav_col1:
                         if st.button("◀ Day", key="nav_prev_day", use_container_width=True):
@@ -3601,6 +3714,9 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                             mime="text/csv",
                             use_container_width=True,
                         )
+
+                    if not _show_daily:
+                        st.markdown('</div>', unsafe_allow_html=True)
 
                     # Session swap summary
                     if st.session_state.get("session_swaps"):
