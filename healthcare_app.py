@@ -3284,7 +3284,7 @@ th {{ background: #f0f0f0; font-weight: bold; }}
                                 "date": s["date"], "start": s["start"], "end": s["end"],
                                 "hours": s.get("hours", 10), "shift_type": s.get("type", "Day"),
                             })
-                    st.session_state["hc_schedule"] = {"shifts": _synced_shifts, "week_start": datetime.now().strftime("%Y-%m-%d")}
+                    st.session_state["hc_schedule"] = {"shifts": _synced_shifts, "week_start": datetime.now().strftime("%Y-%m-%d"), "week_end": (datetime.now() + timedelta(days=6)).strftime("%Y-%m-%d"), "schedule_posted_date": datetime.now().strftime("%Y-%m-%d"), "facility": "ShiftGuard Healthcare"}
                     st.session_state["hc_employees"] = _synced_employees
                     st.rerun()
 
